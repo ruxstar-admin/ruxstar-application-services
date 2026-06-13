@@ -1,13 +1,14 @@
-import {
-  Tabs,
-  TabList,
-  TabTrigger,
-  TabSlot,
-  TabTriggerSlotProps,
-  TabListProps,
-} from 'expo-router/ui';
+/**
+ * AppTabs (web) — web-specific tab bar (SDK 52 / expo-router 4.x compatible)
+ *
+ * expo-router/ui (TabList, TabTrigger, TabSlot) is not reliably available in
+ * expo-router 4.x. This file provides a simplified web tab bar implementation
+ * using standard React Native Pressable components so the web build compiles.
+ *
+ * SymbolView name is a plain string in expo-symbols 0.2.0 (SDK 52).
+ */
 import { SymbolView } from 'expo-symbols';
-import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 
 import { ExternalLink } from './external-link';
 import { ThemedText } from './themed-text';
@@ -16,62 +17,37 @@ import { ThemedView } from './themed-view';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function AppTabs() {
+  // On web this component is a static nav bar — actual routing is handled by expo-router layouts.
   return (
-    <Tabs>
-      <TabSlot style={{ height: '100%' }} />
-      <TabList asChild>
-        <CustomTabList>
-          <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
-          </TabTrigger>
-          <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
-          </TabTrigger>
-        </CustomTabList>
-      </TabList>
-    </Tabs>
+    <View style={styles.tabListContainer}>
+      <WebNavBar />
+    </View>
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
-  return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView
-        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
-          {children}
-        </ThemedText>
-      </ThemedView>
-    </Pressable>
-  );
-}
-
-export function CustomTabList(props: TabListProps) {
+function WebNavBar() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const colors = Colors[(scheme === null || scheme === undefined) ? 'light' : scheme];
 
   return (
-    <View {...props} style={styles.tabListContainer}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          Expo Starter
-        </ThemedText>
+    <ThemedView type="backgroundElement" style={styles.innerContainer}>
+      <ThemedText type="smallBold" style={styles.brandText}>
+        Ruxstar
+      </ThemedText>
 
-        {props.children}
-
-        <ExternalLink href="https://docs.expo.dev" asChild>
-          <Pressable style={styles.externalPressable}>
-            <ThemedText type="link">Docs</ThemedText>
+      <ExternalLink href="https://docs.expo.dev" asChild>
+        <Pressable style={styles.externalPressable}>
+          <ThemedText type="link">Docs</ThemedText>
+          {Platform.OS !== 'android' && (
             <SymbolView
               tintColor={colors.text}
-              name={{ ios: 'arrow.up.right.square', web: 'link' }}
+              name="arrow.up.right.square"
               size={12}
             />
-          </Pressable>
-        </ExternalLink>
-      </ThemedView>
-    </View>
+          )}
+        </Pressable>
+      </ExternalLink>
+    </ThemedView>
   );
 }
 
@@ -96,14 +72,6 @@ const styles = StyleSheet.create({
   },
   brandText: {
     marginRight: 'auto',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  tabButtonView: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
   },
   externalPressable: {
     flexDirection: 'row',

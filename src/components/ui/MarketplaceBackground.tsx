@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   rowsContainer: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
   },
   rowContainer: {
     position: 'absolute',
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
 
   // Subtle grid
   gridOverlay: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
   },
   gridLine: {
     position: 'absolute',

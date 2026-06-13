@@ -31,7 +31,7 @@ const ROLES: {
   subtitle: string;
 }[] = [
   {
-    role: 'user',
+    role: 'customer',
     icon: '👤',
     title: 'Customer',
     subtitle: 'Discover local\nbusinesses & deals',

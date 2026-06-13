@@ -39,7 +39,8 @@ import { Brand, Radius, Spacing } from '@/constants/theme';
 const IS_DEV = Constants.appOwnership === 'expo' || __DEV__;
 
 const REDIRECT_URI = AuthSession.makeRedirectUri({
-  useProxy: true,          // works dev + EAS preview + EAS production
+  // useProxy was removed in expo-auth-session 6.x (SDK 52).
+  // Use the native scheme redirect directly — EAS and dev both support it.
   scheme: 'ruxstarapplicationservices',
   path: 'kyc/callback',
 });

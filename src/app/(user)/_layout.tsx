@@ -44,7 +44,7 @@ const tabStyles = StyleSheet.create({
 
 export default function UserLayout() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'dark' : scheme];
+  const colors = Colors[(scheme === null || scheme === undefined) ? 'dark' : scheme];
 
   return (
     <Tabs

@@ -23,7 +23,7 @@ interface RoleCardProps {
   icon: string;
   title: string;
   subtitle: string;
-  variant: 'user' | 'vendor';
+  variant: 'user' | 'vendor' | 'customer' | 'delivery';
   selected?: boolean;
   onPress: () => void;
   style?: ViewStyle;
