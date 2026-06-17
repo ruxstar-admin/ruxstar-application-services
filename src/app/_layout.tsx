@@ -9,16 +9,33 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 
-import { useAuthStore } from '@/stores/auth-store';
+import { useAuthStore, consumePendingLoginRoute } from '@/stores/auth-store';
+import { useKycStore } from '@/stores/kyc-store';
+import { useBusinessStore } from '@/stores/business-store';
+import { useUserStore } from '@/stores/user-store';
 
 function AuthGuard() {
-  const { isAuthenticated, role } = useAuthStore();
-  const segments    = useSegments();
-  const navState    = useRootNavigationState();
+  const { isAuthenticated, role, _hasHydrated } = useAuthStore();
+  const resetKyc      = useKycStore((s) => s.reset);
+  const resetBusiness = useBusinessStore((s) => s.reset);
+  const clearProfile  = useUserStore((s) => s.clearProfile);
+  const segments      = useSegments();
+  const navState      = useRootNavigationState();
 
+  // ── Full store wipe the moment auth is gone ───────────────────────────────
+  // Prevents any data from a previous session leaking into a new one.
   useEffect(() => {
-    // Navigator not ready yet — skip to avoid premature redirects
-    if (!navState?.key) return;
+    if (!isAuthenticated) {
+      resetKyc();
+      resetBusiness();
+      clearProfile();
+    }
+  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Route guard ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    // Wait for navigator AND AsyncStorage hydration before redirecting
+    if (!navState?.key || !_hasHydrated) return;
 
     const inAuthGroup   = segments[0] === '(auth)';
     const inUserGroup   = segments[0] === '(user)';
@@ -30,8 +47,9 @@ function AuthGuard() {
     }
 
     if (isAuthenticated && inAuthGroup) {
-      if (role === 'vendor') { router.replace('/(vendor)'); return; }
-      router.replace('/(user)');
+      // Use the destination set by login/OTP screen (KYC-aware), else fall back to role default
+      const pending = consumePendingLoginRoute();
+      router.replace((pending ?? (role === 'vendor' ? '/(vendor)' : '/(user)')) as never);
       return;
     }
 
@@ -40,7 +58,7 @@ function AuthGuard() {
     } else if (isAuthenticated && role !== 'vendor' && inVendorGroup) {
       router.replace('/(user)');
     }
-  }, [isAuthenticated, role, segments, navState?.key]);
+  }, [isAuthenticated, role, segments, navState?.key, _hasHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return null;
 }

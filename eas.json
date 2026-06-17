@@ -15,7 +15,9 @@
         "simulator": true
       },
       "env": {
-        "APP_ENV": "development"
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_API_URL": "https://ruxstar-backend-services-391710984982.us-central1.run.app",
+        "EXPO_PUBLIC_APP_SCHEME": "ruxstarapplicationservices"
       }
     },
     "preview": {
@@ -24,7 +26,9 @@
         "buildType": "apk"
       },
       "env": {
-        "APP_ENV": "preview"
+        "APP_ENV": "preview",
+        "EXPO_PUBLIC_API_URL": "https://ruxstar-backend-services-391710984982.us-central1.run.app",
+        "EXPO_PUBLIC_APP_SCHEME": "ruxstarapplicationservices"
       }
     },
     "production": {
@@ -33,7 +37,9 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_API_URL": "https://ruxstar-backend-services-391710984982.us-central1.run.app",
+        "EXPO_PUBLIC_APP_SCHEME": "ruxstarapplicationservices"
       }
     }
   },

@@ -19,7 +19,7 @@ import { SignupRobot } from '@/components/auth/SignupRobot';
 import PrimaryButton from '@/components/ui/PrimaryButton';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import type { UserRole } from '@/stores/auth-store';
-import { useAuthStore } from '@/stores/auth-store';
+import { useAuthStore, setPendingLoginRoute } from '@/stores/auth-store';
 import { AuthService, resolveRole } from '@/services/auth-service';
 
 const ROLES: { value: UserRole; label: string; icon: string; desc: string }[] = [
@@ -47,11 +47,6 @@ export default function RegisterDetailsScreen() {
 
   const canProceed = name.trim().length >= 2 && password.length >= 6;
 
-  function goHome(r: UserRole) {
-    if (r === 'vendor') { router.replace('/(vendor)'); return; }
-    router.replace('/(user)');
-  }
-
   const handleComplete = async () => {
     let valid = true;
     if (name.trim().length < 2) { setNameError('Enter your full name'); valid = false; }
@@ -65,6 +60,10 @@ export default function RegisterDetailsScreen() {
       const res      = await AuthService.signupComplete(pendingSignupToken, name.trim(), password, role);
       const resolved = resolveRole(res.user);
       clearPending();
+      // Vendors go straight to KYC — no steps done yet on fresh signup
+      // Users go to their home. AuthGuard reads the pending route and does
+      // a single navigation once setAuth() triggers re-render.
+      setPendingLoginRoute(resolved === 'vendor' ? '/(vendor)/kyc' : '/(user)');
       setAuth({
         token:  res.token,
         userId: res.user._id ?? res.user.id ?? '',
@@ -72,7 +71,6 @@ export default function RegisterDetailsScreen() {
         phone:  pendingPhone ?? '',
         name:   res.user.name ?? name.trim(),
       });
-      goHome(resolved);
     } catch (e: any) {
       fail(e.message ?? 'Signup failed. Please try again.');
     } finally {

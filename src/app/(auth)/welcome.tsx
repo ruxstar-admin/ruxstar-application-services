@@ -1,16 +1,14 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   StatusBar,
-  Dimensions,
   Platform,
 } from "react-native";
-import { router, useFocusEffect } from "expo-router";
+import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import LottieView from "lottie-react-native";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { VideoView, useVideoPlayer } from "expo-video";
@@ -27,10 +25,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Spacing, Radius } from "@/constants/theme";
 
-const { width: SW, height: SH } = Dimensions.get("window");
-
 const BG_VIDEO = require("../../../assets/backgorund_white.mp4");
-const HALF_FRAME = 246;
 
 const C = {
   bg: "#FFFFFF",
@@ -122,9 +117,6 @@ function Btn({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function WelcomeScreen() {
-  const lottieRef = useRef<LottieView>(null);
-  const [lottieReady, setReady] = useState(false);
-
   // Background video — looping, muted, auto-play
   const player = useVideoPlayer(BG_VIDEO, (p) => {
     p.loop = true;
@@ -150,9 +142,7 @@ export default function WelcomeScreen() {
         true,
       ),
     );
-    const t = setTimeout(() => setReady(true), 700);
-    return () => clearTimeout(t);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <View style={s.root}>
@@ -161,7 +151,7 @@ export default function WelcomeScreen() {
       {/* ── Full-screen looping video background ── */}
       <VideoView
         player={player}
-        style={s.bgVideo}
+        style={StyleSheet.absoluteFill}
         contentFit="cover"
         nativeControls={false}
         allowsPictureInPicture={false}
@@ -169,7 +159,7 @@ export default function WelcomeScreen() {
 
 
       <SafeAreaView style={s.safe}>
-        {/* ── Logo + Lottie ── */}
+        {/* ── Logo ── */}
         <View style={s.centerBlock}>
           <Animated.View
             entering={FadeIn.delay(80).duration(600)}
@@ -184,23 +174,6 @@ export default function WelcomeScreen() {
             <Text style={s.brandName}>RUXSTAR</Text>
             <Text style={s.brandTagline}>One platform. Every business.</Text>
           </Animated.View>
-
-          <View style={s.lottieWrap}>
-            {lottieReady && (
-              <Animated.View entering={FadeIn.duration(400)}>
-                <LottieView
-                  ref={lottieRef}
-                  source={require("../../../assets/Welcome.json")}
-                  autoPlay={false}
-                  loop={false}
-                  style={s.lottie}
-                  resizeMode="contain"
-                  colorFilters={[{ keypath: "*", color: "#FFFFFF" }]}
-                  onLayout={() => lottieRef.current?.play(0, HALF_FRAME)}
-                />
-              </Animated.View>
-            )}
-          </View>
         </View>
 
         {/* ── Bottom glass card ── */}
@@ -243,15 +216,6 @@ export default function WelcomeScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-
-  // ── Video background ──
-  bgVideo: {
-    position: "absolute",
-    width: SW,
-    height: SH,
-    top: 0,
-    left: 0,
-  },
 
   safe: { flex: 1 },
 
@@ -321,9 +285,6 @@ const s = StyleSheet.create({
     letterSpacing: 0.3,
     textAlign: "center",
   },
-
-  lottieWrap: { alignItems: "center", height: 220, justifyContent: "center" },
-  lottie: { width: 260, height: 220 },
 
   // ── Bottom glass card ──
   glassCard: {

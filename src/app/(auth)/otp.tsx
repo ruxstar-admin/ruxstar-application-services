@@ -20,8 +20,12 @@ import Animated, {
 import OtpInput from '@/components/auth/OtpInput';
 import PrimaryButton from '@/components/ui/PrimaryButton';
 import { Brand, Radius, Spacing } from '@/constants/theme';
-import { useAuthStore } from '@/stores/auth-store';
+import { useAuthStore, setPendingLoginRoute } from '@/stores/auth-store';
+import { useKycStore } from '@/stores/kyc-store';
+import { useBusinessStore } from '@/stores/business-store';
+import { useUserStore } from '@/stores/user-store';
 import { AuthService, resolveRole } from '@/services/auth-service';
+import { KycService, nextKycStep } from '@/services/kyc-service';
 
 const OTP_TIMER = 60;
 
@@ -34,6 +38,9 @@ export default function OtpScreen() {
   }>();
 
   const { setAuth, setPendingSignupToken, setLoading, isLoading } = useAuthStore();
+  const resetKyc      = useKycStore((s) => s.reset);
+  const resetBusiness = useBusinessStore((s) => s.reset);
+  const clearProfile  = useUserStore((s) => s.clearProfile);
 
   const [otp,       setOtp]       = useState('');
   const [isError,   setIsError]   = useState(false);
@@ -68,12 +75,6 @@ export default function OtpScreen() {
     if (otp.length === 6) handleVerify(otp);
   }, [otp]);
 
-  // ── Navigate to role home ─────────────────────────────────────────────────
-  function goHome(role: ReturnType<typeof resolveRole>) {
-    if (role === 'vendor')   { router.replace('/(vendor)'); return; }
-    router.replace('/(user)');
-  }
-
   // ── Verify OTP ────────────────────────────────────────────────────────────
   const handleVerify = async (code: string) => {
     if (code.length < 6) return;
@@ -87,6 +88,30 @@ export default function OtpScreen() {
           withSpring(1.06, { damping: 4, stiffness: 200 }),
           withSpring(1,    { damping: 8, stiffness: 150 }),
         );
+        // Wipe all stores from any previous session before setting new auth
+        resetKyc();
+        resetBusiness();
+        clearProfile();
+
+        // Determine destination while success animation plays (500 ms)
+        let destination = role === 'vendor' ? '/(vendor)' : '/(user)';
+        if (role === 'vendor') {
+          const [, kycResult] = await Promise.allSettled([
+            new Promise((r) => setTimeout(r, 500)),
+            KycService.getStatus(res.token),
+          ]);
+          if (kycResult.status === 'fulfilled') {
+            const step = nextKycStep(kycResult.value);
+            if (step === 'aadhaar' || step === 'pan' || step === 'face' || step === 'rejected') {
+              destination = '/(vendor)/kyc';
+            }
+          }
+        } else {
+          await new Promise((r) => setTimeout(r, 500));
+        }
+
+        // Tell AuthGuard where to land, then commit auth (single navigation, no flash)
+        setPendingLoginRoute(destination);
         setAuth({
           token:  res.token,
           userId: res.user._id ?? res.user.id ?? '',
@@ -94,8 +119,6 @@ export default function OtpScreen() {
           phone:  params.phone ?? '',
           name:   res.user.name,
         });
-        await new Promise((r) => setTimeout(r, 500));
-        goHome(role);
       } else {
         // signup
         const res = await AuthService.signupVerifyOtp(params.phone ?? '', code);

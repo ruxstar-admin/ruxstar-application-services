@@ -1,6 +1,12 @@
 /**
  * App-wide runtime configuration.
- * Add EXPO_PUBLIC_* variables here and reference via process.env.
+ * All EXPO_PUBLIC_* variables are embedded at build time by Expo.
+ * Never put secrets here — these values are visible in the JS bundle.
  */
 
-// Reserved for future use — add env-driven constants here as needed.
+export const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ??
+  'https://ruxstar-backend-services-391710984982.us-central1.run.app';
+
+export const APP_SCHEME =
+  process.env.EXPO_PUBLIC_APP_SCHEME ?? 'ruxstarapplicationservices';

@@ -10,6 +10,7 @@ import {
   Modal, FlatList,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { setPendingLoginRoute } from '@/stores/auth-store';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
@@ -45,6 +46,8 @@ export default function VendorDetailsScreen() {
     if (!category) return;
     setLoading(true);
     await new Promise((r) => setTimeout(r, 700));
+    // Route to KYC — vendor has no KYC done yet on fresh signup
+    setPendingLoginRoute('/(vendor)/kyc');
     setAuth({
       token: 'demo-vendor-token-' + Date.now(),
       userId: 'vendor-' + Date.now(),
@@ -53,7 +56,6 @@ export default function VendorDetailsScreen() {
       name: params.name?.trim() ?? 'Vendor User',
     });
     setLoading(false);
-    router.replace('/(vendor)');
   };
 
   return (

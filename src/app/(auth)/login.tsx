@@ -17,8 +17,12 @@ import { LoginRobot } from '@/components/auth/LoginRobot';
 import InputField from '@/components/ui/InputField';
 import PrimaryButton from '@/components/ui/PrimaryButton';
 import { Brand, Radius, Spacing } from '@/constants/theme';
-import { useAuthStore } from '@/stores/auth-store';
+import { useAuthStore, setPendingLoginRoute } from '@/stores/auth-store';
+import { useKycStore } from '@/stores/kyc-store';
+import { useBusinessStore } from '@/stores/business-store';
+import { useUserStore } from '@/stores/user-store';
 import { AuthService, resolveRole } from '@/services/auth-service';
+import { KycService, nextKycStep } from '@/services/kyc-service';
 
 type Mode = 'password' | 'otp';
 
@@ -29,6 +33,9 @@ function isValidPhone(digits: string) {
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { setAuth, setLoading, isLoading, setPendingPhone } = useAuthStore();
+  const resetKyc = useKycStore((s) => s.reset);
+  const resetBusiness  = useBusinessStore((s) => s.reset);
+  const clearProfile   = useUserStore((s) => s.clearProfile);
 
   const [mode,       setMode]       = useState<Mode>('password');
   const [phone,      setPhone]      = useState('');
@@ -59,11 +66,6 @@ export default function LoginScreen() {
     }
   }, []);
 
-  function goHome(role: ReturnType<typeof resolveRole>) {
-    if (role === 'vendor') { router.replace('/(vendor)'); return; }
-    router.replace('/(user)');
-  }
-
   const handlePasswordLogin = async () => {
     let valid = true;
     if (!phoneValid)         { setPhoneError('Enter a valid mobile number'); valid = false; }
@@ -74,6 +76,26 @@ export default function LoginScreen() {
     try {
       const res  = await AuthService.loginPassword(fullNumber, password);
       const role = resolveRole(res.user);
+
+      // Wipe all stores from any previous session
+      resetKyc();
+      resetBusiness();
+      clearProfile();
+
+      // Determine destination BEFORE setAuth so AuthGuard does one clean navigation
+      let destination = role === 'vendor' ? '/(vendor)' : '/(user)';
+      if (role === 'vendor') {
+        try {
+          const kyc  = await KycService.getStatus(res.token);
+          const step = nextKycStep(kyc);
+          if (step === 'aadhaar' || step === 'pan' || step === 'face' || step === 'rejected') {
+            destination = '/(vendor)/kyc';
+          }
+        } catch { /* fail open — go to dashboard */ }
+      }
+
+      // Tell AuthGuard where to land, then commit auth (triggers single navigation)
+      setPendingLoginRoute(destination);
       setAuth({
         token:  res.token,
         userId: res.user._id ?? res.user.id ?? '',
@@ -81,7 +103,6 @@ export default function LoginScreen() {
         phone:  fullNumber,
         name:   res.user.name,
       });
-      goHome(role);
     } catch (e: any) {
       fail(e.message ?? 'Login failed');
     } finally {

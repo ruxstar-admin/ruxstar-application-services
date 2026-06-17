@@ -10,8 +10,7 @@ import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import * as AuthSession from 'expo-auth-session';
-import Constants from 'expo-constants';
+import * as Linking from 'expo-linking';
 
 import { useAuthStore } from '@/stores/auth-store';
 import { useKycStore } from '@/stores/kyc-store';
@@ -19,39 +18,56 @@ import { KycService } from '@/services/kyc-service';
 import { Brand, Radius, Spacing } from '@/constants/theme';
 
 /**
- * Redirect URI strategy:
+ * Redirect URI strategy — Expo Go compatible
  *
- * DigiLocker requires HTTPS — it rejects bare custom-scheme URIs.
+ * Problem: DigiLocker requires HTTPS. Custom schemes (ruxstarapplicationservices://)
+ * are rejected by DigiLocker, and the Expo proxy (auth.expo.io) fails to deep-link
+ * back into Expo Go because the custom scheme isn't registered there.
  *
- * • Dev / Expo Go  → useProxy:true  → https://auth.expo.io/@owner/slug
- *   The Expo proxy receives DigiLocker's redirect and relays it back to
- *   the app via the custom scheme deep link. No extra infrastructure needed.
+ * Solution for Expo Go:
+ *  1. We still send an HTTPS redirect URL to DigiLocker (required).
+ *     We use the backend's own URL — it's always HTTPS and a valid URL.
+ *  2. After DigiLocker redirects the browser (to any URL), we treat the browser
+ *     closing as the trigger — both 'success' AND 'dismiss' navigate to the
+ *     callback screen which calls /vendor/kyc/aadhaar/sync.
+ *  3. We also show a "I've completed DigiLocker" button so the user can
+ *     manually trigger the sync if the browser doesn't auto-close.
  *
- * • EAS Preview / Production → same proxy URL still works because EAS
- *   builds embed the same slug and the proxy looks it up by slug.
- *   After DigiLocker completes, auth.expo.io deep-links back to:
- *     ruxstarapplicationservices://kyc/callback
- *   which maps to our callback.tsx screen.
- *
- * NOTE: If Expo ever retires the proxy you can swap this for an
- * HTTPS relay page on your own domain without touching anything else.
+ * Production (development build with real deep links):
+ *  Replace REDIRECT_URI with your own HTTPS domain + a real deep-link relay page.
  */
-const IS_DEV = Constants.appOwnership === 'expo' || __DEV__;
-
-const REDIRECT_URI = AuthSession.makeRedirectUri({
-  // useProxy was removed in expo-auth-session 6.x (SDK 52).
-  // Use the native scheme redirect directly — EAS and dev both support it.
-  scheme: 'ruxstarapplicationservices',
-  path: 'kyc/callback',
-});
+/**
+ * Build the redirect URL that the backend will send the user's browser to
+ * after DigiLocker authentication completes.
+ *
+ * We point to https://ruxstar.com/kyc/mobile-done and attach the app's live
+ * callback URL as an `appUri` query param.
+ *
+ * Linking.createURL('kyc/callback') returns the correct URL for the current
+ * runtime environment:
+ *   • Expo Go  → exp://192.168.x.x:8081/--/kyc/callback   ← registered in Expo Go ✅
+ *   • Standalone → ruxstarapplicationservices://kyc/callback ✅
+ *
+ * The web page reads `appUri` and uses it for the auto-redirect, so the user
+ * is brought back to the exact right place in any environment.
+ */
+function buildRedirectUri(token: string): string {
+  const appCallbackUrl = Linking.createURL('kyc/callback');
+  return (
+    `https://ruxstar.com/kyc/mobile-done` +
+    `?appUri=${encodeURIComponent(appCallbackUrl)}` +
+    `&token=${encodeURIComponent(token)}`
+  );
+}
 
 export default function AadhaarScreen() {
   const insets    = useSafeAreaInsets();
   const token     = useAuthStore((s) => s.token);
   const kycStatus = useKycStore((s) => s.status);
 
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+  const [loading,       setLoading]       = useState(false);
+  const [browserOpened, setBrowserOpened] = useState(false);
+  const [error,         setError]         = useState('');
 
   async function handleStart() {
     if (!token) return;
@@ -59,23 +75,38 @@ export default function AadhaarScreen() {
     setLoading(true);
 
     try {
-      // Send the HTTPS proxy URI to backend — DigiLocker accepts it.
-      // After DigiLocker completes, auth.expo.io relays back to this app via deep link.
-      const { url } = await KycService.startAadhaar(token, REDIRECT_URI);
+      // Build at call-time so Linking.createURL() resolves the live Expo Go
+      // server address (which isn't known until the app is running).
+      const redirectUri = buildRedirectUri(token);
+      const { url } = await KycService.startAadhaar(token, redirectUri);
 
-      // Pass REDIRECT_URI so openAuthSessionAsync knows when to close the browser
-      const result = await WebBrowser.openAuthSessionAsync(url, REDIRECT_URI);
-
-      if (result.type === 'success') {
-        // Deep link received — callback screen will handle sync
-        router.replace('/(vendor)/kyc/callback');
-      }
-      // If dismissed / cancel — do nothing, user stays on this screen
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start Aadhaar verification.');
-    } finally {
       setLoading(false);
+      setBrowserOpened(true);
+
+      // openBrowserAsync opens a browser and resolves when the user closes it.
+      // We don't rely on a deep-link redirect — Expo Go doesn't support custom
+      // scheme redirects from external browsers (scheme not registered in Expo Go).
+      await WebBrowser.openBrowserAsync(url, {
+        showTitle:          true,
+        enableBarCollapsing: false,
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+      });
+
+      // Browser closed — user may have completed DigiLocker or dismissed it.
+      // Navigate to callback screen which calls sync and routes accordingly.
+      // If DigiLocker wasn't completed, sync will still show 'aadhaar' as next
+      // step and we'll be sent back here with an appropriate error message.
+      router.replace('/(vendor)/kyc/callback');
+
+    } catch (err) {
+      setLoading(false);
+      setError(err instanceof Error ? err.message : 'Could not start Aadhaar verification.');
     }
+  }
+
+  // Manual fallback: user closed the browser themselves before we detected it.
+  function handleManualContinue() {
+    router.replace('/(vendor)/kyc/callback');
   }
 
   const stepFailed = kycStatus?.aadhaar.status === 'failed';
@@ -109,6 +140,19 @@ export default function AadhaarScreen() {
         <InfoRow emoji="⚡" text="Takes under 60 seconds" />
       </View>
 
+      {/* Expo Go hint — shown after browser opens */}
+      {browserOpened && (
+        <View style={s.hintBox}>
+          <Text style={s.hintTitle}>Completed DigiLocker?</Text>
+          <Text style={s.hintText}>
+            After finishing DigiLocker, close the browser and tap the button below to continue.
+          </Text>
+          <Pressable style={s.hintBtn} onPress={handleManualContinue}>
+            <Text style={s.hintBtnText}>I've completed DigiLocker →</Text>
+          </Pressable>
+        </View>
+      )}
+
       {stepFailed && (
         <View style={s.errorBox}>
           <Text style={s.errorText}>
@@ -124,14 +168,16 @@ export default function AadhaarScreen() {
       ) : null}
 
       <Pressable
-        style={[s.btn, loading && s.btnDisabled]}
+        style={[s.btn, (loading || browserOpened) && s.btnDisabled]}
         onPress={handleStart}
-        disabled={loading}
+        disabled={loading || browserOpened}
       >
         {loading ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
-          <Text style={s.btnText}>Continue with DigiLocker</Text>
+          <Text style={s.btnText}>
+            {browserOpened ? 'DigiLocker opened…' : 'Continue with DigiLocker'}
+          </Text>
         )}
       </Pressable>
 
@@ -223,6 +269,26 @@ const s = StyleSheet.create({
   infoEmoji: { fontSize: 16 },
   infoText:  { color: Brand.creamSub, fontSize: 13, flex: 1 },
 
+  // ── Expo Go hint box ───────────────────────────────────────────────────────
+  hintBox: {
+    backgroundColor: 'rgba(22,163,74,0.06)',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(22,163,74,0.25)',
+    padding: Spacing.three,
+    gap: Spacing.two,
+  },
+  hintTitle: { color: Brand.success, fontSize: 14, fontWeight: '700' },
+  hintText:  { color: Brand.creamSub, fontSize: 13, lineHeight: 20 },
+  hintBtn: {
+    backgroundColor: Brand.success,
+    borderRadius: Radius.pill,
+    paddingVertical: 10,
+    paddingHorizontal: Spacing.three,
+    alignSelf: 'flex-start',
+  },
+  hintBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+
   // ── Error ──────────────────────────────────────────────────────────────────
   errorBox: {
     backgroundColor: 'rgba(220,38,38,0.06)',
@@ -241,7 +307,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginTop: Spacing.two,
   },
-  btnDisabled: { opacity: 0.6 },
+  btnDisabled: { opacity: 0.5 },
   btnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
 
   footnote: { color: Brand.creamMuted, fontSize: 11, textAlign: 'center', lineHeight: 16 },

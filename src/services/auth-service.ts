@@ -1,6 +1,7 @@
 import type { UserRole } from '@/stores/auth-store';
+import { API_URL } from '@/constants/config';
 
-const BASE_URL = 'https://ruxstar-backend-services-391710984982.us-central1.run.app';
+const BASE_URL = API_URL;
 
 // ─── HTTP helper — matches website's api.ts ──────────────────────────────────
 
