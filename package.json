@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
-    "@lottiefiles/dotlottie-react": "^0.19.4",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "expo": "~52.0.36",
     "expo-auth-session": "~6.0.1",
@@ -23,9 +22,7 @@
     "expo-status-bar": "~2.0.0",
     "expo-symbols": "~0.2.0",
     "expo-system-ui": "~4.0.6",
-    "expo-video": "~2.0.1",
     "expo-web-browser": "~14.0.1",
-    "lottie-react-native": "^6.7.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.9",

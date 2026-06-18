@@ -2,7 +2,7 @@
  * Root Layout — Auth guard & navigation controller
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, router, useSegments, useRootNavigationState } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -21,6 +21,22 @@ function AuthGuard() {
   const clearProfile  = useUserStore((s) => s.clearProfile);
   const segments      = useSegments();
   const navState      = useRootNavigationState();
+  const hydrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Hydration safety timeout ──────────────────────────────────────────────
+  // If AsyncStorage never calls onRehydrateStorage (e.g. after kill+restart),
+  // force _hasHydrated = true after 3s so the app never stays on the loader.
+  useEffect(() => {
+    if (_hasHydrated) return;
+    hydrationTimer.current = setTimeout(() => {
+      if (!useAuthStore.getState()._hasHydrated) {
+        useAuthStore.setState({ _hasHydrated: true });
+      }
+    }, 3000);
+    return () => {
+      if (hydrationTimer.current) clearTimeout(hydrationTimer.current);
+    };
+  }, [_hasHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Full store wipe the moment auth is gone ───────────────────────────────
   // Prevents any data from a previous session leaking into a new one.

@@ -11,7 +11,6 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { VideoView, useVideoPlayer } from "expo-video";
 import Animated, {
   FadeIn,
   FadeInUp,
@@ -24,8 +23,6 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { Spacing, Radius } from "@/constants/theme";
-
-const BG_VIDEO = require("../../../assets/backgorund_white.mp4");
 
 const C = {
   bg: "#FFFFFF",
@@ -78,8 +75,8 @@ function Btn({
   }));
 
   const pressHandlers = {
-    onPressIn: () => scale.value = withTiming(0.97, { duration: 80 }),
-    onPressOut: () => scale.value = withTiming(1, { duration: 150 }),
+    onPressIn: () => (scale.value = withTiming(0.97, { duration: 80 })),
+    onPressOut: () => (scale.value = withTiming(1, { duration: 150 })),
   };
 
   // ── Primary (Sign up) ──
@@ -117,13 +114,6 @@ function Btn({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function WelcomeScreen() {
-  // Background video — looping, muted, auto-play
-  const player = useVideoPlayer(BG_VIDEO, (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
-  });
-
   const pulse = useSharedValue(0);
   const glowAnim = useAnimatedStyle(() => ({
     opacity: pulse.value,
@@ -148,15 +138,14 @@ export default function WelcomeScreen() {
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* ── Full-screen looping video background ── */}
-      <VideoView
-        player={player}
+      {/* ── Animated gradient background (replaces video) ── */}
+      <LinearGradient
+        colors={["#FFFFFF", "#F5F0FF", "#EDE8FF", "#FFFFFF"]}
+        locations={[0, 0.3, 0.7, 1]}
+        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
         style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        nativeControls={false}
-        allowsPictureInPicture={false}
       />
-
 
       <SafeAreaView style={s.safe}>
         {/* ── Logo ── */}
@@ -235,10 +224,10 @@ const s = StyleSheet.create({
     width: 124,
     height: 124,
     borderRadius: 62,
-    backgroundColor: "rgba(0,0,0,0.02)",
-    shadowColor: "#000",
+    backgroundColor: "rgba(124,58,237,0.06)",
+    shadowColor: "#7C3AED",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.2,
     shadowRadius: 40,
     elevation: 0,
   },
