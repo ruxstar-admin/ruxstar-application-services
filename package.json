@@ -5,7 +5,7 @@
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
     "@lottiefiles/dotlottie-react": "^0.19.4",
-    "@react-native-async-storage/async-storage": "^3.1.1",
+    "@react-native-async-storage/async-storage": "^2.2.0",
     "expo": "~52.0.36",
     "expo-auth-session": "~6.0.1",
     "expo-blur": "~14.0.1",
