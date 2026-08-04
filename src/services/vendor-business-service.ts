@@ -33,6 +33,7 @@ async function req<T>(
       (typeof d.message === 'string' && d.message) ||
       (typeof d.error === 'string' && d.error) ||
       `Request failed (${res.status})`;
+    console.error(`[vendor-business-service] ${method} ${path} failed | status: ${res.status} | message: ${msg}`);
     throw new Error(msg);
   }
 
@@ -262,6 +263,9 @@ export const APPOINTMENT_MODULES: BusinessModule[] = ['appointments'];
 /** Modules that manage events (tournaments/concerts) — separate wizard. */
 export const EVENT_MODULES: BusinessModule[] = ['events'];
 
+/** Modules with their own dedicated (non-slot) setup flow: PodSetupFlow, CommerceSetupFlow, CreatorSetupFlow. */
+export const DEDICATED_SETUP_MODULES: BusinessModule[] = ['print', 'commerce', 'creator'];
+
 /**
  * Returns true for types that need the vendor to choose hourly vs full-day
  * DURING creation. Only turf and venue — all others default automatically.
@@ -316,6 +320,39 @@ export interface BusinessService {
   staffIds:        string[];
 }
 
+export type CommerceProfile = {
+  notes: string;
+  minOrderValue: number;
+  acceptingOrders: boolean;
+  activeProductCount: number;
+};
+
+export function defaultCommerceProfile(): CommerceProfile {
+  return { notes: '', minOrderValue: 0, acceptingOrders: true, activeProductCount: 0 };
+}
+
+export type CreatorSocialLinks = {
+  instagram: string;
+  youtube: string;
+  other: string;
+};
+
+export type CreatorProfile = {
+  bio: string;
+  niche: string;
+  socialLinks: CreatorSocialLinks;
+  acceptingBookings: boolean;
+};
+
+export function defaultCreatorProfile(): CreatorProfile {
+  return {
+    bio: '',
+    niche: '',
+    socialLinks: { instagram: '', youtube: '', other: '' },
+    acceptingBookings: true,
+  };
+}
+
 export interface BusinessSetup {
   bookingMode:   BookingMode;
   slotMinutes:   number;
@@ -331,6 +368,10 @@ export interface BusinessSetup {
   bufferMinutes?: number;
   // Print-on-demand profile (print module)
   printProfile?:  import('@/types/print').PrintProfile | null;
+  // Commerce shop profile (commerce module)
+  commerceProfile?: CommerceProfile;
+  // Creator profile (creator module)
+  creatorProfile?: CreatorProfile;
 }
 
 /** Business types that use service-mode setup (Staff + Services, no slot booking). */
@@ -393,9 +434,13 @@ export const DEFAULT_WEEKLY_HOURS: WeeklyHours = Object.fromEntries(
 
 // ─── Setup Helpers ────────────────────────────────────────────────────────────
 
-/** Returns true for any module that has a setup flow (slots wizard or event wizard). */
+/** Returns true for any module that has a setup flow (slots wizard, event wizard, or dedicated flow). */
 export function supportsSetup(business: Business): boolean {
-  return APPOINTMENT_MODULES.includes(business.module) || EVENT_MODULES.includes(business.module);
+  return (
+    APPOINTMENT_MODULES.includes(business.module) ||
+    EVENT_MODULES.includes(business.module) ||
+    DEDICATED_SETUP_MODULES.includes(business.module)
+  );
 }
 
 /** Returns true if this business uses the slot/calendar setup (not event wizard). */
@@ -477,6 +522,32 @@ function normalizeService(raw: unknown): BusinessService | null {
   };
 }
 
+function normalizeCommerceProfile(raw: unknown): CommerceProfile {
+  const p = asRec(raw);
+  const num = (v: unknown, fb: number) => typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : fb;
+  return {
+    notes:               str(p.notes),
+    minOrderValue:       num(p.minOrderValue, 0),
+    acceptingOrders:     p.acceptingOrders !== false,
+    activeProductCount:  num(p.activeProductCount, 0),
+  };
+}
+
+function normalizeCreatorProfile(raw: unknown): CreatorProfile {
+  const p     = asRec(raw);
+  const links = asRec(p.socialLinks);
+  return {
+    bio:  str(p.bio),
+    niche: str(p.niche),
+    socialLinks: {
+      instagram: str(links.instagram),
+      youtube:   str(links.youtube),
+      other:     str(links.other),
+    },
+    acceptingBookings: p.acceptingBookings !== false,
+  };
+}
+
 function normalizeSetup(raw: unknown): BusinessSetup | null {
   if (!raw) return null;
   const s = asRec(raw);
@@ -528,6 +599,8 @@ function normalizeSetup(raw: unknown): BusinessSetup | null {
     services:      services.length ? services : undefined,
     bufferMinutes: typeof s.bufferMinutes  === 'number' ? s.bufferMinutes  : 0,
     printProfile,
+    commerceProfile: normalizeCommerceProfile(s.commerceProfile),
+    creatorProfile:  normalizeCreatorProfile(s.creatorProfile),
   };
 }
 
@@ -589,13 +662,18 @@ export async function completeBusinessSetup(token: string, id: string): Promise<
   return b;
 }
 
-/** POST /vendor/businesses/:id/setup/photos */
+/** POST /vendor/businesses/:id/setup/photos/sync */
 export async function syncBusinessSetupPhotos(
   token: string,
   id: string,
   payload: { images: string[]; removeIds: string[] },
 ): Promise<BusinessWithSetup> {
-  const data = await post<unknown>(`vendor/businesses/${id}/setup/photos`, token, payload);
+  console.log(
+    '[vendor-business-service] syncBusinessSetupPhotos payload |',
+    'images:', payload.images.map((img, i) => `#${i} len=${img.length} prefix="${img.slice(0, 30)}"`),
+    '| removeIds:', payload.removeIds,
+  );
+  const data = await post<unknown>(`vendor/businesses/${id}/setup/photos/sync`, token, payload);
   const b    = normalizeBusinessWithSetup(asRec(data).business ?? data);
   if (!b) throw new Error('Invalid response from server');
   return b;

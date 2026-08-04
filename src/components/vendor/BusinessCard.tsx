@@ -40,8 +40,6 @@ function getAction(b: Business, eventCount = 0): ActionType {
     // All other live businesses (turf, venue, sports) → slot calendar
     return 'calendar';
   }
-  // Commerce/print businesses have their own setup wizards
-  if (b.module === 'commerce' || b.module === 'print') return 'setup';
   if (!supportsSetup(b)) return 'coming-soon';
   return 'setup';
 }
@@ -51,8 +49,7 @@ function statusChip(b: Business, brand: BrandTokens): { label: string; color: st
   if (b.module === 'events' || isServiceType(b.typeId) || b.setupComplete || b.status === 'live') {
     return { label: 'Live', color: brand.success, bg: 'rgba(22,163,74,0.08)', dot: brand.success };
   }
-  // Commerce/print businesses need setup via their own wizard
-  if (b.module === 'commerce' || b.module === 'print' || supportsSetup(b)) {
+  if (supportsSetup(b)) {
     return { label: 'Needs setup', color: brand.warning, bg: 'rgba(217,119,6,0.08)', dot: brand.warning };
   }
   return { label: 'Coming soon', color: brand.creamMuted, bg: brand.surface2, dot: brand.creamMuted };

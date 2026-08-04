@@ -38,8 +38,7 @@ function getStatusKey(biz: Business): Exclude<StatusFilter, 'all'> {
   // Events businesses have no slot wizard — always treat as live
   if (biz.module === 'events') return 'live';
   if (biz.setupComplete || biz.status === 'live') return 'live';
-  // Commerce/print businesses have their own setup wizards
-  if (biz.module === 'commerce' || biz.module === 'print' || supportsSetup(biz)) return 'setup';
+  if (supportsSetup(biz)) return 'setup';
   return 'soon';
 }
 

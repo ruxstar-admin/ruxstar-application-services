@@ -45,6 +45,8 @@ import {
   DAY_SHORT,
   SLOT_MINUTES_OPTIONS,
   DEFAULT_WEEKLY_HOURS,
+  defaultCommerceProfile,
+  defaultCreatorProfile,
   type BusinessWithSetup,
   type BusinessResource,
   type BusinessStaff,
@@ -52,9 +54,17 @@ import {
   type WeeklyHours,
   type DayKey,
   type BookingMode,
+  type CommerceProfile,
+  type CreatorProfile,
 } from '@/services/vendor-business-service';
 import { getPrintCatalog } from '@/services/print-service';
 import type { PrintCategory } from '@/types/print';
+import {
+  listVendorCommerceProducts,
+  createCommerceProduct,
+  deleteCommerceProduct,
+  type CommerceProduct,
+} from '@/services/commerce-service';
 
 // ─── Step Types ───────────────────────────────────────────────────────────────
 
@@ -1658,6 +1668,879 @@ function PodSetupFlow({
   );
 }
 
+// ─── Commerce Setup Flow ──────────────────────────────────────────────────────
+
+type CommerceStepId = 'photos' | 'shop' | 'products' | 'review';
+
+const COMMERCE_STEPS: CommerceStepId[] = ['photos', 'shop', 'products', 'review'];
+
+const COMMERCE_STEP_LABELS: Record<CommerceStepId, string> = {
+  photos:   'Photos',
+  shop:     'Shop details',
+  products: 'Products',
+  review:   'Review',
+};
+
+const COMMERCE_STEP_ICONS: Record<CommerceStepId, keyof typeof Ionicons.glyphMap> = {
+  photos:   'images-outline',
+  shop:     'storefront-outline',
+  products: 'pricetags-outline',
+  review:   'checkmark-circle-outline',
+};
+
+function CommerceSetupFlow({
+  business,
+  token,
+  editMode,
+}: {
+  business: BusinessWithSetup;
+  token: string;
+  editMode: boolean;
+}) {
+  const [stepIndex,    setStepIndex]    = useState(0);
+  const [busy,         setBusy]         = useState(false);
+  const [error,        setError]        = useState('');
+  const [pickingPhoto, setPickingPhoto] = useState(false);
+
+  // Photos
+  const [savedPhotos,   setSavedPhotos]   = useState<{ id: string; url: string }[]>(
+    () => (business.setup?.photos ?? []).map((p) => ({ id: p.id, url: p.url })),
+  );
+  const [pendingPhotos, setPendingPhotos] = useState<{ id: string; url: string }[]>([]);
+  const [removedIds,    setRemovedIds]    = useState<string[]>([]);
+
+  // Shop details
+  const [profile, setProfile] = useState<CommerceProfile>(
+    () => business.setup?.commerceProfile ?? defaultCommerceProfile(),
+  );
+  const [minOrderInput, setMinOrderInput] = useState(
+    () => (business.setup?.commerceProfile?.minOrderValue ? String(business.setup.commerceProfile.minOrderValue) : ''),
+  );
+
+  // Products
+  const [products,     setProducts]     = useState<CommerceProduct[]>([]);
+  const [loadingProds, setLoadingProds] = useState(true);
+  const [prodName,     setProdName]     = useState('');
+  const [prodPrice,    setProdPrice]    = useState('');
+  const [prodStock,    setProdStock]    = useState('10');
+  const [addingProd,   setAddingProd]   = useState(false);
+
+  const scrollRef = useRef<ScrollView>(null);
+
+  const displayPhotos: DisplayPhoto[] = useMemo(() => [
+    ...savedPhotos.filter((p) => !removedIds.includes(p.id)).map((p) => ({ ...p, pending: false })),
+    ...pendingPhotos.map((p) => ({ ...p, pending: true })),
+  ], [savedPhotos, pendingPhotos, removedIds]);
+
+  const currentStep = COMMERCE_STEPS[stepIndex];
+  const totalSteps  = COMMERCE_STEPS.length;
+  const progress    = (stepIndex + 1) / totalSteps;
+
+  const loadProducts = useCallback(async () => {
+    setLoadingProds(true);
+    try {
+      setProducts(await listVendorCommerceProducts(token, business.id));
+    } catch {
+      // non-fatal — vendor can retry by reopening this step
+    } finally {
+      setLoadingProds(false);
+    }
+  }, [token, business.id]);
+
+  useEffect(() => { void loadProducts(); }, [loadProducts]);
+
+  async function addPhoto() {
+    console.log('[Commerce Photos] addPhoto: requesting permission');
+    setPickingPhoto(true);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('[Commerce Photos] permission:', perm.status, '| granted:', perm.granted);
+      if (!perm.granted) {
+        Alert.alert('Permission needed', 'Please allow photo library access in Settings.');
+        return;
+      }
+      console.log('[Commerce Photos] launching image picker');
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.75, base64: true });
+      console.log('[Commerce Photos] picker result | canceled:', result.canceled, '| assets:', result.assets?.length ?? 0);
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        const mime  = asset.mimeType ?? 'image/jpeg';
+        console.log('[Commerce Photos] asset | mime:', mime, '| base64 length:', asset.base64?.length ?? 0, '| uri:', asset.uri);
+        if (!asset.base64) {
+          console.warn('[Commerce Photos] base64 is missing/empty — cannot build data URI');
+          Alert.alert('Photo error', 'Could not read image data. Please try a different photo.');
+          return;
+        }
+        const dataUrl = `data:${mime};base64,${asset.base64}`;
+        const id = `pending-${Date.now()}`;
+        console.log('[Commerce Photos] queued pending photo | id:', id, '| dataUrl prefix:', dataUrl.slice(0, 50));
+        setPendingPhotos((prev) => [...prev, { id, url: dataUrl }]);
+      } else {
+        console.log('[Commerce Photos] picker cancelled or no assets returned');
+      }
+    } catch (e: unknown) {
+      console.error('[Commerce Photos] addPhoto threw:', e);
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not open photo picker.');
+    } finally {
+      setPickingPhoto(false);
+    }
+  }
+
+  function removePhoto(photo: DisplayPhoto) {
+    if (photo.pending) setPendingPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    else setRemovedIds((prev) => [...prev, photo.id]);
+  }
+
+  async function addProduct() {
+    const name = prodName.trim();
+    if (!name) { setError('Enter a product name.'); return; }
+    const price = Math.round(Number(prodPrice));
+    if (!Number.isFinite(price) || price < 1) { setError('Price must be at least ₹1.'); return; }
+    const stock = Math.round(Number(prodStock));
+    if (!prodStock.trim() || !Number.isFinite(stock) || stock < 0) { setError('Stock must be 0 or more.'); return; }
+    setAddingProd(true);
+    setError('');
+    try {
+      const created = await createCommerceProduct(token, business.id, { name, price, stock });
+      setProducts((prev) => [created, ...prev]);
+      setProdName(''); setProdPrice(''); setProdStock('10');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not add product.');
+    } finally {
+      setAddingProd(false);
+    }
+  }
+
+  function removeProduct(product: CommerceProduct) {
+    Alert.alert('Remove product', `Remove "${product.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteCommerceProduct(token, business.id, product.id);
+            setProducts((prev) => prev.filter((p) => p.id !== product.id));
+          } catch {
+            Alert.alert('Error', 'Could not remove product.');
+          }
+        },
+      },
+    ]);
+  }
+
+  function goBack() {
+    setError('');
+    if (stepIndex > 0) {
+      setStepIndex(stepIndex - 1);
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    } else {
+      router.navigate('/(vendor)/businesses' as never);
+    }
+  }
+
+  async function handleContinue() {
+    setError('');
+    setBusy(true);
+    try {
+      if (currentStep === 'photos') {
+        console.log('[Commerce Photos] handleContinue photos | pending:', pendingPhotos.length, '| removedIds:', removedIds.length);
+        if (pendingPhotos.length > 0 || removedIds.length > 0) {
+          console.log('[Commerce Photos] calling syncBusinessSetupPhotos | businessId:', business.id);
+          try {
+            const updated = await syncBusinessSetupPhotos(token, business.id, {
+              images:    pendingPhotos.map((p) => p.url),
+              removeIds: removedIds,
+            });
+            console.log('[Commerce Photos] syncBusinessSetupPhotos success | photos returned:', updated.setup?.photos?.length ?? 0);
+            if (updated.setup) {
+              setSavedPhotos(updated.setup.photos.map((p) => ({ id: p.id, url: p.url })));
+              setPendingPhotos([]);
+              setRemovedIds([]);
+            } else {
+              console.warn('[Commerce Photos] syncBusinessSetupPhotos returned no setup object');
+            }
+          } catch (uploadErr: unknown) {
+            console.error('[Commerce Photos] syncBusinessSetupPhotos failed:', uploadErr);
+            throw uploadErr;
+          }
+        } else {
+          console.log('[Commerce Photos] no changes — skipping upload');
+        }
+      } else if (currentStep === 'shop') {
+        const minOrderValue = Math.max(0, parseInt(minOrderInput, 10) || 0);
+        const nextProfile = { ...profile, minOrderValue };
+        setProfile(nextProfile);
+        await updateBusinessSetup(token, business.id, { commerceProfile: nextProfile });
+      } else if (currentStep === 'products') {
+        if (products.length === 0) {
+          setError('Add at least one product before continuing.');
+          return;
+        }
+      } else if (currentStep === 'review') {
+        if (products.length === 0) {
+          setError('Add at least one product before going live.');
+          setStepIndex(COMMERCE_STEPS.indexOf('products'));
+          return;
+        }
+        if (pendingPhotos.length > 0 || removedIds.length > 0) {
+          await syncBusinessSetupPhotos(token, business.id, {
+            images:    pendingPhotos.map((p) => p.url),
+            removeIds: removedIds,
+          });
+        }
+        if (!editMode) {
+          await completeBusinessSetup(token, business.id);
+        }
+        Alert.alert(
+          editMode ? 'Settings Saved' : 'Shop is Live!',
+          editMode
+            ? 'Your shop profile has been updated.'
+            : 'Your shop is now set up and ready to accept orders.',
+          [{ text: 'OK', onPress: () => router.navigate('/(vendor)/businesses' as never) }],
+        );
+        return;
+      }
+      setStepIndex((i) => i + 1);
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
+      {/* Header */}
+      <View style={s.header}>
+        <Pressable style={s.iconBtn} onPress={goBack} disabled={busy} hitSlop={8}>
+          <Ionicons name="arrow-back" size={18} color={Brand.cream} />
+        </Pressable>
+        <View style={s.headerCenter}>
+          <View style={s.stepChip}>
+            <Ionicons name={COMMERCE_STEP_ICONS[currentStep]} size={11} color={Brand.primary} />
+            <Text style={s.stepChipText}>
+              Step {stepIndex + 1} of {totalSteps} · {COMMERCE_STEP_LABELS[currentStep]}
+            </Text>
+          </View>
+          <Text style={s.headerTitle} numberOfLines={1}>{business.name}</Text>
+          <Text style={s.headerSub}>Shop Setup</Text>
+        </View>
+        <Pressable style={s.iconBtn} onPress={() => router.navigate('/(vendor)/businesses' as never)} disabled={busy} hitSlop={8}>
+          <Ionicons name="close" size={18} color={Brand.creamSub} />
+        </Pressable>
+      </View>
+
+      {/* Progress bar */}
+      <View style={s.progressTrack}>
+        <View style={[s.progressFill, { width: `${progress * 100}%` as never }]} />
+      </View>
+
+      {/* Error banner */}
+      {error ? (
+        <View style={s.errorBanner}>
+          <Ionicons name="alert-circle" size={15} color={Brand.error} />
+          <Text style={s.errorBannerText}>{error}</Text>
+          <Pressable onPress={() => setError('')} hitSlop={8}>
+            <Ionicons name="close-outline" size={16} color={Brand.creamMuted} />
+          </Pressable>
+        </View>
+      ) : null}
+
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          ref={scrollRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={s.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+
+          {/* ── Step 1: Photos ── */}
+          {currentStep === 'photos' && (
+            <PhotosStep
+              photos={displayPhotos}
+              busy={busy}
+              picking={pickingPhoto}
+              onAdd={addPhoto}
+              onRemove={removePhoto}
+            />
+          )}
+
+          {/* ── Step 2: Shop details ── */}
+          {currentStep === 'shop' && (
+            <View style={step.wrap}>
+              <Text style={step.sectionTitle}>Shop details</Text>
+              <Text style={step.sectionSub}>Pickup notes and an optional minimum order value.</Text>
+
+              <View style={pod.fieldGroup}>
+                <Text style={step.fieldLabel}>Pickup & shop notes</Text>
+                <TextInput
+                  style={[fieldStyle, { minHeight: 80, textAlignVertical: 'top', paddingTop: 10 }]}
+                  placeholder="e.g. Pickup Mon–Sat 10am–7pm from the counter. Bring your order ID."
+                  placeholderTextColor={Brand.creamMuted}
+                  value={profile.notes}
+                  onChangeText={(v) => setProfile((p) => ({ ...p, notes: v }))}
+                  multiline
+                  maxLength={1000}
+                />
+              </View>
+
+              <View style={pod.fieldGroup}>
+                <Text style={step.fieldLabel}>Minimum order value (optional)</Text>
+                <View style={step.priceRow}>
+                  <Text style={step.rupee}>₹</Text>
+                  <TextInput
+                    style={[fieldStyle, { flex: 1, paddingLeft: Spacing.two }]}
+                    placeholder="0"
+                    placeholderTextColor={Brand.creamMuted}
+                    value={minOrderInput}
+                    onChangeText={(v) => setMinOrderInput(v.replace(/\D/g, ''))}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* ── Step 3: Products ── */}
+          {currentStep === 'products' && (
+            <View style={step.wrap}>
+              <Text style={step.sectionTitle}>Your products</Text>
+              <Text style={step.sectionSub}>
+                Add each item with a price and stock count. Customers order from this list.
+              </Text>
+
+              <View style={step.addForm}>
+                <TextInput
+                  style={[fieldStyle, step.input]}
+                  placeholder="Product name"
+                  placeholderTextColor={Brand.creamMuted}
+                  value={prodName}
+                  onChangeText={setProdName}
+                />
+                <View style={step.priceRow}>
+                  <Text style={step.rupee}>₹</Text>
+                  <TextInput
+                    style={[fieldStyle, step.input, { flex: 1, paddingLeft: Spacing.two }]}
+                    placeholder="Price"
+                    placeholderTextColor={Brand.creamMuted}
+                    value={prodPrice}
+                    onChangeText={(v) => setProdPrice(v.replace(/\D/g, ''))}
+                    keyboardType="numeric"
+                  />
+                </View>
+                <TextInput
+                  style={[fieldStyle, step.input]}
+                  placeholder="Stock"
+                  placeholderTextColor={Brand.creamMuted}
+                  value={prodStock}
+                  onChangeText={(v) => setProdStock(v.replace(/\D/g, ''))}
+                  keyboardType="numeric"
+                />
+                <Pressable style={step.addBtn} onPress={addProduct} disabled={addingProd}>
+                  {addingProd ? (
+                    <ActivityIndicator size="small" color={Brand.primary} />
+                  ) : (
+                    <>
+                      <Ionicons name="add" size={16} color={Brand.primary} />
+                      <Text style={step.addBtnText}>Add product</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+
+              {loadingProds ? (
+                <View style={step.emptyHint}>
+                  <ActivityIndicator size="small" color={Brand.creamMuted} />
+                </View>
+              ) : products.length > 0 ? (
+                <View style={step.resourceList}>
+                  {products.map((p, i) => (
+                    <View key={p.id} style={[step.resourceItem, i < products.length - 1 && step.resourceBorder]}>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text style={step.staffName}>{p.name}</Text>
+                        <Text style={step.staffRole}>
+                          ₹{p.price.toLocaleString('en-IN')} · {p.stock} in stock
+                        </Text>
+                      </View>
+                      <Pressable onPress={() => removeProduct(p)} style={step.removeBtn} hitSlop={8}>
+                        <Ionicons name="trash-outline" size={15} color={Brand.error} />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={step.emptyHint}>
+                  <Ionicons name="cube-outline" size={28} color={Brand.creamMuted} />
+                  <Text style={step.emptyHintText}>No products yet — add at least one to go live.</Text>
+                </View>
+              )}
+
+              <Pressable
+                style={pod.toggleRow}
+                onPress={() => router.push('/(vendor)/products' as never)}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={pod.toggleLabel}>Need photos or bulk edits?</Text>
+                  <Text style={pod.toggleSub}>Manage full product details, images, and availability.</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Brand.creamMuted} />
+              </Pressable>
+            </View>
+          )}
+
+          {/* ── Step 4: Review ── */}
+          {currentStep === 'review' && (
+            <View style={step.wrap}>
+              <Text style={step.sectionTitle}>Review & go live</Text>
+              <Text style={step.sectionSub}>Go live so customers can order from your shop.</Text>
+
+              <View style={review.card}>
+                <View style={review.cardHeader}>
+                  <Ionicons name="storefront-outline" size={14} color={Brand.primary} />
+                  <Text style={review.cardTitle}>Shop details</Text>
+                </View>
+                <Text style={review.cardSub}>{profile.notes.trim() || 'No pickup notes'}</Text>
+                {profile.minOrderValue > 0 && (
+                  <Text style={review.cardValue}>
+                    Min order ₹{profile.minOrderValue.toLocaleString('en-IN')}
+                  </Text>
+                )}
+              </View>
+
+              <View style={review.card}>
+                <View style={review.cardHeader}>
+                  <Ionicons name="pricetags-outline" size={14} color={Brand.primary} />
+                  <Text style={review.cardTitle}>Products ({products.length})</Text>
+                </View>
+                {products.length > 0 ? products.slice(0, 5).map((p) => (
+                  <Text key={p.id} style={review.cardSub}>
+                    {p.name} · ₹{p.price.toLocaleString('en-IN')}
+                  </Text>
+                )) : (
+                  <Text style={review.warn}>No products added</Text>
+                )}
+              </View>
+
+              {displayPhotos.length > 0 && (
+                <View style={review.card}>
+                  <View style={review.cardHeader}>
+                    <Ionicons name="images-outline" size={14} color={Brand.primary} />
+                    <Text style={review.cardTitle}>Photos ({displayPhotos.length})</Text>
+                  </View>
+                  <View style={review.photoRow}>
+                    {displayPhotos.map((p) => (
+                      <Image key={p.id} source={{ uri: p.url }} style={review.photoThumb} resizeMode="cover" />
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Footer */}
+      <View style={s.footer}>
+        <Pressable
+          style={[s.continueBtn, busy && s.continueBtnDisabled]}
+          onPress={handleContinue}
+          disabled={busy}
+        >
+          {busy ? (
+            <>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={s.continueBtnText}>Saving…</Text>
+            </>
+          ) : currentStep === 'review' ? (
+            <>
+              <Ionicons name="rocket-outline" size={18} color="#fff" />
+              <Text style={s.continueBtnText}>{editMode ? 'Save Changes' : 'Go Live'}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={s.continueBtnText}>Continue</Text>
+              <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.75)" />
+            </>
+          )}
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+// ─── Creator Setup Flow ───────────────────────────────────────────────────────
+
+type CreatorStepId = 'photos' | 'profile' | 'review';
+
+const CREATOR_STEPS: CreatorStepId[] = ['photos', 'profile', 'review'];
+
+const CREATOR_STEP_LABELS: Record<CreatorStepId, string> = {
+  photos:  'Photos',
+  profile: 'Creator profile',
+  review:  'Review',
+};
+
+const CREATOR_STEP_ICONS: Record<CreatorStepId, keyof typeof Ionicons.glyphMap> = {
+  photos:  'images-outline',
+  profile: 'person-circle-outline',
+  review:  'checkmark-circle-outline',
+};
+
+function CreatorSetupFlow({
+  business,
+  token,
+  editMode,
+}: {
+  business: BusinessWithSetup;
+  token: string;
+  editMode: boolean;
+}) {
+  const [stepIndex,    setStepIndex]    = useState(0);
+  const [busy,         setBusy]         = useState(false);
+  const [error,        setError]        = useState('');
+  const [pickingPhoto, setPickingPhoto] = useState(false);
+
+  // Photos
+  const [savedPhotos,   setSavedPhotos]   = useState<{ id: string; url: string }[]>(
+    () => (business.setup?.photos ?? []).map((p) => ({ id: p.id, url: p.url })),
+  );
+  const [pendingPhotos, setPendingPhotos] = useState<{ id: string; url: string }[]>([]);
+  const [removedIds,    setRemovedIds]    = useState<string[]>([]);
+
+  // Creator profile
+  const [profile, setProfile] = useState<CreatorProfile>(
+    () => business.setup?.creatorProfile ?? defaultCreatorProfile(),
+  );
+
+  const scrollRef = useRef<ScrollView>(null);
+
+  const displayPhotos: DisplayPhoto[] = useMemo(() => [
+    ...savedPhotos.filter((p) => !removedIds.includes(p.id)).map((p) => ({ ...p, pending: false })),
+    ...pendingPhotos.map((p) => ({ ...p, pending: true })),
+  ], [savedPhotos, pendingPhotos, removedIds]);
+
+  const currentStep = CREATOR_STEPS[stepIndex];
+  const totalSteps  = CREATOR_STEPS.length;
+  const progress    = (stepIndex + 1) / totalSteps;
+
+  async function addPhoto() {
+    console.log('[Creator Photos] addPhoto: requesting permission');
+    setPickingPhoto(true);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('[Creator Photos] permission:', perm.status, '| granted:', perm.granted);
+      if (!perm.granted) {
+        Alert.alert('Permission needed', 'Please allow photo library access in Settings.');
+        return;
+      }
+      console.log('[Creator Photos] launching image picker');
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.75, base64: true });
+      console.log('[Creator Photos] picker result | canceled:', result.canceled, '| assets:', result.assets?.length ?? 0);
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        const mime  = asset.mimeType ?? 'image/jpeg';
+        console.log('[Creator Photos] asset | mime:', mime, '| base64 length:', asset.base64?.length ?? 0, '| uri:', asset.uri);
+        if (!asset.base64) {
+          console.warn('[Creator Photos] base64 is missing/empty — cannot build data URI');
+          Alert.alert('Photo error', 'Could not read image data. Please try a different photo.');
+          return;
+        }
+        const dataUrl = `data:${mime};base64,${asset.base64}`;
+        const id = `pending-${Date.now()}`;
+        console.log('[Creator Photos] queued pending photo | id:', id, '| dataUrl prefix:', dataUrl.slice(0, 50));
+        setPendingPhotos((prev) => [...prev, { id, url: dataUrl }]);
+      } else {
+        console.log('[Creator Photos] picker cancelled or no assets returned');
+      }
+    } catch (e: unknown) {
+      console.error('[Creator Photos] addPhoto threw:', e);
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not open photo picker.');
+    } finally {
+      setPickingPhoto(false);
+    }
+  }
+
+  function removePhoto(photo: DisplayPhoto) {
+    if (photo.pending) setPendingPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    else setRemovedIds((prev) => [...prev, photo.id]);
+  }
+
+  function goBack() {
+    setError('');
+    if (stepIndex > 0) {
+      setStepIndex(stepIndex - 1);
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    } else {
+      router.navigate('/(vendor)/businesses' as never);
+    }
+  }
+
+  async function handleContinue() {
+    setError('');
+    setBusy(true);
+    try {
+      if (currentStep === 'photos') {
+        console.log('[Creator Photos] handleContinue photos | pending:', pendingPhotos.length, '| removedIds:', removedIds.length);
+        if (pendingPhotos.length > 0 || removedIds.length > 0) {
+          console.log('[Creator Photos] calling syncBusinessSetupPhotos | businessId:', business.id);
+          try {
+            const updated = await syncBusinessSetupPhotos(token, business.id, {
+              images:    pendingPhotos.map((p) => p.url),
+              removeIds: removedIds,
+            });
+            console.log('[Creator Photos] syncBusinessSetupPhotos success | photos returned:', updated.setup?.photos?.length ?? 0);
+            if (updated.setup) {
+              setSavedPhotos(updated.setup.photos.map((p) => ({ id: p.id, url: p.url })));
+              setPendingPhotos([]);
+              setRemovedIds([]);
+            } else {
+              console.warn('[Creator Photos] syncBusinessSetupPhotos returned no setup object');
+            }
+          } catch (uploadErr: unknown) {
+            console.error('[Creator Photos] syncBusinessSetupPhotos failed:', uploadErr);
+            throw uploadErr;
+          }
+        } else {
+          console.log('[Creator Photos] no changes — skipping upload');
+        }
+      } else if (currentStep === 'profile') {
+        await updateBusinessSetup(token, business.id, { creatorProfile: profile });
+      } else if (currentStep === 'review') {
+        if (!profile.bio.trim()) {
+          setError('Add a bio before going live.');
+          setStepIndex(CREATOR_STEPS.indexOf('profile'));
+          return;
+        }
+        if (!profile.niche.trim()) {
+          setError('Add your niche before going live.');
+          setStepIndex(CREATOR_STEPS.indexOf('profile'));
+          return;
+        }
+        if (pendingPhotos.length > 0 || removedIds.length > 0) {
+          await syncBusinessSetupPhotos(token, business.id, {
+            images:    pendingPhotos.map((p) => p.url),
+            removeIds: removedIds,
+          });
+        }
+        if (!editMode) {
+          await completeBusinessSetup(token, business.id);
+        }
+        Alert.alert(
+          editMode ? 'Settings Saved' : 'Profile is Live!',
+          editMode
+            ? 'Your creator profile has been updated.'
+            : 'Your creator profile is now live. Publish collab offers from your business.',
+          [{ text: 'OK', onPress: () => router.navigate('/(vendor)/businesses' as never) }],
+        );
+        return;
+      }
+      setStepIndex((i) => i + 1);
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
+      {/* Header */}
+      <View style={s.header}>
+        <Pressable style={s.iconBtn} onPress={goBack} disabled={busy} hitSlop={8}>
+          <Ionicons name="arrow-back" size={18} color={Brand.cream} />
+        </Pressable>
+        <View style={s.headerCenter}>
+          <View style={s.stepChip}>
+            <Ionicons name={CREATOR_STEP_ICONS[currentStep]} size={11} color={Brand.primary} />
+            <Text style={s.stepChipText}>
+              Step {stepIndex + 1} of {totalSteps} · {CREATOR_STEP_LABELS[currentStep]}
+            </Text>
+          </View>
+          <Text style={s.headerTitle} numberOfLines={1}>{business.name}</Text>
+          <Text style={s.headerSub}>Creator Profile Setup</Text>
+        </View>
+        <Pressable style={s.iconBtn} onPress={() => router.navigate('/(vendor)/businesses' as never)} disabled={busy} hitSlop={8}>
+          <Ionicons name="close" size={18} color={Brand.creamSub} />
+        </Pressable>
+      </View>
+
+      {/* Progress bar */}
+      <View style={s.progressTrack}>
+        <View style={[s.progressFill, { width: `${progress * 100}%` as never }]} />
+      </View>
+
+      {/* Error banner */}
+      {error ? (
+        <View style={s.errorBanner}>
+          <Ionicons name="alert-circle" size={15} color={Brand.error} />
+          <Text style={s.errorBannerText}>{error}</Text>
+          <Pressable onPress={() => setError('')} hitSlop={8}>
+            <Ionicons name="close-outline" size={16} color={Brand.creamMuted} />
+          </Pressable>
+        </View>
+      ) : null}
+
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          ref={scrollRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={s.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+
+          {/* ── Step 1: Photos ── */}
+          {currentStep === 'photos' && (
+            <PhotosStep
+              photos={displayPhotos}
+              busy={busy}
+              picking={pickingPhoto}
+              onAdd={addPhoto}
+              onRemove={removePhoto}
+            />
+          )}
+
+          {/* ── Step 2: Creator profile ── */}
+          {currentStep === 'profile' && (
+            <View style={step.wrap}>
+              <Text style={step.sectionTitle}>About you</Text>
+              <Text style={step.sectionSub}>
+                Customers book collabs and shoutouts — help them understand your brand.
+              </Text>
+
+              <View style={pod.fieldGroup}>
+                <Text style={step.fieldLabel}>Bio</Text>
+                <TextInput
+                  style={[fieldStyle, { minHeight: 90, textAlignVertical: 'top', paddingTop: 10 }]}
+                  placeholder="Who you are, what you create, and what makes your collabs special."
+                  placeholderTextColor={Brand.creamMuted}
+                  value={profile.bio}
+                  onChangeText={(v) => setProfile((p) => ({ ...p, bio: v }))}
+                  multiline
+                  maxLength={2000}
+                />
+              </View>
+
+              <View style={pod.fieldGroup}>
+                <Text style={step.fieldLabel}>Niche</Text>
+                <TextInput
+                  style={fieldStyle}
+                  placeholder="e.g. Fitness, comedy, education"
+                  placeholderTextColor={Brand.creamMuted}
+                  value={profile.niche}
+                  onChangeText={(v) => setProfile((p) => ({ ...p, niche: v }))}
+                  maxLength={120}
+                />
+              </View>
+
+              <View style={pod.fieldGroup}>
+                <Text style={step.fieldLabel}>Social links</Text>
+                <View style={{ gap: Spacing.two }}>
+                  <TextInput
+                    style={fieldStyle}
+                    placeholder="Instagram @handle or URL"
+                    placeholderTextColor={Brand.creamMuted}
+                    value={profile.socialLinks.instagram}
+                    onChangeText={(v) => setProfile((p) => ({ ...p, socialLinks: { ...p.socialLinks, instagram: v } }))}
+                  />
+                  <TextInput
+                    style={fieldStyle}
+                    placeholder="YouTube channel URL"
+                    placeholderTextColor={Brand.creamMuted}
+                    value={profile.socialLinks.youtube}
+                    onChangeText={(v) => setProfile((p) => ({ ...p, socialLinks: { ...p.socialLinks, youtube: v } }))}
+                  />
+                  <TextInput
+                    style={fieldStyle}
+                    placeholder="Other link (optional)"
+                    placeholderTextColor={Brand.creamMuted}
+                    value={profile.socialLinks.other}
+                    onChangeText={(v) => setProfile((p) => ({ ...p, socialLinks: { ...p.socialLinks, other: v } }))}
+                  />
+                </View>
+              </View>
+
+              <Pressable
+                style={pod.toggleRow}
+                onPress={() => setProfile((p) => ({ ...p, acceptingBookings: !p.acceptingBookings }))}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={pod.toggleLabel}>Accepting new collab bookings</Text>
+                </View>
+                <View style={[pod.toggle, profile.acceptingBookings && pod.toggleActive]}>
+                  <View style={[pod.toggleThumb, profile.acceptingBookings && pod.toggleThumbActive]} />
+                </View>
+              </Pressable>
+            </View>
+          )}
+
+          {/* ── Step 3: Review ── */}
+          {currentStep === 'review' && (
+            <View style={step.wrap}>
+              <Text style={step.sectionTitle}>Review & go live</Text>
+              <Text style={step.sectionSub}>Go live, then publish collab offers from your business.</Text>
+
+              <View style={review.card}>
+                <View style={review.cardHeader}>
+                  <Ionicons name="person-circle-outline" size={14} color={Brand.primary} />
+                  <Text style={review.cardTitle}>{profile.niche || '—'}</Text>
+                </View>
+                <Text style={review.cardSub}>{profile.bio.trim() || 'No bio yet'}</Text>
+              </View>
+
+              {displayPhotos.length > 0 && (
+                <View style={review.card}>
+                  <View style={review.cardHeader}>
+                    <Ionicons name="images-outline" size={14} color={Brand.primary} />
+                    <Text style={review.cardTitle}>Photos ({displayPhotos.length})</Text>
+                  </View>
+                  <View style={review.photoRow}>
+                    {displayPhotos.map((p) => (
+                      <Image key={p.id} source={{ uri: p.url }} style={review.photoThumb} resizeMode="cover" />
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Footer */}
+      <View style={s.footer}>
+        <Pressable
+          style={[s.continueBtn, busy && s.continueBtnDisabled]}
+          onPress={handleContinue}
+          disabled={busy}
+        >
+          {busy ? (
+            <>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={s.continueBtnText}>Saving…</Text>
+            </>
+          ) : currentStep === 'review' ? (
+            <>
+              <Ionicons name="rocket-outline" size={18} color="#fff" />
+              <Text style={s.continueBtnText}>{editMode ? 'Save Changes' : 'Go Live'}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={s.continueBtnText}>Continue</Text>
+              <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.75)" />
+            </>
+          )}
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function SetupSkeleton() {
@@ -1812,22 +2695,35 @@ export default function BusinessSetupScreen() {
 
   // Photo ops
   async function addPhoto() {
+    console.log('[Setup Photos] addPhoto: requesting permission');
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    console.log('[Setup Photos] permission:', perm.status, '| granted:', perm.granted);
     if (!perm.granted) {
       Alert.alert('Permission needed', 'Please allow photo library access in Settings.');
       return;
     }
+    console.log('[Setup Photos] launching image picker');
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.75,
       base64: true,
     });
+    console.log('[Setup Photos] picker result | canceled:', result.canceled, '| assets:', result.assets?.length ?? 0);
     if (!result.canceled && result.assets?.[0]) {
       const asset  = result.assets[0];
       const mime   = asset.mimeType ?? 'image/jpeg';
+      console.log('[Setup Photos] asset | mime:', mime, '| base64 length:', asset.base64?.length ?? 0, '| uri:', asset.uri);
+      if (!asset.base64) {
+        console.warn('[Setup Photos] base64 is missing/empty — cannot build data URI');
+        Alert.alert('Photo error', 'Could not read image data. Please try a different photo.');
+        return;
+      }
       const dataUrl = `data:${mime};base64,${asset.base64}`;
       const id = `pending-${Date.now()}`;
+      console.log('[Setup Photos] queued pending photo | id:', id, '| dataUrl prefix:', dataUrl.slice(0, 50));
       setPendingPhotos((prev) => [...prev, { id, url: dataUrl }]);
+    } else {
+      console.log('[Setup Photos] picker cancelled or no assets returned');
     }
   }
 
@@ -1848,16 +2744,28 @@ export default function BusinessSetupScreen() {
     try {
       switch (currentStep) {
         case 'photos': {
+          console.log('[Setup Photos] handleContinue photos | pending:', pendingPhotos.length, '| removedIds:', removedIds.length);
           if (pendingPhotos.length > 0 || removedIds.length > 0) {
-            const updated = await syncBusinessSetupPhotos(token, business.id, {
-              images:    pendingPhotos.map((p) => p.url),
-              removeIds: removedIds,
-            });
-            if (updated.setup) {
-              setSavedPhotos(updated.setup.photos.map((p) => ({ id: p.id, url: p.url })));
-              setPendingPhotos([]);
-              setRemovedIds([]);
+            console.log('[Setup Photos] calling syncBusinessSetupPhotos | businessId:', business.id);
+            try {
+              const updated = await syncBusinessSetupPhotos(token, business.id, {
+                images:    pendingPhotos.map((p) => p.url),
+                removeIds: removedIds,
+              });
+              console.log('[Setup Photos] syncBusinessSetupPhotos success | photos returned:', updated.setup?.photos?.length ?? 0);
+              if (updated.setup) {
+                setSavedPhotos(updated.setup.photos.map((p) => ({ id: p.id, url: p.url })));
+                setPendingPhotos([]);
+                setRemovedIds([]);
+              } else {
+                console.warn('[Setup Photos] syncBusinessSetupPhotos returned no setup object');
+              }
+            } catch (uploadErr: unknown) {
+              console.error('[Setup Photos] syncBusinessSetupPhotos failed:', uploadErr);
+              throw uploadErr;
             }
+          } else {
+            console.log('[Setup Photos] no changes — skipping upload');
           }
           break;
         }
@@ -1987,9 +2895,19 @@ export default function BusinessSetupScreen() {
     );
   }
 
-  // Print-on-demand / commerce module — dedicated POD setup wizard
-  if (business.module === 'print' || business.module === 'commerce') {
+  // Print-on-demand module — dedicated POD setup wizard
+  if (business.module === 'print') {
     return <PodSetupFlow business={business} token={token!} editMode={editMode} />;
+  }
+
+  // Commerce module — shop details + product catalog wizard
+  if (business.module === 'commerce') {
+    return <CommerceSetupFlow business={business} token={token!} editMode={editMode} />;
+  }
+
+  // Creator module — bio/niche/social profile wizard
+  if (business.module === 'creator') {
+    return <CreatorSetupFlow business={business} token={token!} editMode={editMode} />;
   }
 
   if (!supportsSetup(business)) {
