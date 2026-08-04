@@ -1,54 +1,31 @@
 /**
- * Business Store (Zustand + AsyncStorage)
- * ----------------------------------------
- * Mirrors the web's lib/vendor-businesses.ts localStorage logic,
- * adapted to React Native AsyncStorage.
- * Key pattern: ruxstar_vendor_businesses_<userId>
+ * Business Store (Zustand)
+ * Calls backend API — no more AsyncStorage for business data.
+ * Uses vendor-business-service for all CRUD.
  */
 
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { VendorBusiness, BusinessFormData } from '@/types/vendor';
-
-// ─── Storage helpers ──────────────────────────────────────────────────────────
-
-function storageKey(userId: string) {
-  return `ruxstar_vendor_businesses_${userId}`;
-}
-
-async function loadFromStorage(userId: string): Promise<VendorBusiness[]> {
-  try {
-    const raw = await AsyncStorage.getItem(storageKey(userId));
-    if (!raw) return [];
-    return JSON.parse(raw) as VendorBusiness[];
-  } catch {
-    return [];
-  }
-}
-
-async function saveToStorage(userId: string, list: VendorBusiness[]): Promise<void> {
-  try {
-    await AsyncStorage.setItem(storageKey(userId), JSON.stringify(list));
-  } catch {
-    // Silently ignore storage write failures
-  }
-}
+import {
+  listVendorBusinesses,
+  createVendorBusiness,
+  deleteVendorBusiness,
+  updateBusinessStatus as apiUpdateBusinessStatus,
+  type Business,
+  type BusinessInput,
+} from '@/services/vendor-business-service';
 
 // ─── Store interface ──────────────────────────────────────────────────────────
 
 interface BusinessState {
-  businesses: VendorBusiness[];
-  loading:    boolean;
-  error:      string | null;
+  businesses:  Business[];
+  loading:     boolean;
+  removingId:  string | null;
+  error:       string | null;
 
-  /** Load businesses for the given userId from AsyncStorage */
-  loadBusinesses: (userId: string) => Promise<void>;
-
-  /** Add a new business entry; persists to AsyncStorage */
-  addBusiness: (userId: string, form: BusinessFormData) => Promise<void>;
-
-  /** Remove a business by id; persists to AsyncStorage */
-  removeBusiness: (userId: string, id: string) => Promise<void>;
+  loadBusinesses:       (token: string) => Promise<void>;
+  addBusiness:          (token: string, input: BusinessInput) => Promise<Business>;
+  removeBusiness:       (token: string, id: string) => Promise<void>;
+  updateBusinessStatus: (token: string, id: string, status: 'live' | 'draft') => Promise<Business>;
 
   clearError: () => void;
   reset:      () => void;
@@ -57,14 +34,15 @@ interface BusinessState {
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useBusinessStore = create<BusinessState>((set, get) => ({
-  businesses: [],
-  loading:    false,
-  error:      null,
+  businesses:  [],
+  loading:     false,
+  removingId:  null,
+  error:       null,
 
-  loadBusinesses: async (userId) => {
+  loadBusinesses: async (token) => {
     set({ loading: true, error: null });
     try {
-      const businesses = await loadFromStorage(userId);
+      const businesses = await listVendorBusinesses(token);
       set({ businesses, loading: false });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to load businesses.';
@@ -72,29 +50,30 @@ export const useBusinessStore = create<BusinessState>((set, get) => ({
     }
   },
 
-  addBusiness: async (userId, form) => {
-    const newEntry: VendorBusiness = {
-      id:          Math.random().toString(36).slice(2) + Date.now().toString(36),
-      name:        form.name.trim(),
-      category:    form.category,
-      phone:       form.phone.trim(),
-      address:     form.address.trim(),
-      description: form.description.trim(),
-      createdAt:   new Date().toISOString(),
-    };
-
-    const updated = [newEntry, ...get().businesses];
-    set({ businesses: updated });
-    await saveToStorage(userId, updated);
+  addBusiness: async (token, input) => {
+    const created = await createVendorBusiness(token, input);
+    set({ businesses: [created, ...get().businesses] });
+    return created;
   },
 
-  removeBusiness: async (userId, id) => {
-    const updated = get().businesses.filter((b) => b.id !== id);
-    set({ businesses: updated });
-    await saveToStorage(userId, updated);
+  removeBusiness: async (token, id) => {
+    set({ removingId: id });
+    try {
+      await deleteVendorBusiness(token, id);
+      set({ businesses: get().businesses.filter((b) => b.id !== id), removingId: null });
+    } catch (err) {
+      set({ removingId: null });
+      throw err;
+    }
+  },
+
+  updateBusinessStatus: async (token, id, status) => {
+    const updated = await apiUpdateBusinessStatus(token, id, status);
+    set({ businesses: get().businesses.map((b) => b.id === id ? updated : b) });
+    return updated;
   },
 
   clearError: () => set({ error: null }),
 
-  reset: () => set({ businesses: [], loading: false, error: null }),
+  reset: () => set({ businesses: [], loading: false, removingId: null, error: null }),
 }));

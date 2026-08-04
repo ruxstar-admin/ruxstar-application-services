@@ -2,15 +2,18 @@
  * Vendor Profile
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, StatusBar, Pressable } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth-store';
+import VendorHeader from '@/components/vendor/VendorHeader';
+import { useTheme } from '@/hooks/useTheme';
+import type { BrandTokens } from '@/hooks/useTheme';
 
 type MenuItem = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -19,10 +22,93 @@ type MenuItem = {
   onPress?: () => void;
 };
 
+const createStyles = (brand: BrandTokens) => StyleSheet.create({
+  root:    { flex: 1, backgroundColor: brand.bg },
+  content: { paddingHorizontal: Spacing.four, paddingTop: Spacing.four, paddingBottom: 100, gap: Spacing.four },
+
+  // Profile section
+  profileSection: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: brand.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText:  { color: '#fff', fontSize: 20, fontWeight: '700' },
+  profileInfo: { flex: 1, gap: 2 },
+  name:  { color: brand.cream, fontSize: 18, fontWeight: '700' },
+  phone: { color: brand.creamSub, fontSize: 13 },
+
+  vendorBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 5,
+    borderRadius: Radius.pill,
+    backgroundColor: brand.surface1,
+    borderWidth: 1,
+    borderColor: brand.border1,
+  },
+  badgeDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: brand.success },
+  badgeText: { color: brand.creamSub, fontSize: 11, fontWeight: '600' },
+
+  divider: { height: 1, backgroundColor: brand.border1 },
+
+  // Menu
+  menuCard: {
+    backgroundColor: brand.surface1,
+    borderWidth: 1,
+    borderColor: brand.border1,
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 14,
+    gap: Spacing.two,
+  },
+  menuItemBorder:   { borderBottomWidth: 1, borderBottomColor: brand.border1 },
+  menuItemPressed:  { backgroundColor: brand.surface2 },
+  menuIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: Radius.md,
+    backgroundColor: brand.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuLeft:  { flex: 1, gap: 2 },
+  menuLabel: { color: brand.cream, fontSize: 15, fontWeight: '600' },
+  menuSub:   { color: brand.creamMuted, fontSize: 12 },
+
+  // Sign out
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(220,38,38,0.20)',
+    backgroundColor: 'rgba(220,38,38,0.04)',
+  },
+  signOutText: { color: brand.error, fontSize: 15, fontWeight: '700' },
+
+  version: { color: brand.creamMuted, fontSize: 11, textAlign: 'center' },
+});
+
 export default function VendorProfileScreen() {
-  const insets  = useSafeAreaInsets();
-  const { name, phone, clearAuth } = useAuthStore();    
+  const { name, phone, clearAuth } = useAuthStore();
   const initial = (name ?? 'V').charAt(0).toUpperCase();
+
+  const { brand } = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
 
   const MENU_ITEMS: MenuItem[] = [
     { icon: 'business-outline',       label: 'Business Profile',  sub: 'Name, category, GST' },
@@ -32,16 +118,10 @@ export default function VendorProfileScreen() {
   ];
 
   return (
-    <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={Brand.bg} />
+    <SafeAreaView style={s.root} edges={['top']}>
+      <VendorHeader />
       <ScrollView
-        contentContainerStyle={[
-          s.content,
-          {
-            paddingTop: insets.top + Spacing.three,
-            paddingBottom: insets.bottom + Spacing.six,
-          },
-        ]}
+        contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false}
       >
         {/* Avatar + info */}
@@ -74,7 +154,7 @@ export default function VendorProfileScreen() {
               ]}
             >
               <View style={s.menuIconWrap}>
-                <Ionicons name={item.icon} size={18} color={Brand.creamSub} />
+                <Ionicons name={item.icon} size={18} color={brand.creamSub} />
               </View>
               <View style={s.menuLeft}>
                 <Text style={s.menuLabel}>{item.label}</Text>
@@ -83,7 +163,7 @@ export default function VendorProfileScreen() {
               <Ionicons
                 name="chevron-forward"
                 size={16}
-                color={Brand.creamMuted}
+                color={brand.creamMuted}
               />
             </Pressable>
           ))}
@@ -98,94 +178,13 @@ export default function VendorProfileScreen() {
               router.replace("/(auth)/welcome");
             }}
           >
-            <Ionicons name="log-out-outline" size={18} color={Brand.error} />
+            <Ionicons name="log-out-outline" size={18} color={brand.error} />
             <Text style={s.signOutText}>Sign Out</Text>
           </Pressable>
         </Animated.View>
 
         <Text style={s.version}>Ruxstar v1.0.0</Text>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
-
-const s = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: Brand.bg },
-  content: { paddingHorizontal: Spacing.four, gap: Spacing.four },
-
-  // Profile section
-  profileSection: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: Brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText:  { color: '#fff', fontSize: 20, fontWeight: '700' },
-  profileInfo: { flex: 1, gap: 2 },
-  name:  { color: Brand.cream, fontSize: 18, fontWeight: '700' },
-  phone: { color: Brand.creamSub, fontSize: 13 },
-
-  vendorBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 5,
-    borderRadius: Radius.pill,
-    backgroundColor: Brand.surface1,
-    borderWidth: 1,
-    borderColor: Brand.border1,
-  },
-  badgeDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: Brand.success },
-  badgeText: { color: Brand.creamSub, fontSize: 11, fontWeight: '600' },
-
-  divider: { height: 1, backgroundColor: Brand.border1 },
-
-  // Menu
-  menuCard: {
-    backgroundColor: Brand.surface1,
-    borderWidth: 1,
-    borderColor: Brand.border1,
-    borderRadius: Radius.xl,
-    overflow: 'hidden',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 14,
-    gap: Spacing.two,
-  },
-  menuItemBorder:   { borderBottomWidth: 1, borderBottomColor: Brand.border1 },
-  menuItemPressed:  { backgroundColor: Brand.surface2 },
-  menuIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.md,
-    backgroundColor: Brand.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuLeft:  { flex: 1, gap: 2 },
-  menuLabel: { color: Brand.cream, fontSize: 15, fontWeight: '600' },
-  menuSub:   { color: Brand.creamMuted, fontSize: 12 },
-
-  // Sign out
-  signOutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(220,38,38,0.20)',
-    backgroundColor: 'rgba(220,38,38,0.04)',
-  },
-  signOutText: { color: Brand.error, fontSize: 15, fontWeight: '700' },
-
-  version: { color: Brand.creamMuted, fontSize: 11, textAlign: 'center' },
-});

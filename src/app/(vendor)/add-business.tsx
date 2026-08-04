@@ -1,422 +1,468 @@
 /**
- * Add Business — full-screen form
- * Navigated to from Businesses screen via router.push
+ * Add Business — 3 or 4-step wizard
+ * Step 1: Category → Step 2: Type → [Step 3: Booking mode — turf & venue only] → Step 4: Details
+ *
+ * After creation:
+ *   • appointments module → business-setup wizard
+ *   • events module       → businesses list (event wizard in Phase 4)
+ *   • others              → businesses list (Coming Soon)
  */
 
-import React, { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
-  ScrollView, KeyboardAvoidingView, Platform,
-  StatusBar, ActivityIndicator, FlatList, Modal,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import type { BrandTokens } from '@/hooks/useTheme';
 import { useAuthStore } from '@/stores/auth-store';
 import { useBusinessStore } from '@/stores/business-store';
-import { BUSINESS_CATEGORIES, type BusinessFormData } from '@/types/vendor';
+import {
+  getBusinessCatalog,
+  needsBookingModeOnCreate,
+  supportsSlotSetup,
+  uploadBusinessThumbnail,
+  type BusinessCatalog,
+  type CatalogBusinessCategory,
+  type CatalogBusinessType,
+  type BookingMode,
+} from '@/services/vendor-business-service';
+import {
+  CategoryStep,
+  TypeStep,
+  BookingStep,
+  DetailsStep,
+  SkeletonBox,
+  composeAddress,
+  type DetailsForm,
+} from '@/components/vendor/wizard/WizardSteps';
 
-const empty: BusinessFormData = {
-  name: '', category: '', phone: '', address: '', description: '',
+// ─── Wizard step meta ─────────────────────────────────────────────────────────
+
+type Step = 'category' | 'type' | 'booking' | 'details';
+
+const STEP_LABELS: Record<Step, string> = {
+  category: 'Category',
+  type:     'Type',
+  booking:  'Booking style',
+  details:  'Profile',
 };
 
+const STEP_HINTS: Record<Step, string> = {
+  category: 'Choose the group that best fits your business.',
+  type:     'Pick the closest match — turf, salon, shop, etc.',
+  booking:  'How customers reserve your space — hourly slots or full days.',
+  details:  'Name, phone, location, and a short description.',
+};
+
+const STEP_TITLES: Record<Step, string> = {
+  category: 'What kind of business?',
+  type:     'What type exactly?',
+  booking:  'How will customers book?',
+  details:  'Add your profile',
+};
+
+const STEP_ICONS: Record<Step, keyof typeof Ionicons.glyphMap> = {
+  category: 'grid-outline',
+  type:     'storefront-outline',
+  booking:  'calendar-outline',
+  details:  'person-circle-outline',
+};
+
+// ─── Main screen ─────────────────────────────────────────────────────────────
+
 export default function AddBusinessScreen() {
-  const insets  = useSafeAreaInsets();
-  const { userId } = useAuthStore();
+  const { brand } = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
+
+  const token       = useAuthStore((s) => s.token);
   const addBusiness = useBusinessStore((s) => s.addBusiness);
 
-  const [form,    setForm]    = useState<BusinessFormData>(empty);
-  const [error,   setError]   = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showCat, setShowCat] = useState(false);
+  // Catalog
+  const [catalog,        setCatalog]        = useState<BusinessCatalog | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError,   setCatalogError]   = useState('');
 
-  function patch(key: keyof BusinessFormData, value: string) {
-    setForm((f) => ({ ...f, [key]: value }));
-    if (error) setError('');
+  // Wizard state
+  const [step,        setStep]        = useState<Step>('category');
+  const [category,    setCategory]    = useState<CatalogBusinessCategory | null>(null);
+  const [bizType,     setBizType]     = useState<CatalogBusinessType | null>(null);
+  const [bookingMode, setBookingMode] = useState<BookingMode | null>(null);
+  const [form,        setForm]        = useState<DetailsForm>({
+    name: '', phone: '', state: '', city: '', area: '', description: '',
+  });
+
+  // Submission
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState('');
+
+  // Booking step only for turf and venue
+  const steps = useMemo<Step[]>(() => {
+    const list: Step[] = ['category', 'type'];
+    if (bizType && needsBookingModeOnCreate(bizType.id)) list.push('booking');
+    list.push('details');
+    return list;
+  }, [bizType]);
+
+  const stepIndex  = steps.indexOf(step);
+  const totalSteps = steps.length;
+  const progress   = (stepIndex + 1) / totalSteps;
+
+  // Load catalog once
+  const loadCatalog = useCallback(async () => {
+    try {
+      setCatalogLoading(true);
+      setCatalogError('');
+      setCatalog(await getBusinessCatalog());
+    } catch (e: unknown) {
+      setCatalogError(e instanceof Error ? e.message : 'Could not load categories');
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadCatalog(); }, [loadCatalog]);
+
+  // Navigation
+  function goBack() {
+    setError('');
+    if (step === 'type')    { setStep('category'); return; }
+    if (step === 'booking') { setStep('type');     return; }
+    if (step === 'details') {
+      setStep(bizType && needsBookingModeOnCreate(bizType.id) ? 'booking' : 'type');
+      return;
+    }
+    router.navigate('/(vendor)/businesses' as never);
+  }
+
+  // Validation
+  function validateDetails(): string {
+    if (!form.name.trim())        return `${bizType?.label ?? 'Business'} name is required.`;
+    const ph = form.phone.trim();
+    if (!ph)                      return 'Phone number is required.';
+    if (ph.length !== 10)         return 'Enter a valid 10-digit phone number.';
+    if (!form.state.trim())       return 'Please select a state.';
+    if (!form.city.trim())        return 'Please select or enter a city.';
+    if (!form.description.trim()) return 'Description is required.';
+    return '';
   }
 
   async function handleSubmit() {
-    if (!form.name.trim()) { setError('Business name is required.'); return; }
-    if (!form.category)    { setError('Please select a category.');  return; }
-    if (form.phone && !/^\d{0,10}$/.test(form.phone)) {
-      setError('Phone must be up to 10 digits.'); return;
-    }
+    const err = validateDetails();
+    if (err) { setError(err); return; }
+    if (!token || !bizType) return;
 
-    setLoading(true);
+    setSaving(true);
+    setError('');
+    const address = composeAddress(form.state, form.city, form.area);
     try {
-      await addBusiness(userId!, form);
-      router.back();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong.');
-      setLoading(false);
+      const created = await addBusiness(token, {
+        name:        form.name.trim(),
+        typeId:      bizType.id,
+        phone:       form.phone.trim(),
+        address,
+        description: form.description.trim(),
+        ...(bookingMode ? { bookingMode } : {}),
+      });
+
+      // Upload thumbnail if vendor picked one
+      if (form.thumbnail && created.id) {
+        try {
+          await uploadBusinessThumbnail(token, created.id, form.thumbnail);
+        } catch {
+          // Non-fatal — business is created, thumbnail can be added later
+        }
+      }
+
+      // Route based on module:
+      // appointments → slot setup wizard
+      // events       → businesses list (event wizard comes in Phase 4)
+      // others       → businesses list (Coming Soon)
+      if (supportsSlotSetup(created)) {
+        router.replace({
+          pathname: '/(vendor)/business-setup',
+          params:   { id: created.id },
+        } as never);
+      } else {
+        router.replace('/(vendor)/businesses' as never);
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
+      setSaving(false);
     }
   }
 
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={Brand.bg} />
-
+    <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={8} disabled={loading}>
-          <Ionicons name="arrow-back" size={22} color={Brand.cream} />
+        <Pressable style={s.iconBtn} onPress={goBack} disabled={saving} hitSlop={8}>
+          <Ionicons name="arrow-back" size={18} color={brand.cream} />
         </Pressable>
-        <Text style={s.headerTitle}>Add Business</Text>
-        <View style={{ width: 38 }} />
+
+        <View style={s.headerCenter}>
+          <View style={s.stepChip}>
+            <Ionicons name={STEP_ICONS[step]} size={12} color={brand.primary} />
+            <Text style={s.stepChipText}>
+              Step {stepIndex + 1} of {totalSteps} · {STEP_LABELS[step]}
+            </Text>
+          </View>
+          <Text style={s.headerTitle} numberOfLines={1}>{STEP_TITLES[step]}</Text>
+          <Text style={s.headerHint}>{STEP_HINTS[step]}</Text>
+        </View>
+
+        <Pressable style={s.iconBtn} onPress={() => router.navigate('/(vendor)/businesses' as never)} disabled={saving} hitSlop={8}>
+          <Ionicons name="close" size={18} color={brand.creamSub} />
+        </Pressable>
       </View>
 
-      <KeyboardAvoidingView
-        style={s.kav}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
-        <ScrollView
-          contentContainerStyle={[s.body, { paddingBottom: insets.bottom + 120 }]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Business Name */}
-          <Field label="Business Name" required>
-            <TextInput
-              style={s.input}
-              placeholder="e.g. Sunrise Cafe"
-              placeholderTextColor={Brand.creamMuted}
-              value={form.name}
-              onChangeText={(v) => patch('name', v)}
-              autoCapitalize="words"
-              returnKeyType="next"
-              editable={!loading}
-            />
-          </Field>
+      {/* Progress bar */}
+      <View style={s.progressSection}>
+        <View style={s.progressTrack}>
+          <View style={[s.progressFill, { width: `${progress * 100}%` as any }]} />
+        </View>
+      </View>
 
-          {/* Category */}
-          <Field label="Category" required>
-            <Pressable
-              style={[s.input, s.selectRow]}
-              onPress={() => setShowCat(true)}
-              disabled={loading}
-            >
-              <Text style={form.category ? s.selectValue : s.selectPlaceholder}>
-                {form.category || 'Select a category'}
-              </Text>
-              <Ionicons name="chevron-down" size={18} color={Brand.creamMuted} />
-            </Pressable>
-          </Field>
-
-          {/* Phone */}
-          <Field label="Phone" hint="Optional">
-            <TextInput
-              style={s.input}
-              placeholder="10-digit mobile number"
-              placeholderTextColor={Brand.creamMuted}
-              value={form.phone}
-              onChangeText={(v) => patch('phone', v.replace(/\D/g, '').slice(0, 10))}
-              keyboardType="number-pad"
-              maxLength={10}
-              returnKeyType="next"
-              editable={!loading}
-            />
-          </Field>
-
-          {/* Address */}
-          <Field label="Address" hint="Optional">
-            <TextInput
-              style={s.input}
-              placeholder="Street, area, city"
-              placeholderTextColor={Brand.creamMuted}
-              value={form.address}
-              onChangeText={(v) => patch('address', v)}
-              autoCapitalize="words"
-              returnKeyType="next"
-              editable={!loading}
-            />
-          </Field>
-
-          {/* Description */}
-          <Field label="About" hint="Optional">
-            <TextInput
-              style={[s.input, s.textarea]}
-              placeholder="A short description of your business…"
-              placeholderTextColor={Brand.creamMuted}
-              value={form.description}
-              onChangeText={(v) => patch('description', v)}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              editable={!loading}
-            />
-          </Field>
-
-          {/* Error */}
-          {error ? (
-            <View style={s.errorBox}>
-              <Ionicons name="alert-circle-outline" size={16} color={Brand.error} />
-              <Text style={s.errorText}>{error}</Text>
-            </View>
-          ) : null}
-        </ScrollView>
-
-        {/* Sticky bottom actions */}
-        <View style={[s.actions, { paddingBottom: insets.bottom + 12 }]}>
-          <Pressable
-            style={({ pressed }) => [s.cancelBtn, pressed && { opacity: 0.7 }]}
-            onPress={() => router.back()}
-            disabled={loading}
-          >
-            <Text style={s.cancelText}>Cancel</Text>
+      {/* Error banner */}
+      {error ? (
+        <View style={s.errorBanner}>
+          <View style={s.errorIconWrap}>
+            <Ionicons name="alert-circle" size={16} color={brand.error} />
+          </View>
+          <Text style={s.errorText}>{error}</Text>
+          <Pressable onPress={() => setError('')} hitSlop={8}>
+            <Ionicons name="close-circle-outline" size={16} color={brand.creamMuted} />
           </Pressable>
+        </View>
+      ) : null}
 
+      {/* Content */}
+      {catalogLoading ? (
+        <View style={s.skeletonWrap}>
+          {[0, 1, 2, 3].map((i) => <SkeletonBox key={i} h={88} />)}
+        </View>
+      ) : catalogError ? (
+        <View style={s.errorState}>
+          <View style={s.errorStateIconWrap}>
+            <Ionicons name="cloud-offline-outline" size={36} color={brand.creamMuted} />
+          </View>
+          <Text style={s.errorStateTitle}>Failed to load</Text>
+          <Text style={s.errorStateText}>{catalogError}</Text>
+          <Pressable style={s.retryBtn} onPress={loadCatalog}>
+            <Ionicons name="refresh-outline" size={14} color="#fff" />
+            <Text style={s.retryBtnText}>Try Again</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          {step === 'category' && catalog && (
+            <CategoryStep
+              categories={catalog.categories}
+              onSelect={(cat) => {
+                setCategory(cat);
+                setBizType(null);
+                setBookingMode(null);
+                setStep('type');
+              }}
+            />
+          )}
+
+          {step === 'type' && category && (
+            <TypeStep
+              category={category}
+              selectedId={bizType?.id ?? null}
+              onSelect={(t) => {
+                setBizType(t);
+                setBookingMode(null);
+                // Only turf and venue get the booking style step
+                setStep(needsBookingModeOnCreate(t.id) ? 'booking' : 'details');
+              }}
+            />
+          )}
+
+          {step === 'booking' && (
+            <BookingStep
+              selected={bookingMode}
+              onSelect={(m) => { setBookingMode(m); setError(''); setStep('details'); }}
+            />
+          )}
+
+          {step === 'details' && bizType && (
+            <DetailsStep
+              form={form}
+              onChange={(patch) => { setForm((f) => ({ ...f, ...patch })); setError(''); }}
+              typeLabel={bizType.label}
+              namePlaceholder={bizType.namePlaceholder}
+            />
+          )}
+        </KeyboardAvoidingView>
+      )}
+
+      {/* Submit footer — details step only */}
+      {step === 'details' && (
+        <View style={s.footer}>
           <Pressable
-            style={({ pressed }) => [s.submitBtn, loading && s.submitDisabled, pressed && { opacity: 0.85 }]}
+            style={[s.submitBtn, saving && s.submitDisabled]}
             onPress={handleSubmit}
-            disabled={loading}
+            disabled={saving}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
+            {saving ? (
+              <>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={s.submitBtnText}>Creating your business…</Text>
+              </>
             ) : (
               <>
-                <Ionicons name="checkmark" size={18} color="#fff" />
-                <Text style={s.submitText}>Add Business</Text>
+                <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                <Text style={s.submitBtnText}>Create Business</Text>
+                <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.7)" />
               </>
             )}
           </Pressable>
+          <Text style={s.footerNote}>
+            <Ionicons name="lock-closed-outline" size={10} color={brand.creamMuted} />
+            {'  '}Your info is secure and only visible to customers who book.
+          </Text>
         </View>
-      </KeyboardAvoidingView>
-
-      {/* Category picker */}
-      <CategoryPicker
-        visible={showCat}
-        selected={form.category}
-        onSelect={(cat) => { patch('category', cat); setShowCat(false); }}
-        onClose={() => setShowCat(false)}
-      />
-    </View>
-  );
-}
-
-// ─── Field ────────────────────────────────────────────────────────────────────
-
-function Field({
-  label, hint, required, children,
-}: {
-  label: string; hint?: string; required?: boolean; children: React.ReactNode;
-}) {
-  return (
-    <View style={s.field}>
-      <View style={s.fieldLabelRow}>
-        <Text style={s.fieldLabel}>{label}</Text>
-        {required && <Text style={s.required}>Required</Text>}
-        {hint && !required && <Text style={s.hint}>{hint}</Text>}
-      </View>
-      {children}
-    </View>
-  );
-}
-
-// ─── Category Picker ──────────────────────────────────────────────────────────
-
-function CategoryPicker({
-  visible, selected, onSelect, onClose,
-}: {
-  visible: boolean; selected: string;
-  onSelect: (c: string) => void; onClose: () => void;
-}) {
-  const insets = useSafeAreaInsets();
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={cp.backdrop} onPress={onClose} />
-      <View style={[cp.sheet, { paddingBottom: insets.bottom + 16 }]}>
-        {/* Handle */}
-        <View style={cp.handle} />
-
-        {/* Header */}
-        <View style={cp.header}>
-          <Text style={cp.title}>Select Category</Text>
-          <Pressable style={cp.closeBtn} onPress={onClose} hitSlop={8}>
-            <Ionicons name="close" size={20} color={Brand.creamSub} />
-          </Pressable>
-        </View>
-
-        <FlatList
-          data={BUSINESS_CATEGORIES}
-          keyExtractor={(item) => item}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 8 }}
-          renderItem={({ item }) => (
-            <Pressable
-              style={({ pressed }) => [
-                cp.item,
-                item === selected && cp.itemActive,
-                pressed && { backgroundColor: Brand.surface2 },
-              ]}
-              onPress={() => onSelect(item)}
-            >
-              <Text style={[cp.itemText, item === selected && cp.itemTextActive]}>
-                {item}
-              </Text>
-              {item === selected && (
-                <Ionicons name="checkmark" size={18} color={Brand.primary} />
-              )}
-            </Pressable>
-          )}
-        />
-      </View>
-    </Modal>
+      )}
+    </SafeAreaView>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Brand.bg },
-  kav:  { flex: 1 },
+const createStyles = (brand: BrandTokens) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: brand.bg },
 
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two + 4,
+    alignItems: 'flex-start',
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.three,
     borderBottomWidth: 1,
-    borderBottomColor: Brand.border1,
+    borderBottomColor: brand.border1,
+    gap: Spacing.two,
   },
-  backBtn: {
+  iconBtn: {
     width: 38, height: 38,
     borderRadius: Radius.md,
-    backgroundColor: Brand.surface1,
+    backgroundColor: brand.surface1,
+    borderWidth: 1,
+    borderColor: brand.border1,
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: 2,
+  },
+  headerCenter: { flex: 1, gap: 3 },
+  stepChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    backgroundColor: brand.primaryGlow,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 4,
+  },
+  stepChipText: { fontSize: 11, fontWeight: '700', color: brand.primary, letterSpacing: 0.1 },
+  headerTitle:  { fontSize: 18, fontWeight: '800', color: brand.cream, letterSpacing: -0.2 },
+  headerHint:   { fontSize: 12, color: brand.creamSub, lineHeight: 17 },
+
+  progressSection: {
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+    backgroundColor: brand.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: brand.border1,
+  },
+  progressTrack: { height: 3, backgroundColor: brand.surface2, borderRadius: 2 },
+  progressFill:  { height: 3, backgroundColor: brand.primary, borderRadius: 2 },
+
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    backgroundColor: 'rgba(220,38,38,0.06)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(220,38,38,0.15)',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  errorIconWrap: {
+    width: 28, height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(220,38,38,0.10)',
     alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: {
-    color: Brand.cream, fontSize: 17, fontWeight: '700', letterSpacing: -0.3,
-  },
+  errorText: { color: brand.error, fontSize: 12, flex: 1, lineHeight: 17 },
 
-  body: {
+  skeletonWrap: { padding: Spacing.three, gap: Spacing.two },
+
+  errorState: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    gap: Spacing.two, padding: Spacing.four,
+  },
+  errorStateIconWrap: {
+    width: 72, height: 72,
+    borderRadius: Radius.xl,
+    backgroundColor: brand.surface1,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: Spacing.one,
+  },
+  errorStateTitle: { fontSize: 16, fontWeight: '700', color: brand.cream },
+  errorStateText:  { color: brand.creamSub, fontSize: 13, textAlign: 'center', lineHeight: 19 },
+  retryBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: brand.primary,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-    gap: Spacing.three,
+    paddingVertical: Spacing.two,
+    marginTop: Spacing.one,
   },
+  retryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
-  field: { gap: 8 },
-  fieldLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  fieldLabel: { color: Brand.cream, fontSize: 14, fontWeight: '600' },
-  required:   { color: Brand.primary, fontSize: 11, fontWeight: '600' },
-  hint:       { color: Brand.creamMuted, fontSize: 11 },
-
-  input: {
-    backgroundColor: Brand.surface1,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Brand.border1,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 14,
-    color: Brand.cream,
-    fontSize: 15,
-  },
-  textarea: { minHeight: 100, paddingTop: 14 },
-
-  selectRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  selectValue:       { color: Brand.cream,     fontSize: 15, flex: 1 },
-  selectPlaceholder: { color: Brand.creamMuted, fontSize: 15, flex: 1 },
-
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(220,38,38,0.06)',
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(220,38,38,0.20)',
-    padding: Spacing.three,
-  },
-  errorText: { color: Brand.error, fontSize: 13, flex: 1, lineHeight: 18 },
-
-  // Sticky bottom
-  actions: {
-    flexDirection: 'row',
-    gap: Spacing.two,
+  footer: {
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
     borderTopWidth: 1,
-    borderTopColor: Brand.border1,
-    backgroundColor: Brand.bg,
+    borderTopColor: brand.border1,
+    backgroundColor: brand.bg,
+    gap: Spacing.two,
   },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    borderColor: Brand.border2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelText: { color: Brand.creamSub, fontSize: 15, fontWeight: '600' },
   submitBtn: {
-    flex: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 14,
-    borderRadius: Radius.pill,
-    backgroundColor: Brand.primary,
+    gap: 10,
+    backgroundColor: brand.primary,
+    borderRadius: Radius.lg,
+    paddingVertical: 16,
+    shadowColor: brand.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
   },
   submitDisabled: { opacity: 0.6 },
-  submitText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-});
-
-const cp = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+  submitBtnText:  { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.1 },
+  footerNote: {
+    textAlign: 'center',
+    fontSize: 11,
+    color: brand.creamMuted,
+    lineHeight: 16,
   },
-  sheet: {
-    position: 'absolute',
-    bottom: 0, left: 0, right: 0,
-    backgroundColor: Brand.bg,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    maxHeight: '70%',
-    paddingHorizontal: Spacing.four,
-  },
-  handle: {
-    width: 36, height: 4,
-    backgroundColor: Brand.border2,
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.three,
-    borderBottomWidth: 1,
-    borderBottomColor: Brand.border1,
-  },
-  title:    { color: Brand.cream, fontSize: 16, fontWeight: '700' },
-  closeBtn: {
-    width: 32, height: 32,
-    borderRadius: 16,
-    backgroundColor: Brand.surface2,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: Brand.border1,
-  },
-  itemActive:     { backgroundColor: Brand.primaryGlow },
-  itemText:       { color: Brand.cream, fontSize: 15 },
-  itemTextActive: { color: Brand.primary, fontWeight: '700' },
 });

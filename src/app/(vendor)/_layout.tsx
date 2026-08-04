@@ -8,11 +8,13 @@
 
 import { useEffect } from 'react';
 import { Tabs, router } from 'expo-router';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
-import { Brand } from '@/constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/stores/auth-store';
 import { useKycStore, nextKycStep } from '@/stores/kyc-store';
+import { useTheme } from '@/hooks/useTheme';
 
 // ─── Tab Icon ─────────────────────────────────────────────────────────────────
 
@@ -24,15 +26,19 @@ type TabIconProps = {
 };
 
 function TabIcon({ label, focused, icon, iconFocused }: TabIconProps) {
+  const { brand } = useTheme();
   return (
     <View style={tab.wrap}>
-      <View style={[tab.indicator, focused && tab.indicatorActive]} />
+      <View style={[tab.indicator, focused && { backgroundColor: brand.primary }]} />
       <Ionicons
         name={focused ? iconFocused : icon}
         size={22}
-        color={focused ? Brand.primary : Brand.creamMuted}
+        color={focused ? brand.primary : brand.creamMuted}
       />
-      <Text style={[tab.label, focused && tab.labelActive]} numberOfLines={1}>
+      <Text
+        style={[tab.label, { color: focused ? brand.primary : brand.creamMuted }, focused && tab.labelActive]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </View>
@@ -41,7 +47,7 @@ function TabIcon({ label, focused, icon, iconFocused }: TabIconProps) {
 
 const tab = StyleSheet.create({
   wrap: {
-    width: 72,
+    width: 62,
     alignItems: 'center',
     gap: 3,
     paddingTop: 6,
@@ -54,24 +60,17 @@ const tab = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'transparent',
   },
-  indicatorActive: {
-    backgroundColor: Brand.primary,
-  },
   label: {
     fontSize: 10,
-    color: Brand.creamMuted,
     fontWeight: '500',
     letterSpacing: 0.1,
   },
   labelActive: {
-    color: Brand.primary,
     fontWeight: '700',
   },
 });
 
 // ─── KYC Guard ────────────────────────────────────────────────────────────────
-// Only redirects for terminal review states. pending / in_progress users can
-// navigate freely — the dashboard KycStatusCard shows their status + CTA.
 
 function KycGuard() {
   const token       = useAuthStore((s) => s.token);
@@ -86,7 +85,6 @@ function KycGuard() {
         const step   = nextKycStep(status);
         if (step === 'pending_review') router.replace('/(vendor)/kyc/pending-review');
         if (step === 'rejected')       router.replace('/(vendor)/kyc/rejected');
-        // verified / pending / in_progress → stay on dashboard
       } catch {
         // Network error — let user through
       }
@@ -98,19 +96,6 @@ function KycGuard() {
 
 // ─── Tab bar styles ───────────────────────────────────────────────────────────
 
-const TAB_BAR_VISIBLE = {
-  tabBarStyle: {
-    backgroundColor:  Brand.bg,
-    borderTopWidth:   1,
-    borderTopColor:   Brand.border1,
-    height:           Platform.select({ ios: 82, android: 64, default: 60 }),
-    paddingBottom:    Platform.select({ ios: 24, android: 8, default: 8 }),
-    paddingTop:       0,
-    elevation:        0,
-    shadowOpacity:    0,
-  },
-} as const;
-
 const TAB_BAR_HIDDEN = {
   tabBarStyle: { display: 'none' as const },
 } as const;
@@ -118,6 +103,21 @@ const TAB_BAR_HIDDEN = {
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function VendorLayout() {
+  const insets = useSafeAreaInsets();
+  const { brand } = useTheme();
+
+  const TAB_BAR_VISIBLE = {
+    tabBarStyle: {
+      backgroundColor: brand.bg,
+      borderTopWidth:  1,
+      borderTopColor:  brand.border1,
+      elevation:       0,
+      shadowOpacity:   0,
+      paddingBottom:   insets.bottom,
+      height:          56 + insets.bottom,
+    },
+  };
+
   return (
     <>
       <KycGuard />
@@ -125,8 +125,8 @@ export default function VendorLayout() {
         screenOptions={{
           headerShown:             false,
           tabBarShowLabel:         false,
-          tabBarActiveTintColor:   Brand.primary,
-          tabBarInactiveTintColor: Brand.creamMuted,
+          tabBarActiveTintColor:   brand.primary,
+          tabBarInactiveTintColor: brand.creamMuted,
           ...TAB_BAR_VISIBLE,
         }}
       >
@@ -142,27 +142,18 @@ export default function VendorLayout() {
         <Tabs.Screen
           name="businesses"
           options={{
-            title: 'Stores',
+            title: 'Business',
             tabBarIcon: ({ focused }) => (
-              <TabIcon label="Stores" focused={focused} icon="briefcase-outline" iconFocused="briefcase" />
+              <TabIcon label="Business" focused={focused} icon="storefront-outline" iconFocused="storefront" />
             ),
           }}
         />
         <Tabs.Screen
-          name="card"
+          name="payments"
           options={{
-            title: 'Card',
+            title: 'Payments',
             tabBarIcon: ({ focused }) => (
-              <TabIcon label="Card" focused={focused} icon="id-card-outline" iconFocused="id-card" />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="orders"
-          options={{
-            title: 'Orders',
-            tabBarIcon: ({ focused }) => (
-              <TabIcon label="Orders" focused={focused} icon="receipt-outline" iconFocused="receipt" />
+              <TabIcon label="Pay" focused={focused} icon="wallet-outline" iconFocused="wallet" />
             ),
           }}
         />
@@ -175,11 +166,25 @@ export default function VendorLayout() {
             ),
           }}
         />
-
-        {/* Hidden — no tab bar */}
-        <Tabs.Screen name="products"     options={{ href: null, ...TAB_BAR_HIDDEN }} />
-        <Tabs.Screen name="kyc"          options={{ href: null, ...TAB_BAR_HIDDEN }} />
-        <Tabs.Screen name="add-business" options={{ href: null, ...TAB_BAR_HIDDEN }} />
+        {/* Secondary pages — no tab icon, but bottom bar stays visible */}
+        <Tabs.Screen name="orders"            options={{ href: null }} />
+        <Tabs.Screen name="print-orders"      options={{ href: null }} />
+        <Tabs.Screen name="stores"            options={{ href: null }} />
+        <Tabs.Screen name="card"              options={{ href: null }} />
+        <Tabs.Screen name="products"          options={{ href: null }} />
+        <Tabs.Screen name="commerce-orders"   options={{ href: null }} />
+        <Tabs.Screen name="offers"            options={{ href: null }} />
+        <Tabs.Screen name="creator-bookings"  options={{ href: null }} />
+        <Tabs.Screen name="notifications"     options={{ href: null }} />
+        <Tabs.Screen name="print-order-detail" options={{ href: null }} />
+        {/* Full-screen wizards — hide tab bar entirely */}
+        <Tabs.Screen name="kyc"                  options={{ href: null, ...TAB_BAR_HIDDEN }} />
+        <Tabs.Screen name="add-business"         options={{ href: null, ...TAB_BAR_HIDDEN }} />
+        <Tabs.Screen name="business-setup"       options={{ href: null, ...TAB_BAR_HIDDEN }} />
+        <Tabs.Screen name="slot-calendar"        options={{ href: null, ...TAB_BAR_HIDDEN }} />
+        <Tabs.Screen name="create-event"         options={{ href: null, ...TAB_BAR_HIDDEN }} />
+        <Tabs.Screen name="event-registrations"  options={{ href: null, ...TAB_BAR_HIDDEN }} />
+        <Tabs.Screen name="appointments-board"   options={{ href: null, ...TAB_BAR_HIDDEN }} />
       </Tabs>
     </>
   );

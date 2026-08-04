@@ -18,6 +18,7 @@ import { BUSINESS_CATEGORIES, type BusinessFormData } from '@/types/vendor';
 
 const empty: BusinessFormData = {
   name:        '',
+  typeId:      '',
   category:    '',
   phone:       '',
   address:     '',
@@ -192,7 +193,7 @@ export default function AddBusinessModal({ visible, onClose, onSubmit }: Props) 
       {/* Category picker modal */}
       <CategoryPicker
         visible={showCatPicker}
-        selected={form.category}
+        selected={form.category ?? ''}
         onSelect={(cat) => { patch('category', cat); setShowCatPicker(false); }}
         onClose={() => setShowCatPicker(false)}
       />

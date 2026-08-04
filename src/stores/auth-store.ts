@@ -16,6 +16,9 @@ export interface AuthState {
   /** True once AsyncStorage hydration is complete — guards premature redirects */
   _hasHydrated: boolean;
 
+  /** In-memory only — vendors can browse the user/customer app without changing their role */
+  activeMode: 'vendor' | 'user' | null;
+
   // Held in memory during registration flow — not persisted
   pendingPhone:       string | null;
   pendingSignupToken: string | null;
@@ -27,6 +30,7 @@ export interface AuthState {
   setPendingSignupToken: (token: string) => void;
   clearPending:          () => void;
   setHasHydrated:        (v: boolean) => void;
+  setActiveMode:         (m: 'vendor' | 'user' | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -40,6 +44,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading:       false,
       _hasHydrated:    false,
+      activeMode:      null,
       pendingPhone:       null,
       pendingSignupToken: null,
 
@@ -55,6 +60,7 @@ export const useAuthStore = create<AuthState>()(
       setPendingSignupToken: (token) => set({ pendingSignupToken: token }),
       clearPending:          ()      => set({ pendingPhone: null, pendingSignupToken: null }),
       setHasHydrated:        (v)     => set({ _hasHydrated: v }),
+      setActiveMode:         (m)     => set({ activeMode: m }),
     }),
     {
       name:    'ruxstar_auth',

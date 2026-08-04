@@ -2,18 +2,20 @@
  * KycStatusCard — colour-coded KYC status with Ionicons, no emojis
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import type { KycOverallStatus } from '@/services/kyc-service';
+import { useTheme } from '@/hooks/useTheme';
+import type { BrandTokens } from '@/hooks/useTheme';
 
 type StatusConfig = {
   icon:      keyof typeof Ionicons.glyphMap;
-  iconColor: string;
+  iconColor: (brand: BrandTokens) => string;
   label:     string;
   sublabel:  string;
   bg:        string;
@@ -25,7 +27,7 @@ type StatusConfig = {
 const STATUS_CONFIG: Record<KycOverallStatus, StatusConfig> = {
   pending: {
     icon:      'time-outline',
-    iconColor: Brand.warning,
+    iconColor: (brand) => brand.warning,
     label:     'KYC Pending',
     sublabel:  'Complete verification to unlock all features.',
     bg:        'rgba(217,119,6,0.06)',
@@ -35,7 +37,7 @@ const STATUS_CONFIG: Record<KycOverallStatus, StatusConfig> = {
   },
   in_progress: {
     icon:      'id-card-outline',
-    iconColor: Brand.primary,
+    iconColor: (brand) => brand.primary,
     label:     'KYC In Progress',
     sublabel:  'Continue where you left off.',
     bg:        'rgba(124,58,237,0.06)',
@@ -45,7 +47,7 @@ const STATUS_CONFIG: Record<KycOverallStatus, StatusConfig> = {
   },
   pending_review: {
     icon:      'hourglass-outline',
-    iconColor: Brand.primary,
+    iconColor: (brand) => brand.primary,
     label:     'Under Review',
     sublabel:  'Our team is verifying your documents. This usually takes a few hours.',
     bg:        'rgba(124,58,237,0.06)',
@@ -55,7 +57,7 @@ const STATUS_CONFIG: Record<KycOverallStatus, StatusConfig> = {
   },
   verified: {
     icon:      'checkmark-circle-outline',
-    iconColor: Brand.success,
+    iconColor: (brand) => brand.success,
     label:     'KYC Verified',
     sublabel:  'Your identity is verified. All features are unlocked.',
     bg:        'rgba(22,163,74,0.06)',
@@ -65,7 +67,7 @@ const STATUS_CONFIG: Record<KycOverallStatus, StatusConfig> = {
   },
   rejected: {
     icon:      'alert-circle-outline',
-    iconColor: Brand.error,
+    iconColor: (brand) => brand.error,
     label:     'KYC Rejected',
     sublabel:  'Your verification was rejected. Please re-submit.',
     bg:        'rgba(220,38,38,0.06)',
@@ -75,47 +77,7 @@ const STATUS_CONFIG: Record<KycOverallStatus, StatusConfig> = {
   },
 };
 
-type Props = {
-  status:        KycOverallStatus;
-  rejectReason?: string;
-  delay?:        number;
-};
-
-export default function KycStatusCard({ status, rejectReason, delay = 0 }: Props) {
-  const cfg = STATUS_CONFIG[status];
-
-  return (
-    <Animated.View
-      entering={FadeInDown.delay(delay)}
-      style={[s.card, { backgroundColor: cfg.bg, borderColor: cfg.border }]}
-    >
-      <View style={s.row}>
-        <View style={[s.iconWrap, { borderColor: cfg.border }]}>
-          <Ionicons name={cfg.icon} size={20} color={cfg.iconColor} />
-        </View>
-        <View style={s.textBlock}>
-          <Text style={[s.label, { color: cfg.iconColor }]}>{cfg.label}</Text>
-          <Text style={s.sublabel}>{cfg.sublabel}</Text>
-          {rejectReason && status === 'rejected' ? (
-            <Text style={s.rejectReason}>Reason: {rejectReason}</Text>
-          ) : null}
-        </View>
-      </View>
-
-      {cfg.ctaLabel && cfg.ctaRoute ? (
-        <Pressable
-          style={({ pressed }) => [s.cta, { borderColor: cfg.border }, pressed && { opacity: 0.7 }]}
-          onPress={() => router.push(cfg.ctaRoute as never)}
-        >
-          <Text style={[s.ctaText, { color: cfg.iconColor }]}>{cfg.ctaLabel}</Text>
-          <Ionicons name="arrow-forward" size={13} color={cfg.iconColor} />
-        </Pressable>
-      ) : null}
-    </Animated.View>
-  );
-}
-
-const s = StyleSheet.create({
+const createStyles = (brand: BrandTokens) => StyleSheet.create({
   card: {
     borderRadius: Radius.xl,
     borderWidth:  1,
@@ -138,8 +100,8 @@ const s = StyleSheet.create({
   },
   textBlock: { flex: 1, gap: 3 },
   label:     { fontSize: 14, fontWeight: '700', letterSpacing: -0.2 },
-  sublabel:  { color: Brand.creamSub, fontSize: 13, lineHeight: 18 },
-  rejectReason: { color: Brand.error, fontSize: 12, marginTop: 2, lineHeight: 16 },
+  sublabel:  { color: brand.creamSub, fontSize: 13, lineHeight: 18 },
+  rejectReason: { color: brand.error, fontSize: 12, marginTop: 2, lineHeight: 16 },
   cta: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -153,3 +115,46 @@ const s = StyleSheet.create({
   },
   ctaText: { fontSize: 13, fontWeight: '700' },
 });
+
+type Props = {
+  status:        KycOverallStatus;
+  rejectReason?: string;
+  delay?:        number;
+};
+
+export default function KycStatusCard({ status, rejectReason, delay = 0 }: Props) {
+  const { brand } = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
+  const cfg = STATUS_CONFIG[status];
+  const iconColor = cfg.iconColor(brand);
+
+  return (
+    <Animated.View
+      entering={FadeInDown.delay(delay)}
+      style={[s.card, { backgroundColor: cfg.bg, borderColor: cfg.border }]}
+    >
+      <View style={s.row}>
+        <View style={[s.iconWrap, { borderColor: cfg.border }]}>
+          <Ionicons name={cfg.icon} size={20} color={iconColor} />
+        </View>
+        <View style={s.textBlock}>
+          <Text style={[s.label, { color: iconColor }]}>{cfg.label}</Text>
+          <Text style={s.sublabel}>{cfg.sublabel}</Text>
+          {rejectReason && status === 'rejected' ? (
+            <Text style={s.rejectReason}>Reason: {rejectReason}</Text>
+          ) : null}
+        </View>
+      </View>
+
+      {cfg.ctaLabel && cfg.ctaRoute ? (
+        <Pressable
+          style={({ pressed }) => [s.cta, { borderColor: cfg.border }, pressed && { opacity: 0.7 }]}
+          onPress={() => router.push(cfg.ctaRoute as never)}
+        >
+          <Text style={[s.ctaText, { color: iconColor }]}>{cfg.ctaLabel}</Text>
+          <Ionicons name="arrow-forward" size={13} color={iconColor} />
+        </Pressable>
+      ) : null}
+    </Animated.View>
+  );
+}

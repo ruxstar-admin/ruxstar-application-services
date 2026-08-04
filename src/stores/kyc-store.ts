@@ -25,7 +25,7 @@ interface KycState {
 
 export const useKycStore = create<KycState>((set, get) => ({
   status:  null,
-  loading: false,
+  loading: true,   // true until first fetch resolves — prevents "Complete KYC" flash on dashboard
   error:   null,
 
   fetchStatus: async (token) => {

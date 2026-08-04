@@ -1,7 +1,8 @@
-import React, { useEffect } from "react";
+import React from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   Pressable,
   StatusBar,
@@ -17,11 +18,7 @@ import Animated, {
   FadeInUp,
   useSharedValue,
   useAnimatedStyle,
-  withRepeat,
   withTiming,
-  withSequence,
-  withDelay,
-  Easing,
 } from "react-native-reanimated";
 import { Spacing, Radius } from "@/constants/theme";
 
@@ -124,25 +121,6 @@ export default function WelcomeScreen() {
     p.play();
   });
 
-  const pulse = useSharedValue(0);
-  const glowAnim = useAnimatedStyle(() => ({
-    opacity: pulse.value,
-    transform: [{ scale: 0.85 + pulse.value * 0.15 }],
-  }));
-
-  useEffect(() => {
-    pulse.value = withDelay(
-      500,
-      withRepeat(
-        withSequence(
-          withTiming(0.5, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-          withTiming(1.0, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        true,
-      ),
-    );
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <View style={s.root}>
@@ -165,14 +143,13 @@ export default function WelcomeScreen() {
             entering={FadeIn.delay(80).duration(600)}
             style={s.logoBlock}
           >
-            <Animated.View style={[s.glowRing, glowAnim]} />
-            <View style={s.logoOuter}>
-              <View style={s.logoMark}>
-                <Text style={s.logoLetter}>R</Text>
-              </View>
+            <View style={s.logoPad}>
+              <Image
+                source={require("../../../assets/images/logo-combined.png")}
+                style={s.logoImage}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={s.brandName}>RUXSTAR</Text>
-            <Text style={s.brandTagline}>One platform. Every business.</Text>
           </Animated.View>
         </View>
 
@@ -228,64 +205,16 @@ const s = StyleSheet.create({
   },
 
   // ── Logo ──
-  logoBlock: { alignItems: "center", gap: Spacing.two },
-  glowRing: {
-    position: "absolute",
-    top: -22,
-    width: 124,
-    height: 124,
-    borderRadius: 62,
-    backgroundColor: "rgba(0,0,0,0.02)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 40,
-    elevation: 0,
+  logoBlock: { alignItems: "center" },
+  logoPad: {
+    backgroundColor: "#000000",
+    borderRadius: 16,
+    padding: 10,
   },
-  logoOuter: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.12)",
-    backgroundColor: "rgba(0,0,0,0.04)",
-    alignItems: "center",
-    justifyContent: "center",
+  logoImage: {
+    width: 90,
+    height: 90,
   },
-  logoMark: {
-    width: 54,
-    height: 54,
-    borderRadius: 14,
-    backgroundColor: C.dark,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.20,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  logoLetter: {
-    color: "#FFFFFF",
-    fontSize: 26,
-    fontWeight: "900",
-    letterSpacing: -0.5,
-  },
-  brandName: {
-    color: C.text,
-    fontSize: 20,
-    fontWeight: "700",
-    letterSpacing: 7,
-    textAlign: "center",
-    marginTop: Spacing.one,
-  },
-  brandTagline: {
-    color: C.dim,
-    fontSize: 13,
-    letterSpacing: 0.3,
-    textAlign: "center",
-  },
-
   // ── Bottom glass card ──
   glassCard: {
     marginHorizontal: Spacing.four,

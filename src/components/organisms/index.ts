@@ -11,3 +11,4 @@ export { default as GlobeHero } from './GlobeHero';
 export { default as LoginForm } from './LoginForm';
 export { default as OtpForm } from './OtpForm';
 export { default as RoleSelector } from './RoleSelector';
+export { default as HeroBanner } from './HeroBanner';

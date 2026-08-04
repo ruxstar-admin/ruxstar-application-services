@@ -17,3 +17,7 @@ export { default as Badge } from './Badge';
 export { default as ProgressBar } from './ProgressBar';
 export { default as CountdownTimer } from './CountdownTimer';
 export { default as Divider } from './Divider';
+export { default as ThemeToggle } from './ThemeToggle';
+export { default as StarRating } from './StarRating';
+export { default as SectionHeader } from './SectionHeader';
+export { default as StatusBadge } from './StatusBadge';
