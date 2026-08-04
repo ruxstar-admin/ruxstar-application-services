@@ -17,7 +17,8 @@
       "env": {
         "APP_ENV": "development",
         "EXPO_PUBLIC_API_URL": "https://ruxstar-backend-services-391710984982.us-central1.run.app",
-        "EXPO_PUBLIC_APP_SCHEME": "ruxstarapplicationservices"
+        "EXPO_PUBLIC_APP_SCHEME": "ruxstarapplicationservices",
+        "EXPO_PUBLIC_ONESIGNAL_APP_ID": "06b05483-fd96-4370-8aa1-abf713c4dca0"
       }
     },
     "preview": {
@@ -28,7 +29,8 @@
       "env": {
         "APP_ENV": "preview",
         "EXPO_PUBLIC_API_URL": "https://ruxstar-backend-services-391710984982.us-central1.run.app",
-        "EXPO_PUBLIC_APP_SCHEME": "ruxstarapplicationservices"
+        "EXPO_PUBLIC_APP_SCHEME": "ruxstarapplicationservices",
+        "EXPO_PUBLIC_ONESIGNAL_APP_ID": "06b05483-fd96-4370-8aa1-abf713c4dca0"
       }
     },
     "production": {
@@ -36,10 +38,14 @@
       "android": {
         "buildType": "app-bundle"
       },
+      "ios": {
+        "image": "macos-sequoia-15.6-xcode-26.2"
+      },
       "env": {
         "APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://ruxstar-backend-services-391710984982.us-central1.run.app",
-        "EXPO_PUBLIC_APP_SCHEME": "ruxstarapplicationservices"
+        "EXPO_PUBLIC_APP_SCHEME": "ruxstarapplicationservices",
+        "EXPO_PUBLIC_ONESIGNAL_APP_ID": "06b05483-fd96-4370-8aa1-abf713c4dca0"
       }
     }
   },
@@ -48,11 +54,6 @@
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
         "track": "internal"
-      },
-      "ios": {
-        "appleId": "your@apple.id",
-        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "YOUR_TEAM_ID"
       }
     }
   }

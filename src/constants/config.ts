@@ -10,3 +10,6 @@ export const API_URL =
 
 export const APP_SCHEME =
   process.env.EXPO_PUBLIC_APP_SCHEME ?? 'ruxstarapplicationservices';
+
+// OneSignal Dashboard → Settings → Keys & IDs → "OneSignal App ID" (public, safe to embed)
+export const ONESIGNAL_APP_ID = process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID ?? '';

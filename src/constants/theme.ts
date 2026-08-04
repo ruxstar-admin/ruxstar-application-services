@@ -24,6 +24,63 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
+/**
+ * Dark-mode brand palette — 70% black · 20% white · 10% purple
+ * Pure neutral blacks (no purple tint), true white text, purple only on accents
+ */
+export const DarkBrand = {
+  // ── Purple accent (10%) ────────────────────────────────────────
+  primary:       '#7C3AED',
+  primaryDark:   '#5B21B6',
+  primaryLight:  '#9B6FE8',
+  primaryXLight: '#B48FF0',
+  primaryGlow:   'rgba(124,58,237,0.18)',
+
+  // ── Surfaces — pure black (70%) ────────────────────────────────
+  bg:            '#000000',   // pure black base
+  surface1:      '#0F0F0F',   // cards on black
+  surface2:      '#1A1A1A',   // elevated / inputs
+  surface3:      '#242424',   // modals, sheets
+
+  surfaceDark:      '#000000',
+  surfaceDarkMid:   '#0F0F0F',
+  surfaceDarkLight: '#1A1A1A',
+  surfaceCard:         'rgba(255,255,255,0.05)',
+  surfaceCardBorder:   'rgba(255,255,255,0.10)',
+
+  // ── Borders ────────────────────────────────────────────────────
+  border1:  '#1F1F1F',
+  border2:  '#2E2E2E',
+  border3:  '#3D3D3D',
+
+  glass:            'rgba(255,255,255,0.05)',
+  glassBorder:      '#1F1F1F',
+  glassBorderStrong:'#2E2E2E',
+
+  // ── Typography — white (20%) ───────────────────────────────────
+  cream:      '#FFFFFF',    // primary text — pure white
+  creamSub:   '#AAAAAA',   // secondary — mid grey
+  creamMuted: '#666666',   // muted / disabled
+
+  textOnDark:          '#FFFFFF',
+  textOnDarkSecondary: '#AAAAAA',
+  textOnDarkMuted:     '#666666',
+
+  success: '#16A34A',
+  error:   '#DC2626',
+  warning: '#D97706',
+
+  accent:     '#7C3AED',
+  accentGlow: '#9B6FE8',
+
+  globeAtmosphere: 'rgba(124,58,237,0.12)',
+  globeGlow:       'rgba(124,58,237,0.3)',
+  globeGrid:       'rgba(124,58,237,0.18)',
+  globeLand:       '#7C3AED',
+  globeWater:      '#EDE9FE',
+  globeHighlight:  'rgba(124,58,237,0.4)',
+} as const;
+
 /** Ruxstar brand palette — clean white / light theme */
 export const Brand = {
   // ── Purple accent ──────────────────────────────────────────────

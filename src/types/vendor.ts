@@ -1,29 +1,19 @@
 /**
- * Vendor domain types — shared across stores, services, and screens.
- * Mirrors the web frontend's lib/vendor-businesses.ts & lib/api.ts shapes.
+ * Vendor domain types
+ * Business CRUD types now live in vendor-business-service.ts (re-exported here for compat)
  */
 
-// ─── Business ─────────────────────────────────────────────────────────────────
+import type { BusinessInput } from '@/services/vendor-business-service';
 
-export interface VendorBusiness {
-  id:          string;
-  name:        string;
-  category:    string;
-  phone:       string;
-  address:     string;
-  description: string;
-  createdAt:   string;
-}
-
-export type BusinessFormData = Omit<VendorBusiness, 'id' | 'createdAt'>;
-
-export const emptyBusinessForm: BusinessFormData = {
-  name:        '',
-  category:    '',
-  phone:       '',
-  address:     '',
-  description: '',
-};
+// Re-export canonical types from the service layer
+export type {
+  Business as VendorBusiness,
+  BusinessInput as BusinessFormData,
+  BusinessCatalog,
+  CatalogBusinessCategory,
+  CatalogBusinessType,
+  BookingMode,
+} from '@/services/vendor-business-service';
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
 
@@ -35,7 +25,7 @@ export interface VendorProfile {
   address?:      string;
 }
 
-// ─── Categories ───────────────────────────────────────────────────────────────
+// ─── Legacy category list (kept for any remaining static references) ──────────
 
 export const BUSINESS_CATEGORIES: string[] = [
   'Retail & Shopping',
@@ -59,3 +49,7 @@ export const BUSINESS_CATEGORIES: string[] = [
   'Construction & Engineering',
   'Gifts & Specialties',
 ];
+
+export const emptyBusinessForm: BusinessInput = {
+  name: '', typeId: '', phone: '', address: '', description: '',
+};

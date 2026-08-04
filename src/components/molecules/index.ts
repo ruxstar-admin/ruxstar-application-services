@@ -15,3 +15,7 @@ export { default as RoleCard } from '@/components/auth/RoleCard';
 // New molecules
 export { default as FormField } from './FormField';
 export { default as SocialLoginButton } from './SocialLoginButton';
+export { default as CategoryTile } from './CategoryTile';
+export { default as VenueCard } from './VenueCard';
+export type { VenueCardProps } from './VenueCard';
+export { default as MetricCard } from './MetricCard';

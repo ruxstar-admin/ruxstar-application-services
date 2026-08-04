@@ -1,26 +1,29 @@
 /**
  * Ruxstar Card Screen
- * • Mirrors web /business/kyc: inline step tracker → verified card
  * • Shows KYC progress with step statuses, progress bar, and active-step CTA
  * • When pending_review: auto-polls every 15 s
- * • When verified: shows the actual RuxstarCard + detail rows
+ * • When verified: shows the actual RuxstarCard + detail rows with premium layout
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, StatusBar,
+  View, Text, StyleSheet,
   ActivityIndicator, ScrollView, Pressable,
 } from 'react-native';
-import { router } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import type { BrandTokens } from '@/hooks/useTheme';
 import { useAuthStore } from '@/stores/auth-store';
 import { useKycStore, nextKycStep } from '@/stores/kyc-store';
 import { KycService, type RuxstarCardData, type VendorKycStatus } from '@/services/kyc-service';
 import RuxstarCard from '@/components/vendor/RuxstarCard';
+import VendorHeader from '@/components/vendor/VendorHeader';
 
 // ─── Step config ─────────────────────────────────────────────────────────────
 
@@ -51,7 +54,152 @@ const IDENTITY_STEPS = [
   },
 ];
 
-const TOTAL_STEPS = 4; // 3 identity + 1 admin review
+const TOTAL_STEPS = 4;
+
+// ─── Style factory ────────────────────────────────────────────────────────────
+
+const createStyles = (brand: BrandTokens) => StyleSheet.create({
+  root:   { flex: 1, backgroundColor: brand.bg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two },
+
+  body:        { padding: Spacing.four, gap: Spacing.four },
+  loadingText: { color: brand.creamSub, fontSize: 14 },
+
+  // ── Premium card section ───────────────────────────────────────────────────
+  cardSection: {
+    borderRadius: Radius.xxl,
+    overflow: 'hidden',
+    backgroundColor: brand.surface1,
+    borderWidth: 1,
+    borderColor: brand.border1,
+  },
+  cardGlowWrap: {
+    alignItems: 'center',
+    paddingTop: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.three,
+    position: 'relative',
+  },
+  cardGlow: {
+    position: 'absolute',
+    top: -20,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: 'rgba(124,58,237,0.10)',
+  },
+  cardInner: { width: '100%', zIndex: 1 },
+
+  tierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.three,
+    borderTopWidth: 1,
+    borderTopColor: brand.border1,
+  },
+  tierLabel: { fontSize: 10, fontWeight: '700', color: brand.creamMuted, letterSpacing: 1.5, textTransform: 'uppercase' },
+  verifiedBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: Radius.pill,
+    backgroundColor: 'rgba(134,239,172,0.08)',
+    borderWidth: 1, borderColor: 'rgba(134,239,172,0.25)',
+  },
+  verifiedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#86efac' },
+  verifiedText: { color: '#86efac', fontSize: 11, fontWeight: '700' },
+
+  // ── Details card ──────────────────────────────────────────────────────────
+  detailsCard: {
+    backgroundColor: brand.surface1,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: brand.border1,
+  },
+  detailsHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.two,
+    paddingHorizontal: Spacing.three, paddingVertical: Spacing.two + 2,
+    borderBottomWidth: 1, borderBottomColor: brand.border1,
+  },
+  detailsHeaderText: { fontSize: 12, fontWeight: '700', color: brand.creamSub, letterSpacing: 0.5 },
+  detailsBody: { paddingHorizontal: Spacing.three },
+
+  drRow:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: Spacing.two },
+  drBorder:   { borderBottomWidth: 1, borderBottomColor: brand.border1 },
+  drIconWrap: { width: 32, height: 32, borderRadius: Radius.sm, backgroundColor: brand.surface2, alignItems: 'center', justifyContent: 'center' },
+  drLabel:    { color: brand.creamMuted, fontSize: 11, letterSpacing: 0.3 },
+  drValue:    { color: brand.cream, fontSize: 14, fontWeight: '600', fontFamily: 'monospace' },
+
+  noteBox: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: brand.primaryGlow,
+    borderRadius: Radius.lg, borderWidth: 1, borderColor: 'rgba(124,58,237,0.15)',
+    padding: Spacing.three,
+  },
+  noteText: { color: brand.creamSub, fontSize: 12, lineHeight: 18, flex: 1 },
+
+  // ── KYC Progress ──────────────────────────────────────────────────────────
+  progressHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three, marginBottom: Spacing.two },
+  kycLabel:  { color: brand.creamMuted, fontSize: 10, fontWeight: '700', letterSpacing: 2 },
+  kycTitle:  { color: brand.cream, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
+  kycSub:    { color: brand.creamSub, fontSize: 13, lineHeight: 19 },
+  progressBadge: { alignItems: 'flex-end', paddingTop: 2 },
+  progressPct:   { color: brand.cream, fontSize: 22, fontWeight: '800' },
+  progressSteps: { color: brand.creamMuted, fontSize: 11 },
+
+  barTrack: { height: 4, borderRadius: 4, backgroundColor: brand.surface2, overflow: 'hidden', marginBottom: Spacing.two },
+  barFill:  { height: '100%', borderRadius: 4, backgroundColor: brand.primary },
+
+  rejectBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two,
+    backgroundColor: 'rgba(220,38,38,0.08)', borderRadius: Radius.xl,
+    borderWidth: 1, borderColor: 'rgba(220,38,38,0.25)',
+    padding: Spacing.three, marginBottom: Spacing.two,
+  },
+  rejectTitle: { color: '#fca5a5', fontSize: 13, fontWeight: '700' },
+  rejectSub:   { color: '#fca5a5', fontSize: 12, opacity: 0.75, lineHeight: 17 },
+
+  stepList: { backgroundColor: brand.surface1, borderRadius: Radius.xl, borderWidth: 1, borderColor: brand.border1, padding: Spacing.three },
+
+  // Step row
+  srWrap:         { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two, paddingBottom: Spacing.three },
+  srLine:         { position: 'absolute', left: 16, top: 34, bottom: 0, width: 1, backgroundColor: brand.border1 },
+  srLineDone:     { backgroundColor: 'rgba(134,239,172,0.35)' },
+  srCircle:       { width: 33, height: 33, borderRadius: 17, borderWidth: 1, borderColor: brand.border1, backgroundColor: brand.surface2, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  srCircleDone:   { borderColor: 'rgba(134,239,172,0.40)', backgroundColor: 'rgba(134,239,172,0.10)' },
+  srCircleActive: { borderColor: 'rgba(255,255,255,0.30)', backgroundColor: 'rgba(255,255,255,0.10)' },
+  srCircleReview: { borderColor: 'rgba(96,165,250,0.40)',  backgroundColor: 'rgba(96,165,250,0.10)' },
+  srText:         { flex: 1, paddingTop: 4, gap: 2 },
+  srLabel:        { color: brand.creamMuted, fontSize: 14, fontWeight: '600' },
+  srLabelDone:    { color: '#86efac' },
+  srLabelActive:  { color: brand.cream },
+  srLabelReview:  { color: '#93c5fd' },
+  srSub:          { color: brand.creamMuted, fontSize: 11 },
+  srDoneBadge:    { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.pill, backgroundColor: 'rgba(134,239,172,0.10)', borderWidth: 1, borderColor: 'rgba(134,239,172,0.25)', marginTop: 6 },
+  srDoneBadgeText:{ color: '#86efac', fontSize: 10, fontWeight: '700' },
+
+  ctaBox:       { backgroundColor: brand.surface1, borderRadius: Radius.xl, borderWidth: 1, borderColor: brand.border1, padding: Spacing.three, gap: Spacing.three },
+  ctaHeader:    { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  ctaIconWrap:  { width: 40, height: 40, borderRadius: Radius.md, backgroundColor: brand.primaryGlow, alignItems: 'center', justifyContent: 'center' },
+  ctaStepLabel: { color: brand.creamMuted, fontSize: 10, fontWeight: '600', letterSpacing: 1.5 },
+  ctaTitle:     { color: brand.cream, fontSize: 15, fontWeight: '700' },
+  ctaBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: brand.primary, paddingVertical: 14, borderRadius: Radius.pill },
+  ctaBtnText:   { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  reviewBox:      { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two, backgroundColor: 'rgba(96,165,250,0.06)', borderRadius: Radius.xl, borderWidth: 1, borderColor: 'rgba(96,165,250,0.20)', padding: Spacing.three },
+  reviewIconWrap: { width: 36, height: 36, borderRadius: Radius.md, backgroundColor: 'rgba(96,165,250,0.10)', alignItems: 'center', justifyContent: 'center' },
+  reviewTitle:    { color: '#93c5fd', fontSize: 13, fontWeight: '700' },
+  reviewSub:      { color: brand.creamSub, fontSize: 12, lineHeight: 17 },
+  refreshRow:     { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  refreshText:    { color: brand.creamMuted, fontSize: 11 },
+
+  errorWrap: { alignItems: 'center', paddingTop: 40, gap: Spacing.two },
+  errorText: { color: brand.error, fontSize: 14, textAlign: 'center' },
+  retryBtn:  { paddingHorizontal: Spacing.three, paddingVertical: 10, borderRadius: Radius.pill, borderWidth: 1, borderColor: brand.border2 },
+  retryText: { color: brand.creamSub, fontSize: 14, fontWeight: '600' },
+});
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -66,11 +214,7 @@ function completedCount(kyc: VendorKycStatus | null): number {
 
 type Visual = 'done' | 'active' | 'pending';
 
-function stepVisual(
-  id: 'aadhaar' | 'pan' | 'face',
-  kyc: VendorKycStatus | null,
-  currentStep: string,
-): Visual {
+function stepVisual(id: 'aadhaar' | 'pan' | 'face', kyc: VendorKycStatus | null, currentStep: string): Visual {
   if (kyc?.[id]?.status === 'verified') return 'done';
   if (currentStep === id) return 'active';
   return 'pending';
@@ -85,76 +229,47 @@ function formatDate(iso: string | null): string {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StepRow({
-  step, visual, isLast,
-}: {
-  step: typeof IDENTITY_STEPS[number];
-  visual: Visual;
-  isLast: boolean;
-}) {
+function StepRow({ step, visual, isLast }: { step: typeof IDENTITY_STEPS[number]; visual: Visual; isLast: boolean }) {
+  const { brand } = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
   return (
-    <View style={sr.wrap}>
-      {/* Connector line */}
-      {!isLast && <View style={[sr.line, visual === 'done' && sr.lineDone]} />}
-
-      {/* Circle */}
-      <View style={[sr.circle, visual === 'done' && sr.circleDone, visual === 'active' && sr.circleActive]}>
-        {visual === 'done' ? (
-          <Ionicons name="checkmark" size={14} color="#86efac" />
-        ) : (
-          <Ionicons
-            name={step.icon}
-            size={14}
-            color={visual === 'active' ? Brand.cream : Brand.creamMuted}
-          />
-        )}
+    <View style={s.srWrap}>
+      {!isLast && <View style={[s.srLine, visual === 'done' && s.srLineDone]} />}
+      <View style={[s.srCircle, visual === 'done' && s.srCircleDone, visual === 'active' && s.srCircleActive]}>
+        {visual === 'done'
+          ? <Ionicons name="checkmark" size={14} color="#86efac" />
+          : <Ionicons name={step.icon} size={14} color={visual === 'active' ? brand.cream : brand.creamMuted} />}
       </View>
-
-      {/* Text */}
-      <View style={sr.text}>
-        <Text style={[sr.label, visual === 'done' && sr.labelDone, visual === 'active' && sr.labelActive]}>
+      <View style={s.srText}>
+        <Text style={[s.srLabel, visual === 'done' && s.srLabelDone, visual === 'active' && s.srLabelActive]}>
           {step.label}
         </Text>
-        <Text style={sr.sub}>
-          {visual === 'done' ? 'Verified' : visual === 'active' ? 'Up next' : 'Pending'}
-        </Text>
+        <Text style={s.srSub}>{visual === 'done' ? 'Verified' : visual === 'active' ? 'Up next' : 'Pending'}</Text>
       </View>
-
-      {/* Done checkmark badge */}
       {visual === 'done' && (
-        <View style={sr.doneBadge}>
-          <Text style={sr.doneBadgeText}>✓</Text>
-        </View>
+        <View style={s.srDoneBadge}><Text style={s.srDoneBadgeText}>✓</Text></View>
       )}
     </View>
   );
 }
 
 function ReviewRow({ visual }: { visual: Visual }) {
+  const { brand } = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
   return (
-    <View style={sr.wrap}>
-      <View style={[
-        sr.circle,
-        visual === 'done'   && sr.circleDone,
-        visual === 'active' && sr.circleReview,
-      ]}>
-        {visual === 'done' ? (
-          <Ionicons name="checkmark" size={14} color="#86efac" />
-        ) : visual === 'active' ? (
-          <View style={sr.pulseDot} />
-        ) : (
-          <Ionicons name="shield-checkmark-outline" size={14} color={Brand.creamMuted} />
-        )}
+    <View style={s.srWrap}>
+      <View style={[s.srCircle, visual === 'done' && s.srCircleDone, visual === 'active' && s.srCircleReview]}>
+        {visual === 'done'
+          ? <Ionicons name="checkmark" size={14} color="#86efac" />
+          : visual === 'active'
+            ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#60a5fa' }} />
+            : <Ionicons name="shield-checkmark-outline" size={14} color={brand.creamMuted} />}
       </View>
-      <View style={sr.text}>
-        <Text style={[
-          sr.label,
-          visual === 'done'   && sr.labelDone,
-          visual === 'active' && sr.labelReview,
-        ]}>
+      <View style={s.srText}>
+        <Text style={[s.srLabel, visual === 'done' && s.srLabelDone, visual === 'active' && s.srLabelReview]}>
           Admin review
         </Text>
-        <Text style={sr.sub}>
+        <Text style={s.srSub}>
           {visual === 'done' ? 'Card issued' : visual === 'active' ? 'Generating your card' : 'Pending'}
         </Text>
       </View>
@@ -162,22 +277,39 @@ function ReviewRow({ visual }: { visual: Visual }) {
   );
 }
 
-function DetailRow({
-  icon, label, value, last,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-  last?: boolean;
-}) {
+function DetailRow({ icon, label, value, last }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; last?: boolean }) {
+  const { brand } = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
   return (
-    <View style={[dr.row, !last && dr.border]}>
-      <View style={dr.iconWrap}>
-        <Ionicons name={icon} size={16} color={Brand.creamSub} />
+    <View style={[s.drRow, !last && s.drBorder]}>
+      <View style={s.drIconWrap}>
+        <Ionicons name={icon} size={16} color={brand.creamSub} />
       </View>
-      <View style={dr.textBlock}>
-        <Text style={dr.label}>{label}</Text>
-        <Text style={dr.value}>{value}</Text>
+      <View style={{ flex: 1, gap: 1 }}>
+        <Text style={s.drLabel}>{label}</Text>
+        <Text style={s.drValue}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Premium Card Presentation ───────────────────────────────────────────────
+
+function PremiumCardSection({ card, s, brand }: { card: RuxstarCardData; s: ReturnType<typeof createStyles>; brand: BrandTokens }) {
+  return (
+    <View style={s.cardSection}>
+      <View style={s.cardGlowWrap}>
+        <View style={s.cardGlow} />
+        <View style={s.cardInner}>
+          <RuxstarCard card={card} />
+        </View>
+      </View>
+      <View style={s.tierRow}>
+        <Text style={s.tierLabel}>Ruxstar Verified Member</Text>
+        <View style={s.verifiedBadge}>
+          <View style={s.verifiedDot} />
+          <Text style={s.verifiedText}>Verified</Text>
+        </View>
       </View>
     </View>
   );
@@ -190,50 +322,36 @@ export default function CardScreen() {
   const token       = useAuthStore((s) => s.token);
   const kycStatus   = useKycStore((s) => s.status);
   const fetchStatus = useKycStore((s) => s.fetchStatus);
+  const { brand }   = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
 
   const [card,        setCard]        = useState<RuxstarCardData | null>(null);
   const [cardLoading, setCardLoading] = useState(false);
   const [cardError,   setCardError]   = useState('');
   const [refreshing,  setRefreshing]  = useState(false);
-  // Gate: don't trust store until we've fetched fresh status for THIS user
   const [statusReady, setStatusReady] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Derived state — only valid after statusReady ───────────────────────────
   const currentStep = (statusReady && kycStatus) ? nextKycStep(kycStatus) : null;
   const isVerified  = currentStep === 'verified';
   const inReview    = currentStep === 'pending_review';
   const isRejected  = currentStep === 'rejected';
   const done        = completedCount(kycStatus);
 
-  const progress = isVerified
-    ? 100
-    : inReview ? 75
-    : Math.round((done / TOTAL_STEPS) * 100);
-
+  const progress      = isVerified ? 100 : inReview ? 75 : Math.round((done / TOTAL_STEPS) * 100);
   const stepsComplete = isVerified ? TOTAL_STEPS : inReview ? 3 : done;
-
   const reviewVisual: Visual = isVerified ? 'done' : inReview ? 'active' : 'pending';
+  const activeStep = IDENTITY_STEPS.find((step) => step.id === currentStep);
 
-  const activeStep = IDENTITY_STEPS.find((s) => s.id === currentStep);
-
-  // ── Initial load — always fetch fresh for the current user ───────────────
   useEffect(() => {
     if (!token) return;
-    setStatusReady(false); // show spinner until fresh data arrives
-    fetchStatus(token)
-      .catch(() => {})
-      .finally(() => setStatusReady(true));
+    setStatusReady(false);
+    fetchStatus(token).catch(() => {}).finally(() => setStatusReady(true));
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Reset card data when token changes (new user) ─────────────────────────
-  useEffect(() => {
-    setCard(null);
-    setCardError('');
-  }, [token]);
+  useEffect(() => { setCard(null); setCardError(''); }, [token]);
 
-  // ── Load card when verified ────────────────────────────────────────────────
   useEffect(() => {
     if (!token || !isVerified || card) return;
     setCardLoading(true);
@@ -243,85 +361,77 @@ export default function CardScreen() {
       .finally(() => setCardLoading(false));
   }, [token, isVerified]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Auto-poll while in review ──────────────────────────────────────────────
   useEffect(() => {
     if (!token || !inReview) {
       if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
       return;
     }
-    intervalRef.current = setInterval(() => {
-      fetchStatus(token).catch(() => {});
-    }, 15000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+    intervalRef.current = setInterval(() => { fetchStatus(token).catch(() => {}); }, 15000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [token, inReview]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Manual refresh ─────────────────────────────────────────────────────────
   async function handleRefresh() {
     if (!token || refreshing) return;
     setRefreshing(true);
     try { await fetchStatus(token); } finally { setRefreshing(false); }
   }
 
-  // ── Loading (no status yet) ────────────────────────────────────────────────
-  if (!kycStatus) {
+  if (!statusReady) {
     return (
-      <View style={[s.root, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={Brand.bg} />
-        <ScreenHeader />
+      <SafeAreaView style={s.root} edges={['top']}>
+        <VendorHeader />
         <View style={s.center}>
-          <ActivityIndicator color={Brand.primary} size="large" />
+          <ActivityIndicator color={brand.primary} size="large" />
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
-  // ── Verified: show card ────────────────────────────────────────────────────
   if (isVerified) {
     return (
-      <View style={[s.root, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={Brand.bg} />
-        <ScreenHeader verified />
+      <SafeAreaView style={s.root} edges={['top']}>
+        <VendorHeader />
         <ScrollView
           contentContainerStyle={[s.body, { paddingBottom: insets.bottom + 40 }]}
           showsVerticalScrollIndicator={false}
         >
           {cardLoading && (
             <View style={s.center}>
-              <ActivityIndicator color={Brand.primary} size="large" />
+              <ActivityIndicator color={brand.primary} size="large" />
               <Text style={s.loadingText}>Loading your card…</Text>
             </View>
           )}
-
           {!cardLoading && cardError ? (
             <Animated.View entering={FadeInDown.delay(60)} style={s.errorWrap}>
-              <Ionicons name="alert-circle-outline" size={28} color={Brand.error} />
+              <Ionicons name="alert-circle-outline" size={28} color={brand.error} />
               <Text style={s.errorText}>{cardError}</Text>
               <Pressable style={s.retryBtn} onPress={() => {
                 setCardError(''); setCardLoading(true);
-                KycService.getCard(token!)
-                  .then(setCard).catch((e) => setCardError(e.message)).finally(() => setCardLoading(false));
+                KycService.getCard(token!).then(setCard).catch((e) => setCardError(e.message)).finally(() => setCardLoading(false));
               }}>
                 <Text style={s.retryText}>Try again</Text>
               </Pressable>
             </Animated.View>
           ) : null}
-
           {!cardLoading && !cardError && card && (
-            <Animated.View entering={FadeInDown.delay(60)} style={s.cardWrap}>
-              <RuxstarCard card={card} />
+            <Animated.View entering={FadeInDown.delay(60)} style={{ gap: Spacing.three }}>
+              <PremiumCardSection card={card} s={s} brand={brand} />
 
               <View style={s.detailsCard}>
-                <DetailRow icon="person-outline"         label="Name"         value={card.name ?? '—'} />
-                {/* <DetailRow icon="phone-portrait-outline" label="Mobile"       value={card.mobile ? `+91 ${card.mobile}` : '—'} /> */}
-                <DetailRow icon="finger-print-outline"  label="Aadhaar"      value={card.aadhaar ?? '—'} />
-                <DetailRow icon="card-outline"          label="PAN"           value={card.pan ?? '—'} />
-                <DetailRow icon="calendar-outline"      label="Member Since"  value={formatDate(card.memberSince)} last />
+                <View style={s.detailsHeader}>
+                  <Ionicons name="lock-closed-outline" size={13} color={brand.creamMuted} />
+                  <Text style={s.detailsHeaderText}>Identity Details</Text>
+                </View>
+                <View style={s.detailsBody}>
+                  <DetailRow icon="person-outline"       label="Name"         value={card.name ?? '—'} />
+                  <DetailRow icon="finger-print-outline" label="Aadhaar"      value={card.aadhaar ?? '—'} />
+                  <DetailRow icon="card-outline"         label="PAN"          value={card.pan ?? '—'} />
+                  <DetailRow icon="calendar-outline"     label="Member Since" value={formatDate(card.memberSince)} last />
+                </View>
               </View>
 
               <View style={s.noteBox}>
-                <Ionicons name="shield-checkmark-outline" size={14} color={Brand.primary} />
+                <Ionicons name="shield-checkmark-outline" size={14} color={brand.primary} />
                 <Text style={s.noteText}>
                   Your identity is verified by DigiLocker & Ruxstar. This card is valid across all Ruxstar services.
                 </Text>
@@ -329,33 +439,25 @@ export default function CardScreen() {
             </Animated.View>
           )}
         </ScrollView>
-      </View>
+      </SafeAreaView>
     );
   }
 
-  // ── Not verified: step progress view ──────────────────────────────────────
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={Brand.bg} />
-      <ScreenHeader />
-
+    <SafeAreaView style={s.root} edges={['top']}>
+      <VendorHeader />
       <ScrollView
         contentContainerStyle={[s.body, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.delay(60)}>
 
-          {/* ── Header ──────────────────────────────────────────────── */}
           <View style={s.progressHeader}>
             <View style={{ flex: 1, gap: 3 }}>
               <Text style={s.kycLabel}>RUXSTAR CARD</Text>
-              <Text style={s.kycTitle}>
-                {inReview ? 'Generating your card' : 'Get your Ruxstar Card'}
-              </Text>
+              <Text style={s.kycTitle}>{inReview ? 'Generating your card' : 'Get your Ruxstar Card'}</Text>
               <Text style={s.kycSub}>
-                {inReview
-                  ? 'Step 4 — admin is reviewing your details.'
-                  : 'Complete 3 identity checks, then admin review.'}
+                {inReview ? 'Step 4 — admin is reviewing your details.' : 'Complete 3 identity checks, then admin review.'}
               </Text>
             </View>
             <View style={s.progressBadge}>
@@ -364,16 +466,10 @@ export default function CardScreen() {
             </View>
           </View>
 
-          {/* ── Progress bar ─────────────────────────────────────────── */}
           <View style={s.barTrack}>
-            <View style={[
-              s.barFill,
-              { width: `${progress}%` as any },
-              inReview && s.barFillReview,
-            ]} />
+            <View style={[s.barFill, { width: `${progress}%` as any }, inReview && { backgroundColor: '#60a5fa' }]} />
           </View>
 
-          {/* ── Rejection banner ─────────────────────────────────────── */}
           {isRejected && (
             <View style={s.rejectBanner}>
               <Ionicons name="warning-outline" size={20} color="#fca5a5" />
@@ -386,7 +482,6 @@ export default function CardScreen() {
             </View>
           )}
 
-          {/* ── Step list ────────────────────────────────────────────── */}
           <View style={s.stepList}>
             {IDENTITY_STEPS.map((step, i) => (
               <StepRow
@@ -399,31 +494,24 @@ export default function CardScreen() {
             <ReviewRow visual={reviewVisual} />
           </View>
 
-          {/* ── Active step CTA ──────────────────────────────────────── */}
           {activeStep && (
             <View style={s.ctaBox}>
               <View style={s.ctaHeader}>
                 <View style={s.ctaIconWrap}>
-                  <Ionicons name={activeStep.icon} size={18} color={Brand.primary} />
+                  <Ionicons name={activeStep.icon} size={18} color={brand.primary} />
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={s.ctaStepLabel}>
-                    Step {IDENTITY_STEPS.findIndex((x) => x.id === activeStep.id) + 1} of {TOTAL_STEPS}
-                  </Text>
+                  <Text style={s.ctaStepLabel}>Step {IDENTITY_STEPS.findIndex((x) => x.id === activeStep.id) + 1} of {TOTAL_STEPS}</Text>
                   <Text style={s.ctaTitle}>Verify your {activeStep.label}</Text>
                 </View>
               </View>
-              <Pressable
-                style={({ pressed }) => [s.ctaBtn, pressed && { opacity: 0.8 }]}
-                onPress={() => router.push(activeStep.route)}
-              >
+              <Pressable style={({ pressed }) => [s.ctaBtn, pressed && { opacity: 0.8 }]} onPress={() => router.push(activeStep.route)}>
                 <Text style={s.ctaBtnText}>{activeStep.btnLabel}</Text>
                 <Ionicons name="arrow-forward" size={16} color="#fff" />
               </Pressable>
             </View>
           )}
 
-          {/* ── In-review panel ──────────────────────────────────────── */}
           {inReview && (
             <View style={s.reviewBox}>
               <View style={s.reviewIconWrap}>
@@ -431,18 +519,10 @@ export default function CardScreen() {
               </View>
               <View style={{ flex: 1, gap: 4 }}>
                 <Text style={s.reviewTitle}>Admin is reviewing your submission</Text>
-                <Text style={s.reviewSub}>
-                  This usually takes a few minutes. Your card will appear here once approved.
-                </Text>
+                <Text style={s.reviewSub}>This usually takes a few minutes. Your card will appear here once approved.</Text>
                 <Pressable style={s.refreshRow} onPress={handleRefresh} disabled={refreshing}>
-                  <Ionicons
-                    name={refreshing ? 'hourglass-outline' : 'sync-outline'}
-                    size={13}
-                    color={Brand.creamMuted}
-                  />
-                  <Text style={s.refreshText}>
-                    {refreshing ? 'Checking…' : 'Checking automatically every 15 s'}
-                  </Text>
+                  <Ionicons name={refreshing ? 'hourglass-outline' : 'sync-outline'} size={13} color={brand.creamMuted} />
+                  <Text style={s.refreshText}>{refreshing ? 'Checking…' : 'Checking automatically every 15 s'}</Text>
                 </Pressable>
               </View>
             </View>
@@ -450,234 +530,6 @@ export default function CardScreen() {
 
         </Animated.View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
-
-// ─── Screen Header ────────────────────────────────────────────────────────────
-
-function ScreenHeader({ verified }: { verified?: boolean }) {
-  return (
-    <View style={s.header}>
-      <Text style={s.headerTitle}>Ruxstar Card</Text>
-      {verified && (
-        <View style={s.verifiedChip}>
-          <View style={s.verifiedDot} />
-          <Text style={s.verifiedChipText}>Verified</Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const sr = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two,
-    paddingBottom: Spacing.three,
-  },
-  line: {
-    position: 'absolute',
-    left: 16,
-    top: 34,
-    bottom: 0,
-    width: 1,
-    backgroundColor: Brand.border1,
-  },
-  lineDone: { backgroundColor: 'rgba(134,239,172,0.35)' },
-
-  circle: {
-    width: 33, height: 33,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: Brand.border1,
-    backgroundColor: Brand.surface2,
-    alignItems: 'center', justifyContent: 'center',
-    marginTop: 2,
-  },
-  circleDone:   { borderColor: 'rgba(134,239,172,0.40)', backgroundColor: 'rgba(134,239,172,0.10)' },
-  circleActive: { borderColor: 'rgba(255,255,255,0.30)', backgroundColor: 'rgba(255,255,255,0.10)' },
-  circleReview: { borderColor: 'rgba(96,165,250,0.40)',  backgroundColor: 'rgba(96,165,250,0.10)' },
-
-  pulseDot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: '#60a5fa',
-  },
-
-  text: { flex: 1, paddingTop: 4, gap: 2 },
-  label:       { color: Brand.creamMuted, fontSize: 14, fontWeight: '600' },
-  labelDone:   { color: '#86efac' },
-  labelActive: { color: Brand.cream },
-  labelReview: { color: '#93c5fd' },
-  sub:         { color: Brand.creamMuted, fontSize: 11 },
-
-  doneBadge: {
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: Radius.pill,
-    backgroundColor: 'rgba(134,239,172,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(134,239,172,0.25)',
-    marginTop: 6,
-  },
-  doneBadgeText: { color: '#86efac', fontSize: 10, fontWeight: '700' },
-});
-
-const dr = StyleSheet.create({
-  row:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: Spacing.two },
-  border:    { borderBottomWidth: 1, borderBottomColor: Brand.border1 },
-  iconWrap:  {
-    width: 32, height: 32, borderRadius: Radius.sm,
-    backgroundColor: Brand.surface2,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  textBlock: { flex: 1, gap: 1 },
-  label:     { color: Brand.creamMuted, fontSize: 11, letterSpacing: 0.3 },
-  value:     { color: Brand.cream, fontSize: 14, fontWeight: '600', fontFamily: 'monospace' },
-});
-
-const s = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: Brand.bg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-    borderBottomWidth: 1,
-    borderBottomColor: Brand.border1,
-  },
-  headerTitle:    { color: Brand.cream, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
-  verifiedChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: Radius.pill,
-    backgroundColor: 'rgba(134,239,172,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(134,239,172,0.25)',
-  },
-  verifiedDot:      { width: 6, height: 6, borderRadius: 3, backgroundColor: '#86efac' },
-  verifiedChipText: { color: '#86efac', fontSize: 11, fontWeight: '700' },
-
-  body: { padding: Spacing.four, gap: Spacing.four },
-  loadingText: { color: Brand.creamSub, fontSize: 14 },
-
-  // ── Progress header ──────────────────────────────────────────────────────
-  progressHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.three, marginBottom: Spacing.two },
-  kycLabel:  { color: Brand.creamMuted, fontSize: 10, fontWeight: '700', letterSpacing: 2 },
-  kycTitle:  { color: Brand.cream, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
-  kycSub:    { color: Brand.creamSub, fontSize: 13, lineHeight: 19 },
-  progressBadge: { alignItems: 'flex-end', paddingTop: 2 },
-  progressPct:   { color: Brand.cream, fontSize: 22, fontWeight: '800' },
-  progressSteps: { color: Brand.creamMuted, fontSize: 11 },
-
-  // ── Progress bar ─────────────────────────────────────────────────────────
-  barTrack: {
-    height: 4, borderRadius: 4,
-    backgroundColor: Brand.surface2,
-    overflow: 'hidden',
-    marginBottom: Spacing.two,
-  },
-  barFill: {
-    height: '100%', borderRadius: 4,
-    backgroundColor: Brand.primary,
-  },
-  barFillReview: { backgroundColor: '#60a5fa' },
-
-  // ── Rejection banner ─────────────────────────────────────────────────────
-  rejectBanner: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two,
-    backgroundColor: 'rgba(220,38,38,0.08)',
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(220,38,38,0.25)',
-    padding: Spacing.three,
-    marginBottom: Spacing.two,
-  },
-  rejectTitle: { color: '#fca5a5', fontSize: 13, fontWeight: '700' },
-  rejectSub:   { color: '#fca5a5', fontSize: 12, opacity: 0.75, lineHeight: 17 },
-
-  // ── Step list ────────────────────────────────────────────────────────────
-  stepList: {
-    backgroundColor: Brand.surface1,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Brand.border1,
-    padding: Spacing.three,
-  },
-
-  // ── Active step CTA ──────────────────────────────────────────────────────
-  ctaBox: {
-    backgroundColor: Brand.surface1,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Brand.border1,
-    padding: Spacing.three,
-    gap: Spacing.three,
-  },
-  ctaHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  ctaIconWrap: {
-    width: 40, height: 40, borderRadius: Radius.md,
-    backgroundColor: Brand.primaryGlow,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  ctaStepLabel: { color: Brand.creamMuted, fontSize: 10, fontWeight: '600', letterSpacing: 1.5 },
-  ctaTitle:     { color: Brand.cream, fontSize: 15, fontWeight: '700' },
-  ctaBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: Brand.primary,
-    paddingVertical: 14,
-    borderRadius: Radius.pill,
-  },
-  ctaBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-
-  // ── Review panel ─────────────────────────────────────────────────────────
-  reviewBox: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two,
-    backgroundColor: 'rgba(96,165,250,0.06)',
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(96,165,250,0.20)',
-    padding: Spacing.three,
-  },
-  reviewIconWrap: {
-    width: 36, height: 36, borderRadius: Radius.md,
-    backgroundColor: 'rgba(96,165,250,0.10)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  reviewTitle: { color: '#93c5fd', fontSize: 13, fontWeight: '700' },
-  reviewSub:   { color: Brand.creamSub, fontSize: 12, lineHeight: 17 },
-  refreshRow:  { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  refreshText: { color: Brand.creamMuted, fontSize: 11 },
-
-  // ── Verified card ────────────────────────────────────────────────────────
-  errorWrap: { alignItems: 'center', paddingTop: 40, gap: Spacing.two },
-  errorText: { color: Brand.error, fontSize: 14, textAlign: 'center' },
-  retryBtn:  {
-    paddingHorizontal: Spacing.three, paddingVertical: 10,
-    borderRadius: Radius.pill, borderWidth: 1, borderColor: Brand.border2,
-  },
-  retryText: { color: Brand.creamSub, fontSize: 14, fontWeight: '600' },
-
-  cardWrap:    { gap: Spacing.three },
-  detailsCard: {
-    backgroundColor: Brand.surface1,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Brand.border1,
-    paddingHorizontal: Spacing.three,
-  },
-  noteBox: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: Brand.primaryGlow,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(124,58,237,0.15)',
-    padding: Spacing.three,
-  },
-  noteText: { color: Brand.creamSub, fontSize: 12, lineHeight: 18, flex: 1 },
-});
