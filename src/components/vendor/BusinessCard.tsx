@@ -213,7 +213,10 @@ export default function BusinessCard({ business, onRemove, removing, onThumbnail
         params: { businessId: business.id, businessName: business.name },
       } as never);
     } else if (action === 'commerce-orders') {
-      router.push('/(vendor)/commerce-orders' as never);
+      router.push({
+        pathname: '/(vendor)/commerce-orders',
+        params: { businessId: business.id },
+      } as never);
     } else if (action === 'offers') {
       router.push('/(vendor)/offers' as never);
     } else if (action === 'add-event') {

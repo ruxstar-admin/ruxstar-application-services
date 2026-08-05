@@ -34,6 +34,7 @@ import { useKycStore } from '@/stores/kyc-store';
 import { useBusinessStore } from '@/stores/business-store';
 import { useTheme } from '@/hooks/useTheme';
 import VendorHeader from '@/components/vendor/VendorHeader';
+import DropdownPicker, { type DropdownOption } from '@/components/ui/DropdownPicker';
 import {
   listVendorCommerceProducts,
   createCommerceProduct,
@@ -294,47 +295,6 @@ const pc = StyleSheet.create({
   footerDivider:{ width: 1 },
 });
 
-// ─── Business Picker ──────────────────────────────────────────────────────────
-
-function BusinessPicker({
-  businesses,
-  selected,
-  onSelect,
-}: {
-  businesses: { id: string; name: string }[];
-  selected:   string;
-  onSelect:   (id: string) => void;
-}) {
-  const { brand } = useTheme();
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: Spacing.two, paddingHorizontal: Spacing.four, paddingVertical: Spacing.two }}
-    >
-      {businesses.map((b) => {
-        const active = b.id === selected;
-        return (
-          <Pressable
-            key={b.id}
-            style={[bp.chip, {
-              backgroundColor: active ? brand.primary : brand.surface1,
-              borderColor:     active ? brand.primary : brand.border1,
-            }]}
-            onPress={() => onSelect(b.id)}
-          >
-            <Text style={[bp.chipText, { color: active ? '#fff' : brand.creamSub }]}>{b.name}</Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-const bp = StyleSheet.create({
-  chip:     { borderRadius: Radius.pill, borderWidth: 1, paddingHorizontal: Spacing.three, paddingVertical: 7 },
-  chipText: { fontSize: 12, fontWeight: '600' },
-});
 
 // ─── KYC Gate ─────────────────────────────────────────────────────────────────
 
@@ -390,6 +350,11 @@ export default function ProductsScreen() {
   const [saveError,   setSaveError]   = useState('');
 
   const activeBusinessId = selectedId || commerceBusinesses[0]?.id || '';
+
+  const businessOptions = useMemo<DropdownOption[]>(
+    () => commerceBusinesses.map((b) => ({ value: b.id, label: b.name })),
+    [commerceBusinesses],
+  );
 
   useFocusEffect(useCallback(() => {
     if (!token) return;
@@ -511,11 +476,13 @@ export default function ProductsScreen() {
       ) : (
         <>
           {commerceBusinesses.length > 1 && (
-            <BusinessPicker
-              businesses={commerceBusinesses}
-              selected={activeBusinessId}
-              onSelect={setSelectedId}
-            />
+            <View style={[s.dropdownRow, { borderBottomColor: brand.border1 }]}>
+              <DropdownPicker
+                options={businessOptions}
+                value={activeBusinessId}
+                onChange={setSelectedId}
+              />
+            </View>
           )}
 
           <FlatList
@@ -597,9 +564,10 @@ export default function ProductsScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  screen:   { flex: 1 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four, gap: Spacing.two },
-  list:     { padding: Spacing.four, paddingBottom: 100 },
+  screen:     { flex: 1 },
+  centered:   { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four, gap: Spacing.two },
+  list:       { padding: Spacing.four, paddingBottom: 100 },
+  dropdownRow: { flexDirection: 'row', paddingHorizontal: Spacing.four, paddingVertical: Spacing.two, borderBottomWidth: 1 },
 
   listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.two },
   listTitle:  { fontSize: 15, fontWeight: '700' },
