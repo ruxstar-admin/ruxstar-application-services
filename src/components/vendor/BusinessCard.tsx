@@ -27,7 +27,8 @@ import type { BrandTokens } from '@/hooks/useTheme';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 type ActionType = 'calendar' | 'setup' | 'add-event' | 'manage-registrations'
-               | 'appointments-board' | 'coming-soon' | 'print-orders';
+               | 'appointments-board' | 'coming-soon' | 'print-orders'
+               | 'commerce-orders' | 'offers';
 
 function getAction(b: Business, eventCount = 0): ActionType {
   // Events module — "Manage registrations" when events exist, else "Add Event"
@@ -35,6 +36,10 @@ function getAction(b: Business, eventCount = 0): ActionType {
   if (b.setupComplete || b.status === 'live') {
     // Print shops → view print orders
     if (b.module === 'print') return 'print-orders';
+    // Commerce shops → view orders
+    if (b.module === 'commerce') return 'commerce-orders';
+    // Creator businesses → manage offers
+    if (b.module === 'creator') return 'offers';
     // Service businesses (salon/clinic/coaching) → appointments board
     if (isServiceType(b.typeId)) return 'appointments-board';
     // All other live businesses (turf, venue, sports) → slot calendar
@@ -207,6 +212,10 @@ export default function BusinessCard({ business, onRemove, removing, onThumbnail
         pathname: '/(vendor)/appointments-board',
         params: { businessId: business.id, businessName: business.name },
       } as never);
+    } else if (action === 'commerce-orders') {
+      router.push('/(vendor)/commerce-orders' as never);
+    } else if (action === 'offers') {
+      router.push('/(vendor)/offers' as never);
     } else if (action === 'add-event') {
       router.push({
         pathname: '/(vendor)/create-event',
@@ -307,7 +316,8 @@ export default function BusinessCard({ business, onRemove, removing, onThumbnail
         <Pressable
           style={[
             s.actionBtn,
-            (action === 'calendar' || action === 'appointments-board' || action === 'print-orders') && s.actionBtnCalendar,
+            (action === 'calendar' || action === 'appointments-board' || action === 'print-orders' ||
+              action === 'commerce-orders' || action === 'offers') && s.actionBtnCalendar,
             (action === 'add-event' || action === 'manage-registrations') && s.actionBtnEvent,
             action === 'coming-soon' && s.actionBtnMuted,
           ]}
@@ -319,6 +329,8 @@ export default function BusinessCard({ business, onRemove, removing, onThumbnail
               action === 'calendar'             ? 'calendar-outline'  :
               action === 'appointments-board'   ? 'people-outline'    :
               action === 'print-orders'         ? 'print-outline'     :
+              action === 'commerce-orders'      ? 'cart-outline'      :
+              action === 'offers'               ? 'megaphone-outline' :
               action === 'setup'                ? 'construct-outline' :
               action === 'add-event'            ? 'ticket-outline'    :
               action === 'manage-registrations' ? 'list-outline'      :
@@ -326,7 +338,8 @@ export default function BusinessCard({ business, onRemove, removing, onThumbnail
             }
             size={14}
             color={
-              action === 'calendar' || action === 'appointments-board' || action === 'print-orders' ? brand.primary :
+              action === 'calendar' || action === 'appointments-board' || action === 'print-orders' ||
+              action === 'commerce-orders' || action === 'offers'                                    ? brand.primary :
               action === 'add-event' || action === 'manage-registrations'                           ? brand.primary :
               action === 'setup'                                                                    ? brand.warning :
                                                                                                      brand.creamMuted
@@ -334,13 +347,16 @@ export default function BusinessCard({ business, onRemove, removing, onThumbnail
           />
           <Text style={[
             s.actionBtnText,
-            (action === 'calendar' || action === 'appointments-board' || action === 'print-orders') && s.actionBtnTextCalendar,
+            (action === 'calendar' || action === 'appointments-board' || action === 'print-orders' ||
+              action === 'commerce-orders' || action === 'offers') && s.actionBtnTextCalendar,
             (action === 'add-event' || action === 'manage-registrations') && s.actionBtnTextCalendar,
             action === 'coming-soon' && s.actionBtnTextMuted,
           ]}>
             {action === 'calendar'             ? 'View Calendar'        :
              action === 'appointments-board'   ? 'View Appointments'    :
              action === 'print-orders'         ? 'Print Orders'         :
+             action === 'commerce-orders'      ? 'View Orders'          :
+             action === 'offers'               ? 'Manage Offers'        :
              action === 'setup'                ? 'Finish Setup'         :
              action === 'add-event'            ? 'Add Event'            :
              action === 'manage-registrations' ? 'Manage Registrations' :
@@ -352,6 +368,7 @@ export default function BusinessCard({ business, onRemove, removing, onThumbnail
               size={13}
               color={
                 action === 'calendar' || action === 'appointments-board' || action === 'print-orders' ||
+                action === 'commerce-orders' || action === 'offers' ||
                 action === 'add-event' || action === 'manage-registrations'
                   ? brand.primary
                   : brand.warning
