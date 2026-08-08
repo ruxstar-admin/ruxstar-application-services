@@ -112,9 +112,9 @@ export default function VendorProfileScreen() {
 
   const MENU_ITEMS: MenuItem[] = [
     { icon: 'business-outline',       label: 'Business Profile',  sub: 'Name, category, GST' },
-    { icon: 'card-outline',           label: 'Payment Settings',  sub: 'Bank account, UPI' },
+    { icon: 'card-outline',           label: 'Payment Settings',  sub: 'Bank account, UPI', onPress: () => router.push('/(vendor)/withdrawals' as never) },
     { icon: 'notifications-outline',  label: 'Notifications',     sub: 'Orders, reviews, promotions' },
-    { icon: 'help-circle-outline',    label: 'Help & Support',    sub: 'FAQs, contact us' },
+    { icon: 'help-circle-outline',    label: 'Help & Support',    sub: 'Raise a ticket, chat with support', onPress: () => router.push('/(vendor)/support' as never) },
   ];
 
   return (

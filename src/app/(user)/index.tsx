@@ -31,6 +31,7 @@ import {
   type PublicBusiness,
   type PublicEvent,
 } from '@/services/booking-service';
+import { listPublicCreatorOffers, type CreatorOffer } from '@/services/creator-offer-service';
 import ThemeToggle from '@/components/atoms/ThemeToggle';
 import SectionHeader from '@/components/atoms/SectionHeader';
 import CategoryTile from '@/components/molecules/CategoryTile';
@@ -103,6 +104,59 @@ const evStyles = StyleSheet.create({
   rowText:    { fontSize: 11, flex: 1 },
 });
 
+// ─── Creator offer card (horizontal strip) ───────────────────────────────────
+
+function creatorKindLabel(kind: string): string {
+  if (kind === 'shoutout')   return 'Shoutout';
+  if (kind === 'appearance') return 'Appearance';
+  return 'Collab';
+}
+
+function CreatorOfferCard({ offer }: { offer: CreatorOffer }) {
+  const { brand } = useTheme();
+  const [imgErr, setImgErr] = useState(false);
+  const isFree = offer.price <= 0;
+  const isFull = offer.spotsLeft === 0;
+
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        evStyles.card,
+        { backgroundColor: brand.surface1, borderColor: brand.border1, opacity: pressed ? 0.85 : 1 },
+      ]}
+      onPress={() => router.push({ pathname: '/(user)/creator-offer', params: { id: offer.id } } as never)}
+    >
+      <View style={evStyles.coverWrap}>
+        {offer.coverUrl && !imgErr ? (
+          <Image source={{ uri: offer.coverUrl }} style={evStyles.cover} resizeMode="cover" onError={() => setImgErr(true)} />
+        ) : (
+          <View style={[evStyles.fallback, { backgroundColor: brand.primaryGlow }]}>
+            <Text style={{ fontSize: 36 }}>✨</Text>
+          </View>
+        )}
+        <View style={evStyles.feeBadge}>
+          <Text style={evStyles.feeBadgeText}>{isFree ? 'Free' : `₹${offer.price.toLocaleString('en-IN')}`}</Text>
+        </View>
+        {isFull && (
+          <View style={[evStyles.statusBadge, { backgroundColor: 'rgba(220,38,38,0.85)' }]}>
+            <Text style={evStyles.statusText}>Full</Text>
+          </View>
+        )}
+      </View>
+      <View style={evStyles.body}>
+        <Text style={[evStyles.title, { color: brand.cream }]} numberOfLines={2}>{offer.title}</Text>
+        <Text style={[evStyles.biz, { color: brand.primary }]} numberOfLines={1}>{offer.businessName}</Text>
+        <View style={evStyles.row}>
+          <Ionicons name="pricetag-outline" size={11} color={brand.creamMuted} />
+          <Text style={[evStyles.rowText, { color: brand.creamSub }]} numberOfLines={1}>
+            {creatorKindLabel(offer.kind)}
+          </Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function SkeletonRow() {
@@ -136,8 +190,9 @@ const skStyles = StyleSheet.create({
 export default function UserHomeScreen() {
   const { brand } = useTheme();
 
-  const [businesses, setBusinesses] = useState<PublicBusiness[]>([]);
-  const [events,     setEvents]     = useState<PublicEvent[]>([]);
+  const [businesses,    setBusinesses]    = useState<PublicBusiness[]>([]);
+  const [events,        setEvents]        = useState<PublicEvent[]>([]);
+  const [creatorOffers, setCreatorOffers] = useState<CreatorOffer[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error,      setError]      = useState<string | null>(null);
@@ -147,12 +202,14 @@ export default function UserHomeScreen() {
     try {
       isRefresh ? setRefreshing(true) : setLoading(true);
       setError(null);
-      const [bizList, eventList] = await Promise.all([
+      const [bizList, eventList, offerList] = await Promise.all([
         listPublicBusinesses(),
         listPublicEvents(),
+        listPublicCreatorOffers().catch(() => []), // non-critical — don't block the feed
       ]);
       setBusinesses(bizList);
       setEvents(eventList);
+      setCreatorOffers(offerList);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -213,6 +270,12 @@ export default function UserHomeScreen() {
     if (!q) return events;
     return events.filter((e) => [e.title, e.businessName, e.venue].some((v) => v?.toLowerCase().includes(q)));
   }, [events, search]);
+
+  const filteredCreatorOffers = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return creatorOffers;
+    return creatorOffers.filter((o) => [o.title, o.businessName].some((v) => v?.toLowerCase().includes(q)));
+  }, [creatorOffers, search]);
 
   function goToVenue(biz: PublicBusiness) {
     router.push({ pathname: '/(user)/venue-detail', params: { businessId: biz.id } } as never);
@@ -302,6 +365,20 @@ export default function UserHomeScreen() {
         </View>
       )}
 
+      {/* Creators & influencers strip */}
+      {!search && filteredCreatorOffers.length > 0 && (
+        <View style={s.section}>
+          <SectionHeader title="Creators & Influencers" />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.hScroll}
+          >
+            {filteredCreatorOffers.map((o) => <CreatorOfferCard key={o.id} offer={o} />)}
+          </ScrollView>
+        </View>
+      )}
+
       {/* All venues header */}
       <View style={s.section}>
         <SectionHeader
@@ -310,7 +387,7 @@ export default function UserHomeScreen() {
         />
       </View>
     </>
-  ), [bannerVenues, categories, filteredEvents, search, s]);
+  ), [bannerVenues, categories, filteredEvents, filteredCreatorOffers, search, s]);
 
   return (
     <SafeAreaView style={[s.screen]} edges={['top']}>

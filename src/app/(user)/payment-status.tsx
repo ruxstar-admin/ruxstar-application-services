@@ -1,6 +1,6 @@
 /**
  * Payment Status Screen
- * Route: /(user)/payment-status?bookingId=<id>&kind=booking|event
+ * Route: /(user)/payment-status?bookingId=<id>&kind=booking|event|creator
  *
  * Polls the booking or event registration until status = confirmed + paymentStatus = paid
  * (or until 20 attempts / 40 seconds).
@@ -36,7 +36,9 @@ type ScreenState = 'loading' | 'success' | 'failed' | 'timeout';
 async function fetchBookingStatus(bookingId: string, kind: string, token: string): Promise<'confirmed' | 'pending' | 'failed'> {
   const endpoint = kind === 'event'
     ? `user/event-registrations/${encodeURIComponent(bookingId)}`
-    : `user/bookings/${encodeURIComponent(bookingId)}`;
+    : kind === 'creator'
+      ? `user/creator-bookings/${encodeURIComponent(bookingId)}`
+      : `user/bookings/${encodeURIComponent(bookingId)}`;
 
   const res = await fetch(`${API_URL}/${endpoint}`, {
     headers: { Authorization: `Bearer ${token}` },

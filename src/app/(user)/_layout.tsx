@@ -138,6 +138,10 @@ export default function UserLayout() {
         options={{ href: null, tabBarStyle: { display: 'none' } }}
       />
       <Tabs.Screen
+        name="creator-offer"
+        options={{ href: null, tabBarStyle: { display: 'none' } }}
+      />
+      <Tabs.Screen
         name="book"
         options={{ href: null, tabBarStyle: { display: 'none' } }}
       />
