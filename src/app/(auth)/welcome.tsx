@@ -12,7 +12,6 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { VideoView, useVideoPlayer } from "expo-video";
 import Animated, {
   FadeIn,
   FadeInUp,
@@ -21,8 +20,6 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { Spacing, Radius } from "@/constants/theme";
-
-const BG_VIDEO = require("../../../assets/backgorund_white.mp4");
 
 const C = {
   bg: "#FFFFFF",
@@ -114,27 +111,12 @@ function Btn({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function WelcomeScreen() {
-  // Background video — looping, muted, auto-play
-  const player = useVideoPlayer(BG_VIDEO, (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
-  });
-
+  // Background video is rendered once by the parent (auth) layout
+  // (AuthBackgroundVideo) so it never restarts when navigating here.
 
   return (
     <View style={s.root}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-
-      {/* ── Full-screen looping video background ── */}
-      <VideoView
-        player={player}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        nativeControls={false}
-        allowsPictureInPicture={false}
-      />
-
 
       <SafeAreaView style={s.safe}>
         {/* ── Logo ── */}
@@ -192,7 +174,7 @@ export default function WelcomeScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.bg },
+  root: { flex: 1, backgroundColor: "transparent" },
 
   safe: { flex: 1 },
 

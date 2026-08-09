@@ -244,7 +244,11 @@ function NewTicketModal({
             <View style={s.handle} />
             <View style={s.sheetHeader}>
               <Text style={s.sheetTitle}>New support ticket</Text>
-              <Pressable onPress={handleClose} style={s.closeBtn} disabled={saving}>
+              <Pressable
+                onPress={handleClose}
+                style={({ pressed }) => [s.closeBtn, pressed && { opacity: 0.7 }]}
+                disabled={saving}
+              >
                 <Text style={s.closeBtnText}>✕</Text>
               </Pressable>
             </View>
@@ -271,7 +275,7 @@ function NewTicketModal({
                     return (
                       <Pressable
                         key={c.id}
-                        style={[s.catChip, active && s.catChipActive]}
+                        style={({ pressed }) => [s.catChip, active && s.catChipActive, pressed && { opacity: 0.7 }]}
                         onPress={() => setCategory(c.id)}
                         disabled={saving}
                       >
@@ -300,10 +304,18 @@ function NewTicketModal({
               {err ? <Text style={s.modalError}>{err}</Text> : null}
 
               <View style={s.actions}>
-                <Pressable style={s.cancelBtn} onPress={handleClose} disabled={saving}>
+                <Pressable
+                  style={({ pressed }) => [s.cancelBtn, pressed && { opacity: 0.7 }]}
+                  onPress={handleClose}
+                  disabled={saving}
+                >
                   <Text style={s.cancelText}>Cancel</Text>
                 </Pressable>
-                <Pressable style={[s.submitBtn, saving && s.submitBtnDisabled]} onPress={submit} disabled={saving}>
+                <Pressable
+                  style={({ pressed }) => [s.submitBtn, saving && s.submitBtnDisabled, pressed && { opacity: 0.7 }]}
+                  onPress={submit}
+                  disabled={saving}
+                >
                   {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.submitText}>Create ticket</Text>}
                 </Pressable>
               </View>
@@ -354,7 +366,10 @@ export default function VendorSupportScreen() {
       <VendorHeader />
 
       <View style={s.newBtnRow}>
-        <Pressable style={s.newBtn} onPress={() => setComposerOpen(true)}>
+        <Pressable
+          style={({ pressed }) => [s.newBtn, pressed && { opacity: 0.7 }]}
+          onPress={() => setComposerOpen(true)}
+        >
           <Ionicons name="add" size={16} color="#fff" />
           <Text style={s.newBtnText}>New ticket</Text>
         </Pressable>
@@ -367,7 +382,7 @@ export default function VendorSupportScreen() {
       ) : error ? (
         <View style={s.centered}>
           <Text style={s.errorText}>{error}</Text>
-          <Pressable style={s.retryBtn} onPress={() => load()}>
+          <Pressable style={({ pressed }) => [s.retryBtn, pressed && { opacity: 0.7 }]} onPress={() => load()}>
             <Ionicons name="refresh-outline" size={14} color="#fff" />
             <Text style={s.retryBtnText}>Retry</Text>
           </Pressable>

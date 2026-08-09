@@ -248,6 +248,25 @@ export async function updateBusinessStatus(
   return b;
 }
 
+export interface BusinessProfilePatch {
+  name?:        string;
+  phone?:       string;
+  address?:     string;
+  description?: string;
+}
+
+/** PATCH /vendor/businesses/:id — edit name/phone/address/description without recreating the business */
+export async function updateVendorBusiness(
+  token: string,
+  id: string,
+  profilePatch: BusinessProfilePatch,
+): Promise<Business> {
+  const data = await patch<unknown>(`vendor/businesses/${id}`, token, profilePatch);
+  const b    = normalizeBusiness(asRec(data).business ?? data);
+  if (!b) throw new Error('Invalid response from server');
+  return b;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function moduleLabel(

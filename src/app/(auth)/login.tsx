@@ -1,22 +1,22 @@
 /**
- * Login Screen — robot speaks based on form state (mirrors web frontend)
+ * Login Screen
  */
 
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, StatusBar,
+  View, Text, StyleSheet,
   KeyboardAvoidingView, Platform, Pressable,
   TouchableWithoutFeedback, Keyboard, ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import AuthVideoBackdrop from '@/components/auth/AuthVideoBackdrop';
+import AuthGlassCard from '@/components/auth/AuthGlassCard';
 import PhoneInput from '@/components/auth/PhoneInput';
-import { LoginRobot } from '@/components/auth/LoginRobot';
 import InputField from '@/components/ui/InputField';
 import PrimaryButton from '@/components/ui/PrimaryButton';
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useAuthStore, setPendingLoginRoute } from '@/stores/auth-store';
 import { useKycStore } from '@/stores/kyc-store';
 import { useBusinessStore } from '@/stores/business-store';
@@ -31,7 +31,6 @@ function isValidPhone(digits: string) {
 }
 
 export default function LoginScreen() {
-  const insets = useSafeAreaInsets();
   const { setAuth, setLoading, isLoading, setPendingPhone } = useAuthStore();
   const resetKyc = useKycStore((s) => s.reset);
   const resetBusiness  = useBusinessStore((s) => s.reset);
@@ -44,15 +43,11 @@ export default function LoginScreen() {
   const [phoneError, setPhoneError] = useState('');
   const [passError,  setPassError]  = useState('');
   const [error,      setError]      = useState('');
-  const [shake,      setShake]      = useState(false);   // ← robot shake
 
   const phoneValid = isValidPhone(phone) && phone.length <= 10;
 
-  // Trigger robot shake + show error (mirrors web "fail" function)
   function fail(msg: string) {
     setError(msg);
-    setShake(true);
-    setTimeout(() => setShake(false), 500);
   }
 
   const handlePhoneChange = useCallback((text: string, full: string) => {
@@ -135,60 +130,45 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={Brand.bg} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.flex}>
+    <AuthVideoBackdrop onBack={() => router.back()}>
+      <KeyboardAvoidingView
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -100}
+        style={s.flex}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
-            contentContainerStyle={[
-              s.content,
-              { paddingTop: insets.top + Spacing.three, paddingBottom: insets.bottom + Spacing.five },
-            ]}
+            contentContainerStyle={s.content}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
 
-            {/* Back */}
-            <Animated.View entering={FadeInDown.delay(50).duration(400)}>
-              <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
-                <Text style={s.backArrow}>←</Text>
-              </Pressable>
+            {/* Hero — directly on the video */}
+            <Animated.View entering={FadeInDown.delay(80).duration(500)} style={s.hero}>
+              <Text style={s.title}>Sign in to Ruxstar</Text>
+              <Text style={s.subtitle}>Welcome back — enter your details to continue.</Text>
             </Animated.View>
 
-            {/* Robot — speaks based on mode / loading / error */}
-            <Animated.View entering={FadeInDown.delay(100).duration(600)}>
-              <LoginRobot
-                mode={mode}
-                otpStep={0}
-                loading={isLoading}
-                shake={shake}
-                error={error}
-                size="sm"
-              />
-            </Animated.View>
+            {/* Glass card — form */}
+            <AuthGlassCard delay={200}>
+              <View style={s.toggle}>
+                {(['password', 'otp'] as Mode[]).map((m) => (
+                  <Pressable
+                    key={m}
+                    onPress={() => switchMode(m)}
+                    style={[s.toggleTab, mode === m && s.toggleTabActive]}>
+                    <Text style={[s.toggleLabel, mode === m && s.toggleLabelActive]}>
+                      {m === 'password' ? 'Password' : 'OTP'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
 
-            {/* Mode toggle */}
-            <Animated.View entering={FadeInDown.delay(280).duration(500)} style={s.toggle}>
-              {(['password', 'otp'] as Mode[]).map((m) => (
-                <Pressable
-                  key={m}
-                  onPress={() => switchMode(m)}
-                  style={[s.toggleTab, mode === m && s.toggleTabActive]}>
-                  <Text style={[s.toggleLabel, mode === m && s.toggleLabelActive]}>
-                    {m === 'password' ? 'Password' : 'OTP'}
-                  </Text>
-                </Pressable>
-              ))}
-            </Animated.View>
-
-            {/* Form */}
-            <Animated.View entering={FadeInUp.delay(360).duration(500)} style={s.form}>
               <View>
                 <Text style={s.fieldLabel}>Mobile Number</Text>
                 <PhoneInput
                   value={phone}
                   onChangeText={handlePhoneChange}
                   error={phoneError}
-                  placeholder="Enter your number"
+                  placeholder="Phone number"
                 />
               </View>
               {mode === 'password' && (
@@ -202,10 +182,8 @@ export default function LoginScreen() {
                   textContentType="password"
                 />
               )}
-            </Animated.View>
+              {error ? <Text style={s.errorText}>{error}</Text> : null}
 
-            {/* CTA */}
-            <Animated.View entering={FadeInUp.delay(440).duration(500)}>
               <PrimaryButton
                 variant="white"
                 label={mode === 'password' ? 'Sign In' : 'Send OTP →'}
@@ -213,42 +191,34 @@ export default function LoginScreen() {
                 isLoading={isLoading}
                 disabled={!phoneValid || (mode === 'password' && password.length < 1)}
               />
-            </Animated.View>
 
-            {/* Sign up link */}
-            <Animated.View entering={FadeInUp.delay(520).duration(400)} style={s.signupRow}>
-              <Text style={s.signupText}>New to Ruxstar? </Text>
-              <Pressable onPress={() => router.push('/(auth)/register')} hitSlop={8}>
-                <Text style={s.signupLink}>Create account →</Text>
-              </Pressable>
-            </Animated.View>
+              <View style={s.signupRow}>
+                <Text style={s.signupText}>New to Ruxstar? </Text>
+                <Pressable onPress={() => router.push('/(auth)/register')} hitSlop={8}>
+                  <Text style={s.signupLink}>Create account →</Text>
+                </Pressable>
+              </View>
+            </AuthGlassCard>
 
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-    </View>
+    </AuthVideoBackdrop>
   );
 }
 
 const s = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: Brand.bg },
   flex:    { flex: 1 },
-  content: { paddingHorizontal: Spacing.four, gap: Spacing.three },
+  content: { flexGrow: 1, paddingBottom: Spacing.five },
 
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Brand.surface1,
-    borderWidth: 1, borderColor: Brand.border1,
-    alignItems: 'center', justifyContent: 'center',
-    alignSelf: 'flex-start',
-  },
-  backArrow: { color: Brand.cream, fontSize: 18, fontWeight: '600' },
+  hero: { gap: 6, marginTop: Spacing.four, marginBottom: Spacing.three, paddingHorizontal: Spacing.three },
+  title:    { color: '#FFFFFF', fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
+  subtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 14, lineHeight: 20 },
 
   toggle: {
     flexDirection: 'row',
-    backgroundColor: Brand.surface1,
+    backgroundColor: 'rgba(10,10,15,0.06)',
     borderRadius: Radius.pill,
-    borderWidth: 1, borderColor: Brand.border1,
     padding: 4,
   },
   toggleTab: {
@@ -256,19 +226,18 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   toggleTabActive: {
-    backgroundColor: 'rgba(0,0,0,0.06)',
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.14)',
+    backgroundColor: '#0A0A0F',
   },
-  toggleLabel:       { color: Brand.creamMuted, fontSize: 14, fontWeight: '600' },
-  toggleLabelActive: { color: Brand.cream,      fontSize: 14, fontWeight: '700' },
+  toggleLabel:       { color: 'rgba(10,10,15,0.55)', fontSize: 14, fontWeight: '600' },
+  toggleLabelActive: { color: '#FFFFFF',              fontSize: 14, fontWeight: '700' },
 
-  form: { gap: Spacing.three },
   fieldLabel: {
-    color: Brand.creamSub, fontSize: 12, fontWeight: '600',
+    color: 'rgba(10,10,15,0.55)', fontSize: 12, fontWeight: '600',
     letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6,
   },
+  errorText: { color: '#C0392B', fontSize: 13, fontWeight: '500' },
 
   signupRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  signupText: { color: Brand.creamSub, fontSize: 14 },
-  signupLink: { color: Brand.cream, fontSize: 14, fontWeight: '700' },
+  signupText: { color: 'rgba(10,10,15,0.6)', fontSize: 14 },
+  signupLink: { color: '#0A0A0F', fontSize: 14, fontWeight: '700' },
 });

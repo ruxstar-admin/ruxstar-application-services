@@ -10,8 +10,10 @@ import {
   createVendorBusiness,
   deleteVendorBusiness,
   updateBusinessStatus as apiUpdateBusinessStatus,
+  updateVendorBusiness,
   type Business,
   type BusinessInput,
+  type BusinessProfilePatch,
 } from '@/services/vendor-business-service';
 
 // ─── Store interface ──────────────────────────────────────────────────────────
@@ -26,6 +28,7 @@ interface BusinessState {
   addBusiness:          (token: string, input: BusinessInput) => Promise<Business>;
   removeBusiness:       (token: string, id: string) => Promise<void>;
   updateBusinessStatus: (token: string, id: string, status: 'live' | 'draft') => Promise<Business>;
+  updateBusiness:       (token: string, id: string, patch: BusinessProfilePatch) => Promise<Business>;
 
   clearError: () => void;
   reset:      () => void;
@@ -69,6 +72,12 @@ export const useBusinessStore = create<BusinessState>((set, get) => ({
 
   updateBusinessStatus: async (token, id, status) => {
     const updated = await apiUpdateBusinessStatus(token, id, status);
+    set({ businesses: get().businesses.map((b) => b.id === id ? updated : b) });
+    return updated;
+  },
+
+  updateBusiness: async (token, id, patch) => {
+    const updated = await updateVendorBusiness(token, id, patch);
     set({ businesses: get().businesses.map((b) => b.id === id ? updated : b) });
     return updated;
   },

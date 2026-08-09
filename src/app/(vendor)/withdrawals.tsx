@@ -102,15 +102,23 @@ function withdrawalColor(status: WithdrawalStatus, brand: BrandTokens) {
 // ─── Style factory ────────────────────────────────────────────────────────────
 
 const createStyles = (brand: BrandTokens) => StyleSheet.create({
+  // Shared pressed-state feedback — every button below applies this via the
+  // Pressable(state => style) function form so taps actually feel responsive.
+  pressed:  { opacity: 0.7 },
+
   screen:   { flex: 1, backgroundColor: brand.bg },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four, gap: Spacing.two },
 
-  header: { paddingHorizontal: Spacing.four, paddingTop: Spacing.three, gap: 2 },
+  // Horizontal spacing here is intentionally NOT re-applied — the FlatList's own
+  // contentContainerStyle (listContent, below) already pads the whole content
+  // area once. Adding it again here doubled up and squeezed the header in from
+  // the edges compared to the payment rows underneath it.
+  header: { paddingTop: Spacing.three, gap: 2 },
   eyebrow: { fontSize: 11, fontWeight: '700', color: brand.creamMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
   title: { fontSize: 22, fontWeight: '800', color: brand.cream },
   sub: { fontSize: 12, color: brand.creamSub, lineHeight: 17, marginTop: 2 },
 
-  statsScroll: { paddingHorizontal: Spacing.four, gap: Spacing.two, paddingVertical: Spacing.three },
+  statsScroll: { gap: Spacing.two, paddingVertical: Spacing.three },
   statCard: {
     width: 128, backgroundColor: brand.surface1, borderRadius: Radius.lg, borderWidth: 1, borderColor: brand.border1,
     padding: Spacing.two + 2, gap: 4,
@@ -120,7 +128,7 @@ const createStyles = (brand: BrandTokens) => StyleSheet.create({
 
   // Withdraw panel
   panel: {
-    marginHorizontal: Spacing.four, marginBottom: Spacing.three, backgroundColor: brand.surface1,
+    marginBottom: Spacing.three, backgroundColor: brand.surface1,
     borderRadius: Radius.xl, borderWidth: 1, borderColor: brand.border1, padding: Spacing.three,
   },
   // Stacked, not side-by-side: amount block on top, action full-width below.
@@ -168,6 +176,7 @@ const createStyles = (brand: BrandTokens) => StyleSheet.create({
     paddingHorizontal: Spacing.three, paddingVertical: 11, color: brand.cream, fontSize: 14, marginTop: Spacing.two,
   },
   formErr: { fontSize: 12, color: brand.error, marginTop: Spacing.two },
+  accountHint: { fontSize: 11, color: brand.creamMuted, lineHeight: 15, marginTop: 6 },
   formActions: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.three },
   saveBtn: { flex: 1, backgroundColor: brand.primary, borderRadius: Radius.pill, paddingVertical: 12, alignItems: 'center' },
   saveBtnDisabled: { opacity: 0.5 },
@@ -188,7 +197,7 @@ const createStyles = (brand: BrandTokens) => StyleSheet.create({
   smallPillText: { fontSize: 10, fontWeight: '700' },
 
   // Filter
-  filterRow: { flexDirection: 'row', paddingHorizontal: Spacing.four, paddingBottom: Spacing.two },
+  filterRow: { flexDirection: 'row', paddingBottom: Spacing.two },
 
   // Payment row
   listContent: { paddingHorizontal: Spacing.four, paddingBottom: 100 },
@@ -236,7 +245,10 @@ function KycGate() {
       </View>
       <Text style={s.gateTitle}>KYC required</Text>
       <Text style={s.gateSub}>Complete identity verification to access your earnings and withdrawals.</Text>
-      <Pressable style={s.gateBtn} onPress={() => router.push('/(vendor)/kyc' as never)}>
+      <Pressable
+        style={({ pressed }) => [s.gateBtn, pressed && s.pressed]}
+        onPress={() => router.push('/(vendor)/kyc' as never)}
+      >
         <Ionicons name="arrow-forward-circle-outline" size={16} color="#fff" />
         <Text style={s.gateBtnText}>Complete KYC</Text>
       </Pressable>
@@ -291,7 +303,11 @@ function PayoutMethodForm({
         {(['bank', 'vpa'] as const).map((t) => {
           const active = type === t;
           return (
-            <Pressable key={t} style={[s.typeChip, active && s.typeChipActive]} onPress={() => setType(t)}>
+            <Pressable
+              key={t}
+              style={({ pressed }) => [s.typeChip, active && s.typeChipActive, pressed && s.pressed]}
+              onPress={() => setType(t)}
+            >
               <Text style={[s.typeChipText, active && s.typeChipTextActive]}>{t === 'bank' ? 'Bank account' : 'UPI'}</Text>
             </Pressable>
           );
@@ -317,6 +333,12 @@ function PayoutMethodForm({
             keyboardType="number-pad"
             editable={!saving}
           />
+          {method?.type === 'bank' && method.accountNumberMasked && (
+            <Text style={s.accountHint}>
+              Saved as {method.accountNumberMasked} — for security we never show the full number
+              back to you, so re-enter it fully here to save any change.
+            </Text>
+          )}
           <TextInput
             style={s.formInput}
             placeholder="IFSC code"
@@ -343,11 +365,19 @@ function PayoutMethodForm({
 
       <View style={s.formActions}>
         {allowCancel && (
-          <Pressable style={s.cancelBtn} onPress={onDone} disabled={saving}>
+          <Pressable
+            style={({ pressed }) => [s.cancelBtn, pressed && s.pressed]}
+            onPress={onDone}
+            disabled={saving}
+          >
             <Text style={s.cancelBtnText}>Cancel</Text>
           </Pressable>
         )}
-        <Pressable style={[s.saveBtn, saving && s.saveBtnDisabled]} onPress={submit} disabled={saving}>
+        <Pressable
+          style={({ pressed }) => [s.saveBtn, saving && s.saveBtnDisabled, pressed && s.pressed]}
+          onPress={submit}
+          disabled={saving}
+        >
           {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Save payout details</Text>}
         </Pressable>
       </View>
@@ -402,7 +432,11 @@ function WithdrawPanel({ ledger, onChanged }: { ledger: VendorLedger; onChanged:
         ) : (
           <View>
             <Pressable
-              style={[s.withdrawBtn, (submitting || withdrawable <= 0 || !method) && s.withdrawBtnDisabled]}
+              style={({ pressed }) => [
+                s.withdrawBtn,
+                (submitting || withdrawable <= 0 || !method) && s.withdrawBtnDisabled,
+                pressed && s.pressed,
+              ]}
               onPress={onWithdraw}
               disabled={submitting || withdrawable <= 0 || !method}
             >
@@ -426,7 +460,10 @@ function WithdrawPanel({ ledger, onChanged }: { ledger: VendorLedger; onChanged:
               ? <>UPI · <Text style={s.methodMono}>{method.vpa}</Text></>
               : <>{method.accountName ? `${method.accountName} · ` : ''}<Text style={s.methodMono}>{method.accountNumberMasked}</Text>{method.ifsc ? ` · ${method.ifsc}` : ''}</>}
           </Text>
-          <Pressable style={s.changeBtn} onPress={() => setEditing(true)}>
+          <Pressable
+            style={({ pressed }) => [s.changeBtn, pressed && s.pressed]}
+            onPress={() => setEditing(true)}
+          >
             <Text style={s.changeBtnText}>Change details</Text>
           </Pressable>
         </View>
@@ -566,7 +603,7 @@ export default function VendorWithdrawalsScreen() {
       ) : error ? (
         <View style={s.centered}>
           <Text style={s.errorText}>{error}</Text>
-          <Pressable style={s.retryBtn} onPress={() => load()}>
+          <Pressable style={({ pressed }) => [s.retryBtn, pressed && s.pressed]} onPress={() => load()}>
             <Ionicons name="refresh-outline" size={14} color="#fff" />
             <Text style={s.retryBtnText}>Retry</Text>
           </Pressable>

@@ -85,11 +85,17 @@ function SuccessScreen({ offer }: { offer: CreatorOffer }) {
           <Text style={s.freeNoticeText}>{offer.businessName} will be in touch soon.</Text>
         </View>
         <View style={s.successActions}>
-          <Pressable style={s.primaryBtn} onPress={() => router.replace('/(user)/orders' as never)}>
+          <Pressable
+            style={({ pressed }) => [s.primaryBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => router.replace('/(user)/orders' as never)}
+          >
             <Ionicons name="calendar-outline" size={16} color="#fff" />
             <Text style={s.primaryBtnText}>View my bookings</Text>
           </Pressable>
-          <Pressable style={s.secondaryBtn} onPress={() => router.replace('/(user)/index' as never)}>
+          <Pressable
+            style={({ pressed }) => [s.secondaryBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => router.replace('/(user)/index' as never)}
+          >
             <Text style={s.secondaryBtnText}>Discover more</Text>
           </Pressable>
         </View>
@@ -182,7 +188,7 @@ export default function CreatorOfferScreen() {
     return (
       <SafeAreaView style={s.screen} edges={['top']}>
         <View style={s.topBar}>
-          <Pressable style={s.backBtn} onPress={() => router.back()} hitSlop={8}>
+          <Pressable style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.7 }]} onPress={() => router.back()} hitSlop={8}>
             <Ionicons name="arrow-back" size={18} color={Brand.cream} />
           </Pressable>
         </View>
@@ -195,7 +201,7 @@ export default function CreatorOfferScreen() {
     return (
       <SafeAreaView style={s.screen} edges={['top']}>
         <View style={s.topBar}>
-          <Pressable style={s.backBtn} onPress={() => router.back()} hitSlop={8}>
+          <Pressable style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.7 }]} onPress={() => router.back()} hitSlop={8}>
             <Ionicons name="arrow-back" size={18} color={Brand.cream} />
           </Pressable>
         </View>
@@ -203,7 +209,7 @@ export default function CreatorOfferScreen() {
           <Text style={{ fontSize: 40 }}>🔍</Text>
           <Text style={s.errorTitle}>Offer not available</Text>
           <Text style={s.errorSub}>{loadError || 'This offer could not be found.'}</Text>
-          <Pressable style={s.retryBtn} onPress={load}>
+          <Pressable style={({ pressed }) => [s.retryBtn, pressed && { opacity: 0.7 }]} onPress={load}>
             <Ionicons name="refresh-outline" size={14} color="#fff" />
             <Text style={s.retryBtnText}>Retry</Text>
           </Pressable>
@@ -226,7 +232,7 @@ export default function CreatorOfferScreen() {
             </View>
           )}
 
-          <Pressable style={s.coverBackBtn} onPress={() => router.back()} hitSlop={8}>
+          <Pressable style={({ pressed }) => [s.coverBackBtn, pressed && { opacity: 0.7 }]} onPress={() => router.back()} hitSlop={8}>
             <Ionicons name="arrow-back" size={18} color="#fff" />
           </Pressable>
 
@@ -291,7 +297,11 @@ export default function CreatorOfferScreen() {
                 ) : null}
 
                 <Pressable
-                  style={[s.bookBtn, (submitting || paying) && s.bookBtnDisabled]}
+                  style={({ pressed }) => [
+                    s.bookBtn,
+                    (submitting || paying) && s.bookBtnDisabled,
+                    pressed && { opacity: 0.7 },
+                  ]}
                   onPress={handleBook}
                   disabled={submitting || paying}
                 >

@@ -147,7 +147,11 @@ export default function VendorSupportTicketScreen() {
   return (
     <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
       <View style={s.header}>
-        <Pressable style={s.backBtn} onPress={() => router.back()} hitSlop={8}>
+        <Pressable
+          style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.7 }]}
+          onPress={() => router.back()}
+          hitSlop={8}
+        >
           <Ionicons name="chevron-back" size={22} color={brand.cream} />
         </Pressable>
         <View style={s.headerInfo}>
@@ -205,7 +209,11 @@ export default function VendorSupportTicketScreen() {
                   editable={!sending}
                 />
                 <Pressable
-                  style={[s.sendBtn, (sending || !body.trim()) && s.sendBtnDisabled]}
+                  style={({ pressed }) => [
+                    s.sendBtn,
+                    (sending || !body.trim()) && s.sendBtnDisabled,
+                    pressed && { opacity: 0.7 },
+                  ]}
                   onPress={send}
                   disabled={sending || !body.trim()}
                 >

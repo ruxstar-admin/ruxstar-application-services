@@ -127,9 +127,13 @@ const styles = StyleSheet.create({
     width: '100%',
     borderWidth: 1.5,
     borderRadius: Radius.lg,
-    backgroundColor: Brand.surfaceCard,
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
-    // Glow handled via border only — no shadow to keep it clean
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
   },
   input: {
     height: 72,

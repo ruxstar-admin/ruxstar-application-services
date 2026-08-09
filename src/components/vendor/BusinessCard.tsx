@@ -101,6 +101,8 @@ const createStyles = (brand: BrandTokens) => StyleSheet.create({
   name: { fontSize: 15, fontWeight: '700', color: brand.cream },
   meta: { fontSize: 12, color: brand.creamSub, marginTop: 2 },
 
+  cardActions: { flexDirection: 'row', gap: 6 },
+  editBtn:           { width: 30, height: 30, borderRadius: Radius.md, backgroundColor: brand.surface2, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: brand.border1 },
   removeBtn:         { width: 30, height: 30, borderRadius: Radius.md, backgroundColor: 'rgba(220,38,38,0.06)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(220,38,38,0.15)' },
   removeBtnDisabled: { opacity: 0.5 },
 
@@ -132,12 +134,13 @@ type Props = {
   business: Business;
   onRemove: (id: string) => Promise<void>;
   removing: boolean;
+  onEdit?: (business: Business) => void;
   onThumbnailUpdated?: (updated: Business) => void;
   eventCount?: number;
   firstEventId?: string;
 };
 
-export default function BusinessCard({ business, onRemove, removing, onThumbnailUpdated, eventCount = 0, firstEventId }: Props) {
+export default function BusinessCard({ business, onRemove, removing, onEdit, onThumbnailUpdated, eventCount = 0, firstEventId }: Props) {
   const token = useAuthStore((s) => s.token);
   const { brand } = useTheme();
   const s = useMemo(() => createStyles(brand), [brand]);
@@ -284,16 +287,28 @@ export default function BusinessCard({ business, onRemove, removing, onThumbnail
             </Text>
           </View>
 
-          <Pressable
-            style={[s.removeBtn, removing && s.removeBtnDisabled]}
-            onPress={confirmRemove}
-            disabled={removing}
-            hitSlop={6}
-          >
-            {removing
-              ? <ActivityIndicator size="small" color={brand.error} />
-              : <Ionicons name="trash-outline" size={15} color={brand.error} />}
-          </Pressable>
+          <View style={s.cardActions}>
+            {onEdit && (
+              <Pressable
+                style={({ pressed }) => [s.editBtn, pressed && { opacity: 0.6 }]}
+                onPress={() => onEdit(business)}
+                disabled={removing}
+                hitSlop={6}
+              >
+                <Ionicons name="pencil-outline" size={14} color={brand.creamSub} />
+              </Pressable>
+            )}
+            <Pressable
+              style={({ pressed }) => [s.removeBtn, removing && s.removeBtnDisabled, pressed && { opacity: 0.6 }]}
+              onPress={confirmRemove}
+              disabled={removing}
+              hitSlop={6}
+            >
+              {removing
+                ? <ActivityIndicator size="small" color={brand.error} />
+                : <Ionicons name="trash-outline" size={15} color={brand.error} />}
+            </Pressable>
+          </View>
         </View>
 
         {business.address ? (

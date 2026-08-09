@@ -8,8 +8,8 @@ export default function RegisterLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'slide_from_right',
-        contentStyle: { backgroundColor: '#08080D' },
+        animation: 'fade',
+        contentStyle: { backgroundColor: 'transparent' },
       }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="details" />
