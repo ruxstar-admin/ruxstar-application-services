@@ -256,14 +256,14 @@ export default function VendorHeader() {
   return (
     <>
       <View style={[h.bar, { backgroundColor: brand.bg, borderBottomColor: brand.border1 }]}>
-        {/* Profile icon — tapping opens the left drawer */}
+        {/* Burger menu — tapping opens the left drawer */}
         <Pressable
-          style={h.avatar}
+          style={h.menuBtn}
           onPress={() => setDrawerOpen(true)}
           hitSlop={8}
           accessibilityLabel="Open menu"
         >
-          <Ionicons name="person-circle" size={34} color="#fff" />
+          <Ionicons name="menu-outline" size={28} color={brand.cream} />
         </Pressable>
 
         {/* Page title */}
@@ -316,11 +316,12 @@ const h = StyleSheet.create({
     alignItems:    'center',
     gap:           Spacing.two,
   },
-  avatar: {
-    alignItems:  'center',
+  menuBtn: {
+    alignItems: 'center',
     justifyContent: 'center',
+    width: 36,
+    height: 36,
   },
-  avatarText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   themeBtn: { padding: 4 },
 });
 

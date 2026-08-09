@@ -5,23 +5,29 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   ActivityIndicator,
+  Dimensions,
   FlatList,
   Image,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/hooks/useTheme';
 import { Radius, Spacing } from '@/constants/theme';
+import { useAuthStore } from '@/stores/auth-store';
+import { useThemeStore } from '@/stores/theme-store';
 import { resolveCategoryDef } from '@/constants/categories';
 import {
   listPublicBusinesses,
@@ -31,7 +37,6 @@ import {
   type PublicBusiness,
   type PublicEvent,
 } from '@/services/booking-service';
-import { listPublicCreatorOffers, type CreatorOffer } from '@/services/creator-offer-service';
 import ThemeToggle from '@/components/atoms/ThemeToggle';
 import SectionHeader from '@/components/atoms/SectionHeader';
 import CategoryTile from '@/components/molecules/CategoryTile';
@@ -104,58 +109,6 @@ const evStyles = StyleSheet.create({
   rowText:    { fontSize: 11, flex: 1 },
 });
 
-// ─── Creator offer card (horizontal strip) ───────────────────────────────────
-
-function creatorKindLabel(kind: string): string {
-  if (kind === 'shoutout')   return 'Shoutout';
-  if (kind === 'appearance') return 'Appearance';
-  return 'Collab';
-}
-
-function CreatorOfferCard({ offer }: { offer: CreatorOffer }) {
-  const { brand } = useTheme();
-  const [imgErr, setImgErr] = useState(false);
-  const isFree = offer.price <= 0;
-  const isFull = offer.spotsLeft === 0;
-
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        evStyles.card,
-        { backgroundColor: brand.surface1, borderColor: brand.border1, opacity: pressed ? 0.85 : 1 },
-      ]}
-      onPress={() => router.push({ pathname: '/(user)/creator-offer', params: { id: offer.id } } as never)}
-    >
-      <View style={evStyles.coverWrap}>
-        {offer.coverUrl && !imgErr ? (
-          <Image source={{ uri: offer.coverUrl }} style={evStyles.cover} resizeMode="cover" onError={() => setImgErr(true)} />
-        ) : (
-          <View style={[evStyles.fallback, { backgroundColor: brand.primaryGlow }]}>
-            <Text style={{ fontSize: 36 }}>✨</Text>
-          </View>
-        )}
-        <View style={evStyles.feeBadge}>
-          <Text style={evStyles.feeBadgeText}>{isFree ? 'Free' : `₹${offer.price.toLocaleString('en-IN')}`}</Text>
-        </View>
-        {isFull && (
-          <View style={[evStyles.statusBadge, { backgroundColor: 'rgba(220,38,38,0.85)' }]}>
-            <Text style={evStyles.statusText}>Full</Text>
-          </View>
-        )}
-      </View>
-      <View style={evStyles.body}>
-        <Text style={[evStyles.title, { color: brand.cream }]} numberOfLines={2}>{offer.title}</Text>
-        <Text style={[evStyles.biz, { color: brand.primary }]} numberOfLines={1}>{offer.businessName}</Text>
-        <View style={evStyles.row}>
-          <Ionicons name="pricetag-outline" size={11} color={brand.creamMuted} />
-          <Text style={[evStyles.rowText, { color: brand.creamSub }]} numberOfLines={1}>
-            {creatorKindLabel(offer.kind)}
-          </Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
@@ -184,15 +137,222 @@ const skStyles = StyleSheet.create({
   line:  { borderRadius: 6 },
 });
 
+// ─── User Left Drawer ─────────────────────────────────────────────────────────
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.78, 320);
+
+function UserLeftDrawer({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const insets  = useSafeAreaInsets();
+  const slideX  = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  const { name, phone, token, clearAuth, role, setActiveMode } = useAuthStore();
+  const { mode: themeMode, toggle: toggleTheme } = useThemeStore();
+  const { brand } = useTheme();
+  const initial = (name ?? 'U').charAt(0).toUpperCase();
+
+  const openAnim = useCallback(() => {
+    Animated.spring(slideX, { toValue: 0, useNativeDriver: true, damping: 24, stiffness: 220 }).start();
+  }, [slideX]);
+
+  const closeAnim = useCallback(() => {
+    Animated.timing(slideX, { toValue: -DRAWER_WIDTH, useNativeDriver: true, duration: 200 }).start(onClose);
+  }, [slideX, onClose]);
+
+  useEffect(() => { if (visible) openAnim(); }, [visible, openAnim]);
+
+  if (!visible) return null;
+
+  function navigate(href: string) {
+    closeAnim();
+    setTimeout(() => router.push(href as never), 220);
+  }
+
+  function signOut() {
+    closeAnim();
+    setTimeout(() => { clearAuth(); router.replace('/(auth)/welcome'); }, 220);
+  }
+
+  const NAV_SECTIONS = [
+    {
+      label: 'Explore',
+      items: [
+        { icon: 'compass-outline'       as const, label: 'Discover',           href: '/(user)'                   },
+        { icon: 'calendar-outline'      as const, label: 'My Bookings',        href: '/(user)/orders'            },
+        { icon: 'print-outline'         as const, label: 'Print Services',     href: '/(user)/print'             },
+        { icon: 'megaphone-outline'     as const, label: 'Creator Offers',     href: '/(user)/creator-offers'    },
+        { icon: 'notifications-outline' as const, label: 'Notifications',      href: '/(user)/notifications'     },
+      ],
+    },
+    {
+      label: 'Account',
+      items: [
+        { icon: 'person-outline'      as const, label: 'Profile & Settings', href: '/(user)/profile'   },
+        { icon: 'headset-outline'     as const, label: 'Help & Support',     href: '/(user)/support'   },
+      ],
+    },
+  ];
+
+  return (
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={closeAnim}>
+      <TouchableWithoutFeedback onPress={closeAnim}>
+        <View style={ud.backdrop} />
+      </TouchableWithoutFeedback>
+
+      <Animated.View
+        style={[
+          ud.panel,
+          {
+            paddingTop:      insets.top    + Spacing.three,
+            paddingBottom:   insets.bottom + Spacing.four,
+            transform:       [{ translateX: slideX }],
+            backgroundColor: brand.bg,
+            borderRightColor: brand.border1,
+          },
+        ]}
+      >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={ud.scroll}>
+          {/* Profile card */}
+          <View style={ud.profileCard}>
+            <View style={ud.avatar}>
+              <Text style={ud.avatarText}>{initial}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[ud.name, { color: brand.cream }]} numberOfLines={1}>{name ?? 'User'}</Text>
+              <Text style={[ud.phone, { color: brand.creamSub }]} numberOfLines={1}>{phone ?? ''}</Text>
+            </View>
+          </View>
+
+          <View style={[ud.divider, { backgroundColor: brand.border1 }]} />
+
+          {/* Nav sections */}
+          {NAV_SECTIONS.map((section) => (
+            <View key={section.label} style={ud.section}>
+              <Text style={[ud.sectionLabel, { color: brand.creamMuted }]}>{section.label}</Text>
+              {section.items.map((item) => (
+                <Pressable
+                  key={item.href}
+                  style={({ pressed }) => [ud.menuRow, pressed && { backgroundColor: brand.surface1 }]}
+                  onPress={() => navigate(item.href)}
+                >
+                  <View style={[ud.menuIcon, { backgroundColor: brand.surface2 }]}>
+                    <Ionicons name={item.icon} size={18} color={brand.creamSub} />
+                  </View>
+                  <Text style={[ud.menuLabel, { color: brand.cream }]}>{item.label}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={brand.creamMuted} />
+                </Pressable>
+              ))}
+            </View>
+          ))}
+
+          <View style={[ud.divider, { backgroundColor: brand.border1 }]} />
+
+          {/* Theme toggle row */}
+          <Pressable
+            style={({ pressed }) => [ud.themeRow, pressed && { opacity: 0.75 }]}
+            onPress={toggleTheme}
+          >
+            <View style={[ud.menuIcon, { backgroundColor: brand.surface2 }]}>
+              <Ionicons
+                name={themeMode === 'dark' ? 'moon-outline' : 'sunny-outline'}
+                size={18}
+                color={brand.creamSub}
+              />
+            </View>
+            <Text style={[ud.menuLabel, { color: brand.cream }]}>
+              {themeMode === 'dark' ? 'Dark Mode' : 'Light Mode'}
+            </Text>
+          </Pressable>
+
+          {/* Switch to vendor if applicable */}
+          {role === 'vendor' && (
+            <>
+              <View style={[ud.divider, { backgroundColor: brand.border1 }]} />
+              <Pressable
+                style={({ pressed }) => [ud.switchBtn, pressed && { opacity: 0.75 }]}
+                onPress={() => {
+                  closeAnim();
+                  setTimeout(() => { setActiveMode(null); router.replace('/(vendor)' as never); }, 220);
+                }}
+              >
+                <Ionicons name="swap-horizontal-outline" size={17} color="#7C3AED" />
+                <Text style={ud.switchBtnText}>Switch to Vendor Dashboard</Text>
+              </Pressable>
+            </>
+          )}
+
+          <View style={[ud.divider, { backgroundColor: brand.border1 }]} />
+
+          {/* Sign out */}
+          <Pressable
+            style={({ pressed }) => [ud.signOutBtn, pressed && { opacity: 0.75 }]}
+            onPress={signOut}
+          >
+            <Ionicons name="log-out-outline" size={17} color="#DC2626" />
+            <Text style={ud.signOutText}>Sign Out</Text>
+          </Pressable>
+        </ScrollView>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+const ud = StyleSheet.create({
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.50)' },
+  panel: {
+    position: 'absolute', top: 0, bottom: 0, left: 0,
+    width: DRAWER_WIDTH,
+    borderRightWidth: 1,
+  },
+  scroll: { paddingHorizontal: Spacing.four, gap: Spacing.three, paddingBottom: Spacing.two },
+  profileCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two },
+  avatar: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  avatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  name:       { fontSize: 15, fontWeight: '700' },
+  phone:      { fontSize: 12, marginTop: 2 },
+  divider:    { height: 1 },
+  section:    { gap: Spacing.one },
+  sectionLabel: {
+    fontSize: 11, fontWeight: '700', textTransform: 'uppercase',
+    letterSpacing: 0.7, marginBottom: Spacing.one,
+  },
+  menuRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.two,
+    paddingVertical: 11, borderRadius: Radius.lg, paddingHorizontal: Spacing.two,
+  },
+  menuIcon: {
+    width: 36, height: 36, borderRadius: Radius.md,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  menuLabel: { flex: 1, fontSize: 14, fontWeight: '600' },
+  themeRow: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.two,
+    paddingVertical: 11, borderRadius: Radius.lg, paddingHorizontal: Spacing.two,
+  },
+  switchBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 13, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: 'rgba(124,58,237,0.25)', backgroundColor: 'rgba(124,58,237,0.06)',
+  },
+  switchBtnText: { color: '#7C3AED', fontSize: 14, fontWeight: '700' },
+  signOutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 13, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: 'rgba(220,38,38,0.20)', backgroundColor: 'rgba(220,38,38,0.04)',
+  },
+  signOutText: { color: '#DC2626', fontSize: 14, fontWeight: '700' },
+});
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 
 export default function UserHomeScreen() {
   const { brand } = useTheme();
-
+  const [drawerOpen,    setDrawerOpen]    = useState(false);
   const [businesses,    setBusinesses]    = useState<PublicBusiness[]>([]);
   const [events,        setEvents]        = useState<PublicEvent[]>([]);
-  const [creatorOffers, setCreatorOffers] = useState<CreatorOffer[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error,      setError]      = useState<string | null>(null);
@@ -202,14 +362,12 @@ export default function UserHomeScreen() {
     try {
       isRefresh ? setRefreshing(true) : setLoading(true);
       setError(null);
-      const [bizList, eventList, offerList] = await Promise.all([
+      const [bizList, eventList] = await Promise.all([
         listPublicBusinesses(),
         listPublicEvents(),
-        listPublicCreatorOffers().catch(() => []), // non-critical — don't block the feed
       ]);
       setBusinesses(bizList);
       setEvents(eventList);
-      setCreatorOffers(offerList);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -271,11 +429,6 @@ export default function UserHomeScreen() {
     return events.filter((e) => [e.title, e.businessName, e.venue].some((v) => v?.toLowerCase().includes(q)));
   }, [events, search]);
 
-  const filteredCreatorOffers = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) return creatorOffers;
-    return creatorOffers.filter((o) => [o.title, o.businessName].some((v) => v?.toLowerCase().includes(q)));
-  }, [creatorOffers, search]);
 
   function goToVenue(biz: PublicBusiness) {
     router.push({ pathname: '/(user)/venue-detail', params: { businessId: biz.id } } as never);
@@ -365,20 +518,6 @@ export default function UserHomeScreen() {
         </View>
       )}
 
-      {/* Creators & influencers strip */}
-      {!search && filteredCreatorOffers.length > 0 && (
-        <View style={s.section}>
-          <SectionHeader title="Creators & Influencers" />
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.hScroll}
-          >
-            {filteredCreatorOffers.map((o) => <CreatorOfferCard key={o.id} offer={o} />)}
-          </ScrollView>
-        </View>
-      )}
-
       {/* All venues header */}
       <View style={s.section}>
         <SectionHeader
@@ -387,15 +526,15 @@ export default function UserHomeScreen() {
         />
       </View>
     </>
-  ), [bannerVenues, categories, filteredEvents, filteredCreatorOffers, search, s]);
+  ), [bannerVenues, categories, filteredEvents, search, s]);
 
   return (
     <SafeAreaView style={[s.screen]} edges={['top']}>
       {/* ── Header ── */}
       <View style={s.header}>
         <View style={s.headerLeft}>
-          <Pressable hitSlop={10} style={s.iconBtn} onPress={() => router.push('/(user)/profile' as never)}>
-            <Ionicons name="person-circle" size={34} color={brand.primary} />
+          <Pressable hitSlop={10} style={s.iconBtn} onPress={() => setDrawerOpen(true)}>
+            <Ionicons name="menu-outline" size={28} color={brand.cream} />
           </Pressable>
         </View>
 
@@ -405,6 +544,8 @@ export default function UserHomeScreen() {
           <ThemeToggle size={20} />
         </View>
       </View>
+
+      <UserLeftDrawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
       {/* ── Search bar ── */}
       <View style={[s.searchBar, { backgroundColor: brand.surface1, borderColor: brand.border1 }]}>
