@@ -79,7 +79,7 @@ export default function PhoneInput({
       : interpolateColor(
           isFocused.value,
           [0, 1],
-          [Brand.surfaceCardBorder, Brand.primary],
+          ['#E5E5EA', Brand.primary],
         ),
   }));
 
@@ -203,12 +203,17 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Brand.surfaceCard,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: Brand.surfaceCardBorder,
+    borderColor: '#E5E5EA',
     borderRadius: Radius.md,
     overflow: 'hidden',
     minHeight: 56,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
   },
   errorBorder: {
     borderColor: Brand.error,

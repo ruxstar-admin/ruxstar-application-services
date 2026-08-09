@@ -106,8 +106,8 @@ function OfferSheet({
     reset();
   }
 
-  const inp = [s.input, { backgroundColor: brand.surface2, borderColor: brand.border2, color: brand.cream }] as const;
-  const lbl = [s.label, { color: brand.creamMuted }] as const;
+  const inp = [s.input, { backgroundColor: brand.surface2, borderColor: brand.border2, color: brand.cream }];
+  const lbl = [s.label, { color: brand.creamMuted }];
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>

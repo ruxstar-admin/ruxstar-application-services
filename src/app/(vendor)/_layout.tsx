@@ -177,6 +177,9 @@ export default function VendorLayout() {
         <Tabs.Screen name="creator-bookings"  options={{ href: null }} />
         <Tabs.Screen name="notifications"     options={{ href: null }} />
         <Tabs.Screen name="print-order-detail" options={{ href: null }} />
+        <Tabs.Screen name="support"           options={{ href: null }} />
+        <Tabs.Screen name="support-ticket"    options={{ href: null }} />
+        <Tabs.Screen name="withdrawals"       options={{ href: null }} />
         {/* Full-screen wizards — hide tab bar entirely */}
         <Tabs.Screen name="kyc"                  options={{ href: null, ...TAB_BAR_HIDDEN }} />
         <Tabs.Screen name="add-business"         options={{ href: null, ...TAB_BAR_HIDDEN }} />

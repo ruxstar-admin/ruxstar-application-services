@@ -1,23 +1,21 @@
 /**
- * Register — Profile Details (Step 3 of 3)
- * Robot says: "Pick your superpower & a password. Then we launch!"
- * Role prop appears on robot body based on selected role.
+ * Register — Profile Details (final step)
  */
 
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, StatusBar,
+  View, Text, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView,
   Pressable, TouchableWithoutFeedback, Keyboard,
 } from 'react-native';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import AuthVideoBackdrop from '@/components/auth/AuthVideoBackdrop';
+import AuthGlassCard from '@/components/auth/AuthGlassCard';
 import InputField from '@/components/ui/InputField';
-import { SignupRobot } from '@/components/auth/SignupRobot';
 import PrimaryButton from '@/components/ui/PrimaryButton';
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import type { UserRole } from '@/stores/auth-store';
 import { useAuthStore, setPendingLoginRoute } from '@/stores/auth-store';
 import { AuthService, resolveRole } from '@/services/auth-service';
@@ -28,7 +26,6 @@ const ROLES: { value: UserRole; label: string; icon: string; desc: string }[] = 
 ];
 
 export default function RegisterDetailsScreen() {
-  const insets = useSafeAreaInsets();
   const { setAuth, clearPending, pendingPhone, pendingSignupToken, setLoading, isLoading } = useAuthStore();
 
   const [name,      setName]      = useState('');
@@ -37,12 +34,9 @@ export default function RegisterDetailsScreen() {
   const [nameError, setNameError] = useState('');
   const [passError, setPassError] = useState('');
   const [error,     setError]     = useState('');
-  const [shake,     setShake]     = useState(false);
 
   function fail(msg: string) {
     setError(msg);
-    setShake(true);
-    setTimeout(() => setShake(false), 500);
   }
 
   const canProceed = name.trim().length >= 2 && password.length >= 6;
@@ -79,45 +73,30 @@ export default function RegisterDetailsScreen() {
   };
 
   return (
-    <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={Brand.bg} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.flex}>
+    <AuthVideoBackdrop onBack={() => router.back()}>
+      <KeyboardAvoidingView
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -100}
+        style={s.flex}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
-            contentContainerStyle={[
-              s.content,
-              { paddingTop: insets.top + Spacing.three, paddingBottom: insets.bottom + Spacing.five },
-            ]}
+            contentContainerStyle={s.content}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
 
-            {/* Header */}
-            <Animated.View entering={FadeInDown.delay(50).duration(400)} style={s.header}>
-              <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
-                <Text style={s.backArrow}>←</Text>
-              </Pressable>
-              <View style={s.stepRow}>
-                {[0, 1, 2].map((i) => (
-                  <View key={i} style={[s.stepDot, i <= 2 && s.stepDotActive]} />
-                ))}
-              </View>
-              <View style={{ width: 40 }} />
+            {/* Step dots + hero — directly on the video */}
+            <Animated.View entering={FadeInDown.delay(60).duration(400)} style={s.stepRow}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={[s.stepDot, i <= 2 && s.stepDotActive]} />
+              ))}
+            </Animated.View>
+            <Animated.View entering={FadeInDown.delay(140).duration(500)} style={s.hero}>
+              <Text style={s.title}>Almost there</Text>
+              <Text style={s.subtitle}>Set your name, password, and how you'll use Ruxstar.</Text>
             </Animated.View>
 
-            {/* Robot — step 2: shows role prop (bag / shop / scooter) */}
-            <Animated.View entering={FadeInDown.delay(120).duration(600)}>
-              <SignupRobot
-                step={2}
-                role={role}
-                loading={isLoading}
-                shake={shake}
-                error={error}
-                size="sm"
-              />
-            </Animated.View>
-
-            {/* Name + Password */}
-            <Animated.View entering={FadeInUp.delay(340).duration(500)} style={s.form}>
+            {/* Glass card — form */}
+            <AuthGlassCard delay={220}>
               <InputField
                 label="Full Name"
                 required
@@ -139,34 +118,31 @@ export default function RegisterDetailsScreen() {
                 textContentType="newPassword"
                 helper="Minimum 6 characters"
               />
-            </Animated.View>
 
-            {/* Role picker — selection also changes robot prop */}
-            <Animated.View entering={FadeInUp.delay(420).duration(500)} style={s.roleSection}>
-              <Text style={s.sectionLabel}>I am a</Text>
-              <View style={s.roleCards}>
-                {ROLES.map((r) => (
-                  <Pressable
-                    key={r.value}
-                    onPress={() => { setRole(r.value); setError(''); }}
-                    style={[s.roleCard, role === r.value && s.roleCardActive]}>
-                    <Text style={s.roleIcon}>{r.icon}</Text>
-                    <Text style={[s.roleLabel, role === r.value && s.roleLabelActive]}>
-                      {r.label}
-                    </Text>
-                    <Text style={s.roleDesc} numberOfLines={1}>{r.desc}</Text>
-                    {role === r.value && (
-                      <View style={s.roleCheck}>
-                        <Text style={s.roleCheckMark}>✓</Text>
-                      </View>
-                    )}
-                  </Pressable>
-                ))}
+              <View style={s.roleSection}>
+                <Text style={s.sectionLabel}>I am a</Text>
+                <View style={s.roleCards}>
+                  {ROLES.map((r) => (
+                    <Pressable
+                      key={r.value}
+                      onPress={() => { setRole(r.value); setError(''); }}
+                      style={[s.roleCard, role === r.value && s.roleCardActive]}>
+                      <Text style={s.roleIcon}>{r.icon}</Text>
+                      <Text style={[s.roleLabel, role === r.value && s.roleLabelActive]}>
+                        {r.label}
+                      </Text>
+                      <Text style={s.roleDesc} numberOfLines={1}>{r.desc}</Text>
+                      {role === r.value && (
+                        <View style={s.roleCheck}>
+                          <Text style={s.roleCheckMark}>✓</Text>
+                        </View>
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
+                {error ? <Text style={s.errorText}>{error}</Text> : null}
               </View>
-            </Animated.View>
 
-            {/* CTA */}
-            <Animated.View entering={FadeInUp.delay(500).duration(500)}>
               <PrimaryButton
                 variant="white"
                 label="Create Account →"
@@ -174,45 +150,39 @@ export default function RegisterDetailsScreen() {
                 isLoading={isLoading}
                 disabled={!canProceed}
               />
-            </Animated.View>
+            </AuthGlassCard>
 
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-    </View>
+    </AuthVideoBackdrop>
   );
 }
 
 const s = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: Brand.bg },
   flex:    { flex: 1 },
-  content: { paddingHorizontal: Spacing.four, gap: Spacing.three },
+  content: { flexGrow: 1, paddingBottom: Spacing.five },
 
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Brand.surface1,
-    borderWidth: 1, borderColor: Brand.border1,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  backArrow: { color: Brand.cream, fontSize: 18, fontWeight: '600' },
+  stepRow: { flexDirection: 'row', gap: 6, alignItems: 'center', marginTop: Spacing.four, paddingHorizontal: Spacing.three },
+  stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' },
+  stepDotActive: { backgroundColor: '#FFFFFF', width: 22, borderRadius: 4 },
 
-  stepRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Brand.border2 },
-  stepDotActive: { backgroundColor: Brand.cream, width: 22, borderRadius: 4 },
+  hero: { gap: 6, marginTop: Spacing.three, marginBottom: Spacing.three, paddingHorizontal: Spacing.three },
+  title:    { color: '#FFFFFF', fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
+  subtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 14, lineHeight: 20 },
 
-  form: { gap: Spacing.three },
+  errorText: { color: '#C0392B', fontSize: 13, fontWeight: '500', marginTop: 8 },
 
   roleSection: { gap: Spacing.two },
   sectionLabel: {
-    color: Brand.creamSub, fontSize: 12, fontWeight: '600',
+    color: 'rgba(10,10,15,0.55)', fontSize: 12, fontWeight: '600',
     letterSpacing: 0.8, textTransform: 'uppercase',
   },
   roleCards: { flexDirection: 'row', gap: Spacing.two },
   roleCard: {
     flex: 1,
-    backgroundColor: Brand.surface1,
-    borderWidth: 1, borderColor: Brand.border1,
+    backgroundColor: 'rgba(10,10,15,0.03)',
+    borderWidth: 1, borderColor: 'rgba(10,10,15,0.12)',
     borderRadius: Radius.lg,
     padding: Spacing.three,
     gap: 4,
@@ -220,17 +190,17 @@ const s = StyleSheet.create({
     alignItems: 'flex-start',
   },
   roleCardActive: {
-    borderColor: Brand.primary,
-    backgroundColor: Brand.primaryGlow,
+    borderColor: '#0A0A0F',
+    backgroundColor: 'rgba(10,10,15,0.06)',
   },
   roleIcon:        { fontSize: 22, marginBottom: 2 },
-  roleLabel:       { color: Brand.creamSub, fontSize: 13, fontWeight: '700' },
-  roleLabelActive: { color: Brand.cream },
-  roleDesc:        { color: Brand.creamMuted, fontSize: 10, lineHeight: 14 },
+  roleLabel:       { color: 'rgba(10,10,15,0.6)', fontSize: 13, fontWeight: '700' },
+  roleLabelActive: { color: '#0A0A0F' },
+  roleDesc:        { color: 'rgba(10,10,15,0.45)', fontSize: 10, lineHeight: 14 },
   roleCheck: {
     position: 'absolute', top: 8, right: 8,
     width: 18, height: 18, borderRadius: 9,
-    backgroundColor: Brand.primary,
+    backgroundColor: '#0A0A0F',
     alignItems: 'center', justifyContent: 'center',
   },
   roleCheckMark: { color: '#FFFFFF', fontSize: 10, fontWeight: '900' },

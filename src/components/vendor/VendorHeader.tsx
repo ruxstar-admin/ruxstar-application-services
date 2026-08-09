@@ -53,6 +53,9 @@ const ROUTE_TITLES: Record<string, string> = {
   '/(vendor)/commerce-orders':   'Commerce Orders',
   '/(vendor)/offers':            'Offers',
   '/(vendor)/creator-bookings':  'Creator Bookings',
+  '/(vendor)/support':           'Help & Support',
+  '/(vendor)/support-ticket':    'Ticket',
+  '/(vendor)/withdrawals':       'Earnings & Withdrawals',
 };
 
 function getPageTitle(pathname: string): string {
@@ -139,6 +142,8 @@ function LeftDrawer({
         { icon: 'id-card-outline'       as const, label: 'Ruxstar Card',       href: '/(vendor)/card'          },
         { icon: 'person-outline'        as const, label: 'Profile & Settings', href: '/(vendor)/profile'       },
         { icon: 'notifications-outline' as const, label: 'Notifications',      href: '/(vendor)/notifications' },
+        { icon: 'wallet-outline'        as const, label: 'Earnings & Withdrawals', href: '/(vendor)/withdrawals' },
+        { icon: 'help-circle-outline'   as const, label: 'Help & Support',     href: '/(vendor)/support'       },
       ],
     },
   ];

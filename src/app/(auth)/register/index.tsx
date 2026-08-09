@@ -1,43 +1,37 @@
 /**
  * Register — Phone Entry (Step 1 of 3)
- * Robot says: "Hey! Drop your mobile and I'll send a magic code!"
- * Left arm waves · Phone in right hand · Error = frown + shake
  */
 
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, StatusBar,
+  View, Text, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView,
   Pressable, TouchableWithoutFeedback, Keyboard,
 } from 'react-native';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import AuthVideoBackdrop from '@/components/auth/AuthVideoBackdrop';
+import AuthGlassCard from '@/components/auth/AuthGlassCard';
 import PhoneInput from '@/components/auth/PhoneInput';
-import { SignupRobot } from '@/components/auth/SignupRobot';
 import PrimaryButton from '@/components/ui/PrimaryButton';
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth-store';
 import { AuthService } from '@/services/auth-service';
 
 function isValidPhone(p: string) { return p.replace(/\D/g, '').length >= 7; }
 
 export default function RegisterPhoneScreen() {
-  const insets = useSafeAreaInsets();
   const { setPendingPhone, setLoading, isLoading } = useAuthStore();
 
   const [phone,      setPhone]      = useState('');
   const [fullNumber, setFullNumber] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [error,      setError]      = useState('');
-  const [shake,      setShake]      = useState(false);
   const [agreed,     setAgreed]     = useState(false);
 
   function fail(msg: string) {
     setError(msg);
-    setShake(true);
-    setTimeout(() => setShake(false), 500);
   }
 
   const canProceed = isValidPhone(phone) && phone.length <= 10 && agreed;
@@ -61,59 +55,43 @@ export default function RegisterPhoneScreen() {
   };
 
   return (
-    <View style={s.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={Brand.bg} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.flex}>
+    <AuthVideoBackdrop onBack={() => router.back()}>
+      <KeyboardAvoidingView
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -100}
+        style={s.flex}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
-            contentContainerStyle={[
-              s.content,
-              { paddingTop: insets.top + Spacing.three, paddingBottom: insets.bottom + Spacing.five },
-            ]}
+            contentContainerStyle={s.content}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
 
-            {/* Header */}
-            <Animated.View entering={FadeInDown.delay(50).duration(400)} style={s.header}>
-              <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
-                <Text style={s.backArrow}>←</Text>
-              </Pressable>
-              <View style={s.stepRow}>
-                {[0, 1, 2].map((i) => (
-                  <View key={i} style={[s.stepDot, i === 0 && s.stepDotActive]} />
-                ))}
+            {/* Step dots + hero — directly on the video */}
+            <Animated.View entering={FadeInDown.delay(60).duration(400)} style={s.stepRow}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={[s.stepDot, i === 0 && s.stepDotActive]} />
+              ))}
+            </Animated.View>
+            <Animated.View entering={FadeInDown.delay(140).duration(500)} style={s.hero}>
+              <Text style={s.title}>Create your account</Text>
+              <Text style={s.subtitle}>We'll text you a code to verify it's you.</Text>
+            </Animated.View>
+
+            {/* Glass card — form */}
+            <AuthGlassCard delay={220}>
+              <View>
+                <Text style={s.fieldLabel}>Mobile Number</Text>
+                <PhoneInput
+                  value={phone}
+                  onChangeText={(t, f) => {
+                    setPhone(t); setFullNumber(f); setPhoneError('');
+                    setError(t.length > 10 ? "Hmm, that's too many digits — double-check your number!" : '');
+                  }}
+                  error={phoneError}
+                  placeholder="Phone number"
+                />
               </View>
-              <View style={{ width: 40 }} />
-            </Animated.View>
 
-            {/* Robot — step 0: arm waves + phone with "SMS" */}
-            <Animated.View entering={FadeInDown.delay(120).duration(600)}>
-              <SignupRobot
-                step={0}
-                role="customer"
-                loading={isLoading}
-                shake={shake}
-                error={error}
-                size="sm"
-              />
-            </Animated.View>
-
-            {/* Input */}
-            <Animated.View entering={FadeInUp.delay(360).duration(500)} style={s.inputSection}>
-              <Text style={s.fieldLabel}>Mobile Number</Text>
-              <PhoneInput
-                value={phone}
-                onChangeText={(t, f) => {
-                  setPhone(t); setFullNumber(f); setPhoneError('');
-                  setError(t.length > 10 ? "Hmm, that's too many digits — double-check your number!" : '');
-                }}
-                error={phoneError}
-                placeholder="Enter your number"
-              />
-            </Animated.View>
-
-            {/* Terms */}
-            <Animated.View entering={FadeInUp.delay(420).duration(500)}>
               <Pressable
                 onPress={() => setAgreed((v) => !v)}
                 style={s.termsRow}
@@ -129,10 +107,8 @@ export default function RegisterPhoneScreen() {
                   <Text style={s.termsLink}>Privacy Policy</Text>
                 </Text>
               </Pressable>
-            </Animated.View>
+              {error ? <Text style={s.errorText}>{error}</Text> : null}
 
-            {/* CTA */}
-            <Animated.View entering={FadeInUp.delay(500).duration(500)}>
               <PrimaryButton
                 variant="white"
                 label="Send Verification Code →"
@@ -140,64 +116,57 @@ export default function RegisterPhoneScreen() {
                 isLoading={isLoading}
                 disabled={!canProceed}
               />
-            </Animated.View>
 
-            {/* Log in link */}
-            <Animated.View entering={FadeInUp.delay(580).duration(400)} style={s.loginRow}>
-              <Text style={s.loginText}>Already have an account? </Text>
-              <Pressable onPress={() => router.push('/(auth)/login')} hitSlop={8}>
-                <Text style={s.loginLink}>Sign in</Text>
-              </Pressable>
-            </Animated.View>
+              <View style={s.loginRow}>
+                <Text style={s.loginText}>Already have an account? </Text>
+                <Pressable onPress={() => router.push('/(auth)/login')} hitSlop={8}>
+                  <Text style={s.loginLink}>Sign in</Text>
+                </Pressable>
+              </View>
+            </AuthGlassCard>
 
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-    </View>
+    </AuthVideoBackdrop>
   );
 }
 
 const s = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: Brand.bg },
   flex:    { flex: 1 },
-  content: { paddingHorizontal: Spacing.four, gap: Spacing.three },
+  content: { flexGrow: 1, paddingBottom: Spacing.five },
 
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Brand.surface1,
-    borderWidth: 1, borderColor: Brand.border1,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  backArrow: { color: Brand.cream, fontSize: 18, fontWeight: '600' },
+  stepRow: { flexDirection: 'row', gap: 6, alignItems: 'center', marginTop: Spacing.four, paddingHorizontal: Spacing.three },
+  stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' },
+  stepDotActive: { backgroundColor: '#FFFFFF', width: 22, borderRadius: 4 },
 
-  stepRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Brand.border2 },
-  stepDotActive: { backgroundColor: Brand.cream, width: 22, borderRadius: 4 },
+  hero: { gap: 6, marginTop: Spacing.three, marginBottom: Spacing.three, paddingHorizontal: Spacing.three },
+  title:    { color: '#FFFFFF', fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
+  subtitle: { color: 'rgba(255,255,255,0.85)', fontSize: 14, lineHeight: 20 },
 
-  inputSection: { gap: Spacing.one },
   fieldLabel: {
-    color: Brand.creamSub, fontSize: 12, fontWeight: '600',
+    color: 'rgba(10,10,15,0.55)', fontSize: 12, fontWeight: '600',
     letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 6,
   },
+  errorText: { color: '#C0392B', fontSize: 13, fontWeight: '500' },
 
   termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
   checkbox: {
     width: 22, height: 22, borderRadius: 6,
-    borderWidth: 1.5, borderColor: Brand.border2,
-    backgroundColor: Brand.surface1,
+    borderWidth: 1.5, borderColor: 'rgba(10,10,15,0.25)',
+    backgroundColor: 'rgba(10,10,15,0.03)',
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0, marginTop: 2,
   },
   checkboxOn: {
-    borderColor: 'rgba(0,0,0,0.40)',
-    backgroundColor: 'rgba(0,0,0,0.07)',
+    borderColor: '#0A0A0F',
+    backgroundColor: '#0A0A0F',
   },
-  checkTick:  { color: Brand.cream, fontSize: 13, fontWeight: '800' },
-  termsText:  { color: Brand.creamSub, fontSize: 13, lineHeight: 20, flex: 1 },
-  termsLink:  { color: Brand.cream, fontWeight: '600' },
+  checkTick:  { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  termsText:  { color: 'rgba(10,10,15,0.65)', fontSize: 13, lineHeight: 20, flex: 1 },
+  termsLink:  { color: '#0A0A0F', fontWeight: '600' },
 
   loginRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  loginText: { color: Brand.creamSub, fontSize: 14 },
-  loginLink: { color: Brand.cream, fontSize: 14, fontWeight: '700' },
+  loginText: { color: 'rgba(10,10,15,0.6)', fontSize: 14 },
+  loginLink: { color: '#0A0A0F', fontSize: 14, fontWeight: '700' },
 });

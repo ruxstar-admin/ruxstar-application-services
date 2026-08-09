@@ -24,6 +24,7 @@ import { useBusinessStore } from '@/stores/business-store';
 import { supportsSetup, type Business, type BusinessModule } from '@/services/vendor-business-service';
 import { listVendorEvents } from '@/services/vendor-event-service';
 import BusinessCard from '@/components/vendor/BusinessCard';
+import EditBusinessModal from '@/components/vendor/EditBusinessModal';
 import VendorHeader from '@/components/vendor/VendorHeader';
 import DropdownPicker, { type DropdownOption } from '@/components/ui/DropdownPicker';
 import { useTheme } from '@/hooks/useTheme';
@@ -208,7 +209,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 export default function BusinessesScreen() {
   const token     = useAuthStore((s) => s.token);
   const kycStatus = useKycStore((s) => s.status);
-  const { businesses, loading, removingId, error, loadBusinesses, removeBusiness } = useBusinessStore();
+  const { businesses, loading, removingId, error, loadBusinesses, removeBusiness, updateBusiness } = useBusinessStore();
 
   const { brand } = useTheme();
   const s = useMemo(() => createScreenStyles(brand), [brand]);
@@ -216,6 +217,7 @@ export default function BusinessesScreen() {
   const [refreshing,    setRefreshing]    = useState(false);
   const [statusFilter,  setStatusFilter]  = useState<StatusFilter>('all');
   const [moduleFilter,  setModuleFilter]  = useState<ModuleFilter>('all');
+  const [editingBusiness, setEditingBusiness] = useState<Business | null>(null);
   const [eventCounts,    setEventCounts]    = useState<Record<string, number>>({});
   const [firstEventIds,  setFirstEventIds]  = useState<Record<string, string>>({});
   // Track whether we've loaded events at least once to avoid redundant calls
@@ -336,6 +338,7 @@ export default function BusinessesScreen() {
                 business={item}
                 onRemove={handleRemove}
                 removing={removingId === item.id}
+                onEdit={setEditingBusiness}
                 eventCount={eventCounts[item.id] ?? 0}
                 firstEventId={firstEventIds[item.id]}
               />
@@ -350,6 +353,18 @@ export default function BusinessesScreen() {
         <Pressable style={s.fab} onPress={goAdd}>
           <Ionicons name="add" size={26} color="#fff" />
         </Pressable>
+      )}
+
+      {editingBusiness && (
+        <EditBusinessModal
+          business={editingBusiness}
+          onClose={() => setEditingBusiness(null)}
+          onSubmit={async (patch) => {
+            if (!token) return;
+            await updateBusiness(token, editingBusiness.id, patch);
+            setEditingBusiness(null);
+          }}
+        />
       )}
     </SafeAreaView>
   );

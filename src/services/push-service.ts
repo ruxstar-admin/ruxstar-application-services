@@ -14,6 +14,7 @@
  */
 
 import { router } from 'expo-router';
+import type { NotificationClickEvent } from 'react-native-onesignal';
 import { ONESIGNAL_APP_ID } from '@/constants/config';
 import { useAuthStore, setPendingLoginRoute } from '@/stores/auth-store';
 
@@ -80,7 +81,7 @@ export function initPushService() {
   // Registered immediately after initialize() so a cold-start tap (app was
   // killed, user tapped the OS notification) is still delivered — the SDK
   // buffers it until a listener exists.
-  OneSignal.Notifications.addEventListener('click', (event) => {
+  OneSignal.Notifications.addEventListener('click', (event: NotificationClickEvent) => {
     const data = (event?.notification?.additionalData ?? {}) as NotificationData;
     handleNotificationOpened(data);
   });
