@@ -9,11 +9,14 @@
 
 import React, { useMemo, useState } from 'react';
 import {
+  Alert,
   Modal, View, Text, TextInput, Pressable, StyleSheet,
   ScrollView, KeyboardAvoidingView, Platform,
   ActivityIndicator,
 } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
+import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
@@ -51,6 +54,18 @@ const createStyles = (brand: BrandTokens) => StyleSheet.create({
     paddingHorizontal: Spacing.three, paddingVertical: 12, color: brand.cream, fontSize: 15,
   },
   textarea: { minHeight: 90, paddingTop: 12 },
+
+  locateBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: brand.primaryGlow,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(124,58,237,0.25)',
+    paddingVertical: 12,
+  },
+  locateBtnDone:     { backgroundColor: 'rgba(22,163,74,0.08)', borderColor: 'rgba(22,163,74,0.25)' },
+  locateBtnText:     { fontSize: 13, fontWeight: '600', color: brand.primary },
+  locateBtnTextDone: { color: brand.success },
 
   error: {
     color: brand.error, fontSize: 13, textAlign: 'center',
@@ -95,8 +110,30 @@ export default function EditBusinessModal({ business, onClose, onSubmit }: Props
   const [phone,       setPhone]       = useState(business.phone);
   const [address,     setAddress]     = useState(business.address);
   const [description, setDescription] = useState(business.description);
+  const [geo,         setGeo]         = useState<{ lat: number; lng: number } | undefined>(undefined);
+  const [locating,    setLocating]    = useState(false);
   const [error,       setError]       = useState('');
   const [saving,      setSaving]      = useState(false);
+
+  async function useCurrentLocation() {
+    setLocating(true);
+    try {
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          'Location permission needed',
+          'Allow location access so customers can find your business on the map.',
+        );
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    } catch {
+      Alert.alert('Could not get your location', 'Make sure location services are turned on, then try again.');
+    } finally {
+      setLocating(false);
+    }
+  }
 
   function handleClose() {
     if (saving) return;
@@ -116,6 +153,7 @@ export default function EditBusinessModal({ business, onClose, onSubmit }: Props
         phone:       phone.trim(),
         address:     address.trim(),
         description: description.trim(),
+        ...(geo ? { geo } : {}),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save changes.');
@@ -187,6 +225,25 @@ export default function EditBusinessModal({ business, onClose, onSubmit }: Props
                   editable={!saving}
                 />
               </Field>
+
+              <Pressable
+                style={[s.locateBtn, geo && s.locateBtnDone]}
+                disabled={locating || saving}
+                onPress={useCurrentLocation}
+              >
+                {locating ? (
+                  <ActivityIndicator size="small" color={brand.primary} />
+                ) : (
+                  <Ionicons
+                    name={geo ? 'checkmark-circle' : 'locate-outline'}
+                    size={16}
+                    color={geo ? brand.success : brand.primary}
+                  />
+                )}
+                <Text style={[s.locateBtnText, geo && s.locateBtnTextDone]}>
+                  {locating ? 'Getting your location…' : geo ? 'Location pinned — tap to update' : 'Use current location'}
+                </Text>
+              </Pressable>
 
               <Field label="Description" hint="required">
                 <TextInput

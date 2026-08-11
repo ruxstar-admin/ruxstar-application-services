@@ -6,7 +6,7 @@
  * Route: /(vendor)/business-setup?id=<businessId>
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -196,16 +196,25 @@ const fieldStyle: object = {
 
 // ─── Step: Resources ──────────────────────────────────────────────────────────
 
-function ResourcesStep({
-  typeId,
-  bookingMode,
-  resourceLabel,
-  showHallFields,
-  resources,
-  onAdd,
-  onRemove,
-  onUpdate,
-}: {
+/** Imperative handle so the wizard's Continue button can rescue an unsaved draft row. */
+export type ResourcesStepHandle = {
+  /**
+   * Commits whatever is currently typed in the add-form, exactly as if the
+   * vendor had pressed "+ Add" themselves. Vendors routinely fill the row
+   * and tap the wizard's bottom "Continue" button instead of the row's own
+   * "+ Add" button, then see a confusing "add at least one" error even
+   * though they *did* fill everything in — this rescues that draft instead
+   * of discarding it.
+   * Returns 'empty' if there was nothing typed, 'invalid' if something was
+   * typed but failed validation (error is left visible in the row), or
+   * 'added' if the draft was successfully committed via onAdd.
+   */
+  commitDraft: () =>
+    | { status: 'empty' | 'invalid' }
+    | { status: 'added'; resource: Omit<BusinessResource, 'id'> };
+};
+
+const ResourcesStep = forwardRef<ResourcesStepHandle, {
   typeId:         string;
   bookingMode:    BookingMode;
   resourceLabel?: string;
@@ -214,7 +223,16 @@ function ResourcesStep({
   onAdd:          (r: Omit<BusinessResource, 'id'>) => string | null;
   onRemove:       (id: string) => void;
   onUpdate:       (id: string, patch: Partial<BusinessResource>) => void;
-}) {
+}>(function ResourcesStep({
+  typeId,
+  bookingMode,
+  resourceLabel,
+  showHallFields,
+  resources,
+  onAdd,
+  onRemove,
+  onUpdate,
+}, ref) {
   const copy        = resourceCopy(typeId);
   const pLabel      = priceLabel(bookingMode);
   const showHalls   = showHallFields;
@@ -226,21 +244,25 @@ function ResourcesStep({
   const [desc,  setDesc]  = useState('');
   const [err,   setErr]   = useState('');
 
-  function tryAdd() {
-    if (!name.trim()) { setErr('Name is required.'); return; }
+  function tryAdd(): { status: 'empty' | 'invalid' } | { status: 'added'; resource: Omit<BusinessResource, 'id'> } {
+    if (!name.trim()) { setErr(''); return { status: 'empty' }; }
     const p = Number(price);
-    if (!Number.isFinite(p) || p < 0) { setErr('Enter a valid price.'); return; }
+    if (!price.trim() || !Number.isFinite(p) || p < 0) { setErr('Enter a valid price.'); return { status: 'invalid' }; }
     const c = cap.trim() ? Number(cap) : undefined;
-    if (c !== undefined && (!Number.isFinite(c) || c < 1)) { setErr('Enter a valid capacity.'); return; }
-    const errMsg = onAdd({
+    if (c !== undefined && (!Number.isFinite(c) || c < 1)) { setErr('Enter a valid capacity.'); return { status: 'invalid' }; }
+    const resource: Omit<BusinessResource, 'id'> = {
       name:  name.trim(),
       pricePerSlot: Math.round(p),
       ...(showHalls && c ? { capacity: c } : {}),
       ...(showHalls && desc.trim() ? { description: desc.trim() } : {}),
-    });
-    if (errMsg) { setErr(errMsg); return; }
+    };
+    const errMsg = onAdd(resource);
+    if (errMsg) { setErr(errMsg); return { status: 'invalid' }; }
     setName(''); setPrice(''); setCap(''); setDesc(''); setErr('');
+    return { status: 'added', resource };
   }
+
+  useImperativeHandle(ref, () => ({ commitDraft: tryAdd }));
 
   return (
     <View style={step.wrap}>
@@ -272,7 +294,7 @@ function ResourcesStep({
           <View style={{ gap: Spacing.one + 2 }}>
             <TextInput
               style={[fieldStyle, step.input]}
-              placeholder="Max capacity (optional)"
+              placeholder={`Max capacity for this ${sectionTitle.toLowerCase().replace(/s$/, '')} (optional)`}
               placeholderTextColor={Brand.creamMuted}
               value={cap}
               onChangeText={(v) => setCap(v.replace(/\D/g, ''))}
@@ -288,7 +310,10 @@ function ResourcesStep({
           </View>
         )}
         {err ? <Text style={step.inlineErr}>{err}</Text> : null}
-        <Pressable style={step.addBtn} onPress={tryAdd}>
+        <Pressable
+          style={step.addBtn}
+          onPress={() => { if (tryAdd().status === 'empty') setErr('Name is required.'); }}
+        >
           <Ionicons name="add" size={16} color={Brand.primary} />
           <Text style={step.addBtnText}>Add</Text>
         </Pressable>
@@ -333,7 +358,7 @@ function ResourcesStep({
       )}
     </View>
   );
-}
+});
 
 // ─── Step: Hourly Slots ───────────────────────────────────────────────────────
 
@@ -479,7 +504,10 @@ function RulesStep({
     <View style={step.wrap}>
       <Text style={step.sectionTitle}>House Rules</Text>
       <Text style={step.sectionSub}>Optional rules shown to customers before they book.</Text>
-      <Text style={step.fieldLabel}>Maximum guests allowed</Text>
+      <Text style={step.fieldLabel}>Maximum guests allowed (venue-wide total)</Text>
+      <Text style={[step.sectionSub, { marginTop: -6 }]}>
+        This is a cap across your whole venue — separate from each hall&apos;s own capacity, set on the previous step.
+      </Text>
       <TextInput
         style={[fieldStyle, step.input]}
         placeholder="e.g. 200"
@@ -648,15 +676,14 @@ function StaffStep({
 
 const DURATION_OPTIONS = [15, 20, 30, 45, 60, 90, 120];
 
-function ServicesStep({
-  serviceNoun = 'Services',
-  servicesList,
-  staffList,
-  bufferMinutes,
-  onAdd,
-  onRemove,
-  onBufferChange,
-}: {
+/** Same rescue pattern as ResourcesStepHandle — see its comment for why. */
+export type ServicesStepHandle = {
+  commitDraft: () =>
+    | { status: 'empty' | 'invalid' }
+    | { status: 'added'; service: Omit<BusinessService, 'id'> };
+};
+
+const ServicesStep = forwardRef<ServicesStepHandle, {
   serviceNoun?:   string;
   servicesList:   BusinessService[];
   staffList:      BusinessStaff[];
@@ -664,7 +691,15 @@ function ServicesStep({
   onAdd:          (s: Omit<BusinessService, 'id'>) => void;
   onRemove:       (id: string) => void;
   onBufferChange: (m: number) => void;
-}) {
+}>(function ServicesStep({
+  serviceNoun = 'Services',
+  servicesList,
+  staffList,
+  bufferMinutes,
+  onAdd,
+  onRemove,
+  onBufferChange,
+}, ref) {
   const [name,     setName]     = useState('');
   const [duration, setDuration] = useState(30);
   const [price,    setPrice]    = useState('');
@@ -675,13 +710,17 @@ function ServicesStep({
     setStaffIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   }
 
-  function tryAdd() {
-    if (!name.trim()) { setErr('Service name is required.'); return; }
+  function tryAdd(): { status: 'empty' | 'invalid' } | { status: 'added'; service: Omit<BusinessService, 'id'> } {
+    if (!name.trim()) { setErr(''); return { status: 'empty' }; }
     const p = Number(price);
-    if (!price.trim() || !Number.isFinite(p) || p < 0) { setErr('Enter a valid price.'); return; }
-    onAdd({ name: name.trim(), durationMinutes: duration, price: Math.round(p), staffIds });
+    if (!price.trim() || !Number.isFinite(p) || p < 0) { setErr('Enter a valid price.'); return { status: 'invalid' }; }
+    const service: Omit<BusinessService, 'id'> = { name: name.trim(), durationMinutes: duration, price: Math.round(p), staffIds };
+    onAdd(service);
     setName(''); setPrice(''); setStaffIds([]); setErr('');
+    return { status: 'added', service };
   }
+
+  useImperativeHandle(ref, () => ({ commitDraft: tryAdd }));
 
   return (
     <View style={step.wrap}>
@@ -775,7 +814,10 @@ function ServicesStep({
         )}
 
         {err ? <Text style={step.inlineErr}>{err}</Text> : null}
-        <Pressable style={step.addBtn} onPress={tryAdd}>
+        <Pressable
+          style={step.addBtn}
+          onPress={() => { if (tryAdd().status === 'empty') setErr('Service name is required.'); }}
+        >
           <Ionicons name="add" size={16} color={Brand.primary} />
           <Text style={step.addBtnText}>Add</Text>
         </Pressable>
@@ -818,7 +860,7 @@ function ServicesStep({
       )}
     </View>
   );
-}
+});
 
 // ─── Step: Review ─────────────────────────────────────────────────────────────
 
@@ -964,6 +1006,17 @@ function ReviewStep({
           <Text style={review.cardSub}>No gallery photos — thumbnail still shown.</Text>
         )}
       </View>
+
+      {/* Surge pricing tip (slot mode only — feature lives in Slot Calendar, not this wizard) */}
+      {!isServiceMode && (
+        <View style={review.surgeNote}>
+          <Ionicons name="trending-up-outline" size={15} color={Brand.primary} />
+          <Text style={review.surgeNoteText}>
+            Want to charge more for peak-demand slots? Set surge pricing anytime from
+            {' '}<Text style={{ fontWeight: '700' }}>Slot Calendar → Surge Price</Text> once you&apos;re live.
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -2582,6 +2635,8 @@ export default function BusinessSetupScreen() {
   const [bufferMinutes, setBufferMinutes] = useState(0);
 
   const scrollRef = useRef<ScrollView>(null);
+  const resourcesStepRef = useRef<ResourcesStepHandle>(null);
+  const servicesStepRef = useRef<ServicesStepHandle>(null);
 
   // Derived
   const flow = useMemo(
@@ -2781,13 +2836,24 @@ export default function BusinessSetupScreen() {
         }
         case 'resources': {
           const label = flow.resourceLabel;
-          if (resources.length === 0) {
+          // Rescue a filled-in-but-not-yet-"+ Add"ed row instead of failing
+          // with a confusing "add at least one" error the vendor thinks they
+          // already resolved.
+          const draft = resourcesStepRef.current?.commitDraft() ?? { status: 'empty' as const };
+          if (draft.status === 'invalid') {
+            setError(`Check the ${label.toLowerCase().replace(/s$/, '')} you were adding — it has an invalid value.`);
+            return;
+          }
+          const effectiveResources = draft.status === 'added'
+            ? [...resources, { id: `local-${Date.now()}-draft`, ...draft.resource }]
+            : resources;
+          if (effectiveResources.length === 0) {
             setError(`Add at least one ${label.toLowerCase().replace(/s$/, '')}.`); return;
           }
-          if (resources.some((r) => r.pricePerSlot == null || r.pricePerSlot < 0)) {
+          if (effectiveResources.some((r) => r.pricePerSlot == null || r.pricePerSlot < 0)) {
             setError('Each item needs a valid price.'); return;
           }
-          await updateBusinessSetup(token, business.id, { resources });
+          await updateBusinessSetup(token, business.id, { resources: effectiveResources });
           break;
         }
         case 'rules': {
@@ -2810,11 +2876,20 @@ export default function BusinessSetupScreen() {
           break;
         }
         case 'services': {
-          if (servicesList.length === 0) {
-            const noun = flow?.serviceNoun?.toLowerCase() ?? 'service';
+          const noun = flow?.serviceNoun?.toLowerCase() ?? 'service';
+          // Same rescue as the resources step — see ResourcesStepHandle comment.
+          const draft = servicesStepRef.current?.commitDraft() ?? { status: 'empty' as const };
+          if (draft.status === 'invalid') {
+            setError(`Check the ${noun.replace(/s$/, '')} you were adding — it has an invalid value.`);
+            return;
+          }
+          const effectiveServices = draft.status === 'added'
+            ? [...servicesList, { id: `local-${Date.now()}-draft`, ...draft.service }]
+            : servicesList;
+          if (effectiveServices.length === 0) {
             setError(`Add at least one ${noun}.`); return;
           }
-          await updateBusinessSetup(token, business.id, { services: servicesList, bufferMinutes });
+          await updateBusinessSetup(token, business.id, { services: effectiveServices, bufferMinutes });
           break;
         }
         case 'review': {
@@ -3035,6 +3110,7 @@ export default function BusinessSetupScreen() {
 
           {currentStep === 'resources' && (
             <ResourcesStep
+              ref={resourcesStepRef}
               typeId={business.typeId}
               bookingMode={isFullDay ? 'fullDay' : 'slots'}
               resourceLabel={flow?.resourceLabel}
@@ -3066,6 +3142,7 @@ export default function BusinessSetupScreen() {
 
           {currentStep === 'services' && (
             <ServicesStep
+              ref={servicesStepRef}
               serviceNoun={flow?.serviceNoun}
               servicesList={servicesList}
               staffList={staffList}
@@ -3263,6 +3340,8 @@ const review = StyleSheet.create({
   ruleText:    { fontSize: 12, color: Brand.creamSub, lineHeight: 17 },
   photoRow:    { flexDirection: 'row', gap: Spacing.one + 2 },
   photoThumb:  { width: 52, height: 40, borderRadius: Radius.sm, borderWidth: 1, borderColor: Brand.border1 },
+  surgeNote:     { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: Brand.primaryGlow, borderRadius: Radius.md, padding: Spacing.two + 2, borderWidth: 1, borderColor: 'rgba(124,58,237,0.12)' },
+  surgeNoteText: { fontSize: 11, color: Brand.creamSub, flex: 1, lineHeight: 16 },
 });
 
 const sk = StyleSheet.create({

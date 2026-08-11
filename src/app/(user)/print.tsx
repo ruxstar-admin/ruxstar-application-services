@@ -166,12 +166,13 @@ export default function CustomerPrintScreen() {
     setCreating(true);
     try {
       const order = await createPrintOrder(token, {
-        businessId: draft.shop.businessId,
-        categoryId: draft.category.id,
-        city:       draft.city,
-        selection:  draft.selection,
-        notes:      draft.notes || undefined,
-        attributes: draft.attributes,
+        businessId:  draft.shop.businessId,
+        categoryId:  draft.category.id,
+        city:        draft.city,
+        selection:   draft.selection,
+        notes:       draft.notes || undefined,
+        attributes:  draft.attributes,
+        designImage: draft.designImage,
       });
       router.replace(`/(user)/print-order?orderId=${order.id}` as never);
     } catch (e: unknown) {
