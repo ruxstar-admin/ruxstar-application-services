@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTheme } from '@/hooks/useTheme';
 import { Radius, Spacing } from '@/constants/theme';
+import { useCashfreePayment } from '@/utils/cashfree-native';
 import {
   getPrintOrder,
   payPrintOrder,
@@ -122,6 +123,18 @@ export default function CustomerPrintOrderScreen() {
     }
   }, [token, orderId]);
 
+  const { startPayment } = useCashfreePayment({
+    onSuccess: () => {
+      setPaying(false);
+      Alert.alert('Payment successful!', 'Your order has been confirmed.');
+      void fetchOrder();
+    },
+    onError: (msg) => {
+      setPaying(false);
+      Alert.alert('Payment failed', msg);
+    },
+  });
+
   useEffect(() => {
     setOrder(null);
     setLoading(true);
@@ -141,27 +154,15 @@ export default function CustomerPrintOrderScreen() {
     setPaying(true);
     try {
       const { payment } = await payPrintOrder(token, orderId);
-      Alert.alert(
-        '💳 Complete Payment',
-        `Amount: ₹${payment.amount.toLocaleString('en-IN')}\n\nOpen your payment app or browser to complete this payment.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Open Payment',
-            onPress: () => {
-              const url = `https://payments.cashfree.com/forms/${payment.cashfreeOrderId}`;
-              Linking.openURL(url).catch(() =>
-                Alert.alert('Error', 'Could not open payment page.'),
-              );
-            },
-          },
-        ],
-      );
-      void fetchOrder();
+      startPayment({
+        paymentSessionId: payment.paymentSessionId,
+        orderId:          payment.orderId,
+        bookingId:        orderId,
+        mode:             payment.mode,
+      });
     } catch (e: unknown) {
-      Alert.alert('Payment Error', e instanceof Error ? e.message : 'Could not initiate payment.');
-    } finally {
       setPaying(false);
+      Alert.alert('Payment Error', e instanceof Error ? e.message : 'Could not initiate payment.');
     }
   };
 
