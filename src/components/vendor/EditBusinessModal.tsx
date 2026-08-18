@@ -166,7 +166,7 @@ export default function EditBusinessModal({ business, onClose, onSubmit }: Props
     <Modal visible transparent animationType="fade" onRequestClose={handleClose}>
       <Animated.View entering={FadeIn.duration(180)} style={s.overlay}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.kav}>
-          <Animated.View entering={SlideInDown.springify().damping(18)} style={s.sheet}>
+          <Animated.View entering={SlideInUp.duration(300)} style={s.sheet}>
             <View style={s.handle} />
 
             <View style={s.sheetHeader}>

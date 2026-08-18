@@ -1,7 +1,7 @@
 /**
- * Vendor Support Ticket Thread
- * Messages + reply box for a single ticket. Mirrors TicketThread in the
- * web's components/support-portal.tsx.
+ * Customer Support Ticket Thread
+ * Messages + reply box for a single ticket.
+ * Mirrors (vendor)/support-ticket.tsx — uses user/support/tickets endpoints.
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -24,7 +24,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTheme } from '@/hooks/useTheme';
 import type { BrandTokens } from '@/hooks/useTheme';
-import { VendorSupportService, type SupportTicket, type TicketStatus } from '@/services/vendor-support-service';
+import { CustomerSupportService, type SupportTicket, type TicketStatus } from '@/services/customer-support-service';
 
 function statusColor(status: TicketStatus, brand: BrandTokens) {
   if (status === 'open')     return brand.success;
@@ -50,33 +50,34 @@ const createStyles = (brand: BrandTokens) => StyleSheet.create({
     paddingHorizontal: Spacing.four, paddingVertical: Spacing.two + 2,
     borderBottomWidth: 1, borderBottomColor: brand.border1,
   },
-  backBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  headerInfo: { flex: 1, gap: 2 },
+  backBtn:       { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  headerInfo:    { flex: 1, gap: 2 },
   headerSubject: { fontSize: 16, fontWeight: '700', color: brand.cream },
-  headerMeta: { fontSize: 10, color: brand.creamMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
+  headerMeta:    { fontSize: 10, color: brand.creamMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
 
-  pill: { borderRadius: Radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  pill:     { borderRadius: Radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
   pillText: { fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
 
-  scroll: { flex: 1 },
+  scroll:        { flex: 1 },
   scrollContent: { padding: Spacing.three, gap: Spacing.two, paddingBottom: Spacing.four },
 
-  bubbleRow: { flexDirection: 'row' },
-  bubbleRowMine: { justifyContent: 'flex-end' },
+  bubbleRow:       { flexDirection: 'row' },
+  bubbleRowMine:   { justifyContent: 'flex-end' },
   bubbleRowTheirs: { justifyContent: 'flex-start' },
   bubble: { maxWidth: '82%', borderRadius: Radius.lg, paddingHorizontal: Spacing.three, paddingVertical: 10 },
-  bubbleMine: { backgroundColor: brand.primary },
+  bubbleMine:   { backgroundColor: brand.primary },
   bubbleTheirs: { backgroundColor: brand.surface1, borderWidth: 1, borderColor: brand.border1 },
-  bubbleText: { fontSize: 14, lineHeight: 19 },
-  bubbleTextMine: { color: '#fff' },
+  bubbleText:       { fontSize: 14, lineHeight: 19 },
+  bubbleTextMine:   { color: '#fff' },
   bubbleTextTheirs: { color: brand.cream },
-  bubbleMeta: { fontSize: 10, marginTop: 4 },
-  bubbleMetaMine: { color: 'rgba(255,255,255,0.75)' },
+  bubbleMeta:       { fontSize: 10, marginTop: 4 },
+  bubbleMetaMine:   { color: 'rgba(255,255,255,0.75)' },
   bubbleMetaTheirs: { color: brand.creamMuted },
 
   closedNotice: {
     borderWidth: 1, borderColor: brand.border1, borderRadius: Radius.lg,
-    paddingVertical: 12, paddingHorizontal: Spacing.three, marginHorizontal: Spacing.three, marginBottom: Spacing.three,
+    paddingVertical: 12, paddingHorizontal: Spacing.three,
+    marginHorizontal: Spacing.three, marginBottom: Spacing.three,
   },
   closedText: { fontSize: 12, color: brand.creamMuted, textAlign: 'center' },
 
@@ -94,22 +95,22 @@ const createStyles = (brand: BrandTokens) => StyleSheet.create({
     height: 44, alignItems: 'center', justifyContent: 'center',
   },
   sendBtnDisabled: { opacity: 0.5 },
-  sendBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  sendBtnText:     { color: '#fff', fontSize: 14, fontWeight: '700' },
 
   errorText: { fontSize: 12, color: brand.error, paddingHorizontal: Spacing.three, paddingBottom: 6 },
 });
 
-export default function VendorSupportTicketScreen() {
+export default function CustomerSupportTicketScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const token = useAuthStore((s) => s.token);
   const { brand } = useTheme();
   const s = useMemo(() => createStyles(brand), [brand]);
 
-  const [ticket, setTicket] = useState<SupportTicket | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [ticket,    setTicket]    = useState<SupportTicket | null>(null);
+  const [loading,   setLoading]   = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [body, setBody] = useState('');
-  const [sending, setSending] = useState(false);
+  const [body,      setBody]      = useState('');
+  const [sending,   setSending]   = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -118,7 +119,7 @@ export default function VendorSupportTicketScreen() {
     setLoading(true);
     setLoadError(null);
     try {
-      setTicket(await VendorSupportService.getTicket(id, token));
+      setTicket(await CustomerSupportService.getTicket(id, token));
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'Could not load this ticket.');
     } finally {
@@ -134,7 +135,7 @@ export default function VendorSupportTicketScreen() {
     setSending(true);
     setSendError(null);
     try {
-      const updated = await VendorSupportService.replyToTicket(id, text, token);
+      const updated = await CustomerSupportService.replyToTicket(id, text, token);
       setTicket(updated);
       setBody('');
     } catch (e) {
@@ -161,7 +162,11 @@ export default function VendorSupportTicketScreen() {
           {ticket && <Text style={s.headerMeta}>{ticket.ticketRef} · {ticket.category}</Text>}
         </View>
         {ticket && (
-          <View style={[s.pill, { backgroundColor: `${statusColor(ticket.status, brand)}22`, borderWidth: 1, borderColor: `${statusColor(ticket.status, brand)}44` }]}>
+          <View style={[s.pill, {
+            backgroundColor: `${statusColor(ticket.status, brand)}22`,
+            borderWidth: 1,
+            borderColor: `${statusColor(ticket.status, brand)}44`,
+          }]}>
             <Text style={[s.pillText, { color: statusColor(ticket.status, brand) }]}>{ticket.status}</Text>
           </View>
         )}
@@ -219,7 +224,9 @@ export default function VendorSupportTicketScreen() {
                   onPress={send}
                   disabled={sending || !body.trim()}
                 >
-                  {sending ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.sendBtnText}>Send</Text>}
+                  {sending
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={s.sendBtnText}>Send</Text>}
                 </Pressable>
               </View>
             </>

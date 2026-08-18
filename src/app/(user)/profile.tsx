@@ -603,6 +603,24 @@ export default function CustomerProfileScreen() {
                 </>
               )}
 
+              {/* ── Creator / Influencer section ── */}
+              <View style={s.sectionHeader}>
+                <Text style={s.sectionTitle}>Creator & Influencer</Text>
+              </View>
+              <View style={s.card}>
+                <SupportRow
+                  icon="megaphone-outline"
+                  label="Browse Creator Offers"
+                  onPress={() => router.push('/(user)/creator-offers' as never)}
+                />
+                <SupportRow
+                  icon="star-outline"
+                  label="My Creator Bookings"
+                  onPress={() => router.push({ pathname: '/(user)/orders', params: { tab: 'creator' } } as never)}
+                  divider={false}
+                />
+              </View>
+
               {/* ── Support section ── */}
               <View style={s.sectionHeader}>
                 <Text style={s.sectionTitle}>Support</Text>
@@ -611,7 +629,7 @@ export default function CustomerProfileScreen() {
                 <SupportRow
                   icon="headset-outline"
                   label="Help & Support"
-                  onPress={() => Linking.openURL('mailto:support@ruxstar.in')}
+                  onPress={() => router.push('/(user)/support' as never)}
                 />
                 <SupportRow
                   icon="shield-outline"

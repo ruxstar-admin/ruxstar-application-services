@@ -17,14 +17,16 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Radius, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth-store';
 import { useKycStore } from '@/stores/kyc-store';
+import { useBusinessStore } from '@/stores/business-store';
 import { useTheme } from '@/hooks/useTheme';
 import VendorHeader from '@/components/vendor/VendorHeader';
+import DropdownPicker, { type DropdownOption } from '@/components/ui/DropdownPicker';
 import {
   listVendorCommerceOrders,
   updateVendorCommerceOrderStatus,
@@ -192,39 +194,64 @@ const kg = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function VendorCommerceOrdersScreen() {
+  const { businessId: paramBusinessId } = useLocalSearchParams<{ businessId?: string }>();
+
   const token     = useAuthStore((s) => s.token);
   const kycStatus = useKycStore((s) => s.status);
+  const { businesses, loadBusinesses } = useBusinessStore();
   const { brand } = useTheme();
 
   const kycVerified = kycStatus?.status === 'verified';
 
-  const [orders,    setOrders]    = useState<CommerceOrder[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [refreshing,setRefreshing]= useState(false);
-  const [error,     setError]     = useState('');
-  const [busyId,    setBusyId]    = useState('');
+  const [orders,             setOrders]             = useState<CommerceOrder[]>([]);
+  const [loading,            setLoading]            = useState(true);
+  const [refreshing,         setRefreshing]         = useState(false);
+  const [error,              setError]              = useState('');
+  const [busyId,             setBusyId]             = useState('');
+  const [selectedBusinessId, setSelectedBusinessId] = useState(paramBusinessId ?? 'all');
+
+  // Build dropdown options from commerce businesses
+  const commerceBusinesses = useMemo(
+    () => businesses.filter((b) => b.module === 'commerce'),
+    [businesses],
+  );
+
+  const businessOptions = useMemo<DropdownOption[]>(() => [
+    { value: 'all', label: 'All businesses' },
+    ...commerceBusinesses.map((b) => ({ value: b.id, label: b.name })),
+  ], [commerceBusinesses]);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!token || !kycVerified) { setLoading(false); return; }
     try {
       isRefresh ? setRefreshing(true) : setLoading(true);
       setError('');
-      setOrders(await listVendorCommerceOrders(token));
+      const [allOrders] = await Promise.all([
+        listVendorCommerceOrders(token),
+        loadBusinesses(token),
+      ]);
+      setOrders(allOrders);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Could not load orders');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token, kycVerified]);
+  }, [token, kycVerified, loadBusinesses]);
 
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
+  // Client-side filter — no extra API call
+  const filteredOrders = useMemo(() => {
+    if (selectedBusinessId === 'all') return orders;
+    return orders.filter((o) => o.businessId === selectedBusinessId);
+  }, [orders, selectedBusinessId]);
+
   const stats = useMemo(() => {
-    const active    = orders.filter((o) => ['confirmed', 'preparing', 'ready'].includes(o.status)).length;
-    const completed = orders.filter((o) => o.status === 'completed').length;
-    return { total: orders.length, active, completed };
-  }, [orders]);
+    const active    = filteredOrders.filter((o) => ['confirmed', 'preparing', 'ready'].includes(o.status)).length;
+    const completed = filteredOrders.filter((o) => o.status === 'completed').length;
+    return { total: filteredOrders.length, active, completed };
+  }, [filteredOrders]);
 
   async function handleAdvance(order: CommerceOrder) {
     const next = NEXT[order.status];
@@ -253,7 +280,7 @@ export default function VendorCommerceOrdersScreen() {
         </View>
       ) : (
         <FlatList
-          data={orders}
+          data={filteredOrders}
           keyExtractor={(o) => o.id}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
@@ -266,6 +293,16 @@ export default function VendorCommerceOrdersScreen() {
           }
           ListHeaderComponent={
             <>
+              {businessOptions.length > 1 && (
+                <View style={s.filterRow}>
+                  <DropdownPicker
+                    options={businessOptions}
+                    value={selectedBusinessId}
+                    onChange={setSelectedBusinessId}
+                  />
+                </View>
+              )}
+
               <View style={s.statsRow}>
                 <StatCard label="All"         value={stats.total}     />
                 <StatCard label="In progress" value={stats.active}    accent={brand.success} />
@@ -282,9 +319,11 @@ export default function VendorCommerceOrdersScreen() {
           ListEmptyComponent={
             <View style={s.empty}>
               <Text style={s.emptyEmoji}>🛍️</Text>
-              <Text style={[s.emptyTitle, { color: brand.cream }]}>No paid orders yet</Text>
+              <Text style={[s.emptyTitle, { color: brand.cream }]}>No orders yet</Text>
               <Text style={[s.emptySub, { color: brand.creamSub }]}>
-                Commerce orders will appear here once customers pay.
+                {selectedBusinessId === 'all'
+                  ? 'Commerce orders will appear here once customers pay.'
+                  : 'No orders for this business yet.'}
               </Text>
             </View>
           }
@@ -309,6 +348,7 @@ const s = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list:     { padding: Spacing.four, gap: Spacing.three, paddingBottom: 100 },
 
+  filterRow: { marginBottom: Spacing.two },
   statsRow: { flexDirection: 'row', gap: Spacing.two, marginBottom: Spacing.two },
   errorBox: { borderRadius: Radius.lg, borderWidth: 1, padding: Spacing.two, marginBottom: Spacing.two },
 

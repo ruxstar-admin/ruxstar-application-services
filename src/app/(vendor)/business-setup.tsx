@@ -26,7 +26,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { DarkBrand as Brand, Radius, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth-store';
 import { TimeField } from '@/components/ui/DateTimePickers';
 import {
