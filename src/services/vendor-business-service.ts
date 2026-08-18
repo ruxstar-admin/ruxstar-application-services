@@ -104,6 +104,8 @@ export interface BusinessInput {
   address:      string;
   description:  string;
   bookingMode?: BookingMode;
+  /** Device geolocation, captured via "Use current location" on the details step. */
+  geo?:         { lat: number; lng: number };
 }
 
 // ─── Normalizers ─────────────────────────────────────────────────────────────
@@ -253,6 +255,7 @@ export interface BusinessProfilePatch {
   phone?:       string;
   address?:     string;
   description?: string;
+  geo?:         { lat: number; lng: number };
 }
 
 /** PATCH /vendor/businesses/:id — edit name/phone/address/description without recreating the business */

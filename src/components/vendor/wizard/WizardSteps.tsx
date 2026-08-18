@@ -5,6 +5,7 @@
 
 import { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Image,
@@ -17,6 +18,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
@@ -259,6 +261,20 @@ const createStyles = (brand: BrandTokens) => StyleSheet.create({
 
   addressPreview: { fontSize: 11, color: brand.creamSub, marginTop: 4, fontStyle: 'italic' },
 
+  locateBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginTop: 10,
+    backgroundColor: brand.primaryGlow,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(124,58,237,0.25)',
+    paddingVertical: 12,
+  },
+  locateBtnDone:     { backgroundColor: 'rgba(22,163,74,0.08)', borderColor: 'rgba(22,163,74,0.25)' },
+  locateBtnText:     { fontSize: 13, fontWeight: '600', color: brand.primary },
+  locateBtnTextDone: { color: brand.success },
+  fieldHintFull:     { fontSize: 11, color: brand.creamMuted, marginTop: 4, textAlign: 'center' },
+
   coverPickerWrap: {
     height: 160,
     borderRadius: Radius.lg,
@@ -497,7 +513,37 @@ export type DetailsForm = {
   area:        string;
   description: string;
   thumbnail?:  string;
+  /** Device geolocation, captured via "Use current location". */
+  geo?:        { lat: number; lng: number };
 };
+
+/**
+ * Requests foreground location permission and reads the device's current
+ * position. Deliberately only ever reads the device's own GPS — never
+ * derived from a typed address — matching the backend's `normalizeGeo`
+ * contract in businessAddress.js.
+ */
+async function captureCurrentLocation(
+  onChange: (patch: Partial<DetailsForm>) => void,
+  onDone: () => void,
+) {
+  try {
+    const perm = await Location.requestForegroundPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(
+        'Location permission needed',
+        'Allow location access so customers can find your business on the map. You can enable this later from your device settings.',
+      );
+      return;
+    }
+    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    onChange({ geo: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
+  } catch {
+    Alert.alert('Could not get your location', 'Make sure location services are turned on, then try again.');
+  } finally {
+    onDone();
+  }
+}
 
 async function pickCoverPhoto(onChange: (patch: Partial<DetailsForm>) => void) {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -531,6 +577,7 @@ export function DetailsStep({
 
   const [showStatePicker, setShowStatePicker] = useState(false);
   const [showCityPicker,  setShowCityPicker]  = useState(false);
+  const [locating,        setLocating]        = useState(false);
 
   const cities       = form.state ? (CITIES_BY_STATE[form.state] ?? []) : [];
   const isCityCustom = form.city !== '' && !cities.includes(form.city);
@@ -719,6 +766,31 @@ export function DetailsStep({
             {addressPreview ? (
               <Text style={s.addressPreview} numberOfLines={2}>{addressPreview}</Text>
             ) : null}
+
+            <Pressable
+              style={[s.locateBtn, form.geo && s.locateBtnDone]}
+              disabled={locating}
+              onPress={() => {
+                setLocating(true);
+                captureCurrentLocation(onChange, () => setLocating(false));
+              }}
+            >
+              {locating ? (
+                <ActivityIndicator size="small" color={brand.primary} />
+              ) : (
+                <Ionicons
+                  name={form.geo ? 'checkmark-circle' : 'locate-outline'}
+                  size={16}
+                  color={form.geo ? brand.success : brand.primary}
+                />
+              )}
+              <Text style={[s.locateBtnText, form.geo && s.locateBtnTextDone]}>
+                {locating ? 'Getting your location…' : form.geo ? 'Location pinned — tap to update' : 'Use current location'}
+              </Text>
+            </Pressable>
+            <Text style={s.fieldHintFull}>
+              Pins your business on the map so nearby customers can find you.
+            </Text>
           </>
         ) : null}
       </Field>

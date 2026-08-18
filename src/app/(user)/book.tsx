@@ -318,21 +318,24 @@ const pbd = StyleSheet.create({
 // ─── Confirm Sheet ────────────────────────────────────────────────────────────
 
 function ConfirmSheet({
-  visible, biz, selSlot, selDate, isFullDay, isServiceBiz, selServiceIds, guestCount, onClose, onConfirm,
+  visible, biz, selSlots, selDate, isFullDay, isServiceBiz, selServiceIds, guestCount, onClose, onConfirm,
 }: {
-  visible: boolean; biz: PublicBusiness; selSlot: PublicSlot | null; selDate: string;
+  visible: boolean; biz: PublicBusiness; selSlots: PublicSlot[]; selDate: string;
   isFullDay: boolean; isServiceBiz: boolean; selServiceIds: string[]; guestCount: string;
   onClose: () => void; onConfirm: () => void;
 }) {
   const { brand } = useTheme();
   const insets    = useSafeAreaInsets();
+  const selSlot   = selSlots[0] ?? null;
   if (!selSlot) return null;
 
-  const price        = selSlot.pricePerSlot;
+  const price        = selSlots.reduce((sum, s) => sum + s.pricePerSlot, 0);
   const serviceNames = selServiceIds.map((id) => biz.services?.find((s) => s.id === id)?.name).filter(Boolean).join(', ');
   const timeLabel    = isFullDay
     ? `Full Day · ${fmtDateShort(selDate)}`
-    : `${fmt12(selSlot.startTime)}${selSlot.endTime ? ` – ${fmt12(selSlot.endTime)}` : ''}`;
+    : selSlots.length > 1
+      ? `${selSlots.length} slots · ${fmt12(selSlots[0].startTime)} – ${fmt12(selSlots[selSlots.length - 1].startTime)}`
+      : `${fmt12(selSlot.startTime)}${selSlot.endTime ? ` – ${fmt12(selSlot.endTime)}` : ''}`;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -445,15 +448,44 @@ export default function BookScreen() {
   const [slots,     setSlots]     = useState<PublicSlot[]>([]);
   const [slotsLoad, setSlotsLoad] = useState(false);
   const [slotsErr,  setSlotsErr]  = useState('');
-  const [selSlot,   setSelSlot]   = useState<PublicSlot | null>(null);
+  // Multiple slots can be picked at once (hourly grid only — see slotKey/toggleSlot).
+  // fullDay and services bookings still behave as single-select.
+  const [selSlots,  setSelSlots]  = useState<PublicSlot[]>([]);
   const [bookMode,  setBookMode]  = useState<'slots' | 'fullDay' | 'services'>('slots');
   const [showConfirm, setShowConfirm] = useState(false);
   const [guestCount,  setGuestCount]  = useState('');
+  const [bookingProgress, setBookingProgress] = useState<{ done: number; total: number } | null>(null);
+
+  // Bridges the callback-based native payment SDK to a promise so multiple
+  // selected slots can be booked & paid for one at a time, in sequence.
+  const paymentWaiterRef = useRef<{ resolve: () => void; reject: (msg: string) => void } | null>(null);
 
   const { startPayment, paying } = useCashfreePayment({
-    onSuccess: (bookingId) => router.replace({ pathname: '/(user)/payment-status', params: { bookingId, kind: 'booking' } } as never),
-    onError: (msg) => Alert.alert('Payment Failed', msg),
+    onSuccess: () => { paymentWaiterRef.current?.resolve(); paymentWaiterRef.current = null; },
+    onError:   (msg) => { paymentWaiterRef.current?.reject(msg); paymentWaiterRef.current = null; },
   });
+
+  function payAndWait(args: Parameters<typeof startPayment>[0]): Promise<void> {
+    return new Promise((resolve, reject) => {
+      paymentWaiterRef.current = { resolve, reject };
+      startPayment(args);
+    });
+  }
+
+  function slotKey(slot: PublicSlot): string {
+    return `${slot.resourceId ?? ''}__${slot.startAt}`;
+  }
+
+  function toggleSlot(slot: PublicSlot) {
+    // fullDay / services bookings are still single-select — one appointment/day at a time.
+    if (bookMode !== 'slots') { setSelSlots([slot]); return; }
+    setSelSlots((prev) => {
+      const key = slotKey(slot);
+      const exists = prev.some((s) => slotKey(s) === key);
+      if (exists) return prev.filter((s) => slotKey(s) !== key);
+      return [...prev, slot].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    });
+  }
 
   // ── Load business ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -462,7 +494,7 @@ export default function BookScreen() {
     setSelServiceIds([]); setSelStaffId('');
     setSelDate(todayLocal()); setResources([]); setSelRes('');
     setSlots([]); setSlotsLoad(false); setSlotsErr('');
-    setSelSlot(null); setBookMode('slots'); setGuestCount('');
+    setSelSlots([]); setBookMode('slots'); setGuestCount('');
 
     getPublicBusiness(businessId)
       .then((b) => setBiz(b))
@@ -488,7 +520,7 @@ export default function BookScreen() {
   const loadSlots = useCallback(async () => {
     if (!businessId || !selDate) return;
     if (isServiceBiz && selServiceIds.length === 0) { setSlots([]); return; }
-    setSlotsLoad(true); setSlotsErr(''); setSelSlot(null);
+    setSlotsLoad(true); setSlotsErr(''); setSelSlots([]);
     try {
       const resp = await getPublicSlots(businessId, selDate, selRes || undefined,
         isServiceBiz ? { serviceIds: selServiceIds, staffId: selStaffId || undefined } : undefined);
@@ -513,27 +545,65 @@ export default function BookScreen() {
   }, [slots, selDate, selRes, resources]);
 
   // ── Book ───────────────────────────────────────────────────────────────────
+  // Each slot is its own booking + (if paid) its own payment session — the
+  // backend has no "book N slots in one order" endpoint, so multi-slot
+  // selection books them one at a time, waiting for each payment to finish
+  // before starting the next. Stops immediately on failure so the vendor and
+  // customer both see exactly which slots are actually booked.
   async function handleBook() {
-    if (!selSlot || !businessId || !token) return;
+    if (selSlots.length === 0 || !businessId || !token) return;
+
+    let confirmedCount = 0;
+    let lastResult: Awaited<ReturnType<typeof initiateCustomerBooking>> | null = null;
+    setBookingProgress(selSlots.length > 1 ? { done: 0, total: selSlots.length } : null);
+
     try {
-      const result = await initiateCustomerBooking(token, {
-        businessId, startAt: selSlot.startAt, resourceId: selSlot.resourceId || undefined,
-        serviceIds: isServiceBiz && selServiceIds.length ? selServiceIds : undefined,
-        staffId:    isServiceBiz && selStaffId ? selStaffId : undefined,
-      });
-      if (result.paymentSessionId) {
-        startPayment({ paymentSessionId: result.paymentSessionId, orderId: result.orderId, bookingId: result.bookingId, mode: result.mode });
+      for (const slot of selSlots) {
+        const result = await initiateCustomerBooking(token, {
+          businessId, startAt: slot.startAt, resourceId: slot.resourceId || undefined,
+          serviceIds: isServiceBiz && selServiceIds.length ? selServiceIds : undefined,
+          staffId:    isServiceBiz && selStaffId ? selStaffId : undefined,
+        });
+        if (result.paymentSessionId) {
+          await payAndWait({ paymentSessionId: result.paymentSessionId, orderId: result.orderId, bookingId: result.bookingId, mode: result.mode });
+        }
+        lastResult = result;
+        confirmedCount++;
+        setBookingProgress((p) => p ? { ...p, done: confirmedCount } : null);
+      }
+
+      if (!lastResult) return;
+      if (selSlots.length > 1) {
+        Alert.alert(
+          'Booking Confirmed!',
+          `All ${confirmedCount} slots are booked.`,
+          [{ text: 'View Bookings', onPress: () => router.replace('/(user)/orders' as never) }],
+        );
+      } else if (lastResult.paymentSessionId) {
+        router.replace({ pathname: '/(user)/payment-status', params: { bookingId: lastResult.bookingId, kind: 'booking' } } as never);
       } else {
         Alert.alert(
-          result.status === 'confirmed' ? 'Booking Confirmed!' : 'Booking Received!',
-          result.status === 'confirmed'
-            ? `Your slot is confirmed!\nID: ${result.bookingId.slice(-6).toUpperCase()}`
-            : `Booking received. Amount: ₹${result.amount.toLocaleString('en-IN')} — pay at venue.\nID: ${result.bookingId.slice(-6).toUpperCase()}`,
+          lastResult.status === 'confirmed' ? 'Booking Confirmed!' : 'Booking Received!',
+          lastResult.status === 'confirmed'
+            ? `Your slot is confirmed!\nID: ${lastResult.bookingId.slice(-6).toUpperCase()}`
+            : `Booking received. Amount: ₹${lastResult.amount.toLocaleString('en-IN')} — pay at venue.\nID: ${lastResult.bookingId.slice(-6).toUpperCase()}`,
           [{ text: 'View Bookings', onPress: () => router.replace('/(user)/orders' as never) }],
         );
       }
+      setSelSlots([]);
     } catch (e: unknown) {
-      Alert.alert('Booking Failed', e instanceof Error ? e.message : 'Please try again.');
+      const msg = e instanceof Error ? e.message : 'Please try again.';
+      Alert.alert(
+        'Booking Failed',
+        confirmedCount > 0
+          ? `${confirmedCount} of ${selSlots.length} slots were booked before this failed: ${msg}`
+          : msg,
+        confirmedCount > 0
+          ? [{ text: 'View Bookings', onPress: () => router.replace('/(user)/orders' as never) }]
+          : undefined,
+      );
+    } finally {
+      setBookingProgress(null);
     }
   }
 
@@ -562,17 +632,23 @@ export default function BookScreen() {
     );
   }
 
-  const photoUrls = [...(biz.photos ?? []), ...(biz.coverUrl ? [biz.coverUrl] : [])].filter((v, i, a) => v && a.indexOf(v) === i);
-  const emoji     = businessEmoji(biz);
-  const canBook   = !!selSlot && !paying;
-  const btnLabel  = paying ? 'Processing…' : isServiceBiz ? 'Book Appointment' : isFullDay ? 'Book Full Day' : 'Book This Slot';
+  const photoUrls  = [...(biz.photos ?? []), ...(biz.coverUrl ? [biz.coverUrl] : [])].filter((v, i, a) => v && a.indexOf(v) === i);
+  const emoji      = businessEmoji(biz);
+  const totalPrice = selSlots.reduce((sum, s) => sum + s.pricePerSlot, 0);
+  const canBook    = selSlots.length > 0 && !paying;
+  const btnLabel   = paying
+    ? (bookingProgress ? `Booking ${bookingProgress.done + 1} of ${bookingProgress.total}…` : 'Processing…')
+    : isServiceBiz ? 'Book Appointment'
+    : isFullDay    ? 'Book Full Day'
+    : selSlots.length > 1 ? `Book ${selSlots.length} Slots`
+    : 'Book This Slot';
 
   return (
     <SafeAreaView style={[g.screen, { backgroundColor: brand.bg }]} edges={['top', 'bottom']}>
       <TopBar title={biz.name} />
 
       <ConfirmSheet
-        visible={showConfirm} biz={biz} selSlot={selSlot} selDate={selDate}
+        visible={showConfirm} biz={biz} selSlots={selSlots} selDate={selDate}
         isFullDay={isFullDay} isServiceBiz={isServiceBiz} selServiceIds={selServiceIds}
         guestCount={guestCount}
         onClose={() => setShowConfirm(false)}
@@ -632,7 +708,7 @@ export default function BookScreen() {
                     {biz.services.map((svc) => (
                       <ServiceRow
                         key={svc.id} svc={svc} selected={selServiceIds.includes(svc.id)}
-                        onToggle={() => { setSelServiceIds((p) => p.includes(svc.id) ? p.filter((s) => s !== svc.id) : [...p, svc.id]); setSelStaffId(''); setSelSlot(null); }}
+                        onToggle={() => { setSelServiceIds((p) => p.includes(svc.id) ? p.filter((s) => s !== svc.id) : [...p, svc.id]); setSelStaffId(''); setSelSlots([]); }}
                       />
                     ))}
                   </View>
@@ -665,7 +741,7 @@ export default function BookScreen() {
                         backgroundColor: selStaffId === p.id ? brand.primary : brand.bg,
                         opacity: pressed ? 0.75 : 1,
                       })}
-                      onPress={() => { setSelStaffId(p.id); setSelSlot(null); }}
+                      onPress={() => { setSelStaffId(p.id); setSelSlots([]); }}
                     >
                       <Text style={{ fontSize: 12, fontWeight: '600', textAlign: 'center', color: selStaffId === p.id ? '#fff' : brand.creamSub }}>{p.name}</Text>
                       {p.role ? <Text style={{ fontSize: 10, marginTop: 2, textAlign: 'center', color: selStaffId === p.id ? 'rgba(255,255,255,0.7)' : brand.creamMuted }}>{p.role}</Text> : null}
@@ -680,7 +756,7 @@ export default function BookScreen() {
               <>
                 <View style={[g.section, { marginTop: 14 }]}>
                   <Text style={[g.secLabel, { color: brand.creamSub }]}>Choose a date</Text>
-                  <DateStrip selected={selDate} onSelect={(d) => { setSelDate(d); setSelSlot(null); }} />
+                  <DateStrip selected={selDate} onSelect={(d) => { setSelDate(d); setSelSlots([]); }} />
                 </View>
 
                 {resources.length > 1 && (
@@ -694,7 +770,7 @@ export default function BookScreen() {
                           backgroundColor: selRes === r.id ? brand.primary : brand.bg,
                           opacity: pressed ? 0.75 : 1,
                         })}
-                        onPress={() => { setSelRes(r.id); setSelSlot(null); }}
+                        onPress={() => { setSelRes(r.id); setSelSlots([]); }}
                       >
                         <Text style={{ fontSize: 12, fontWeight: '600', color: selRes === r.id ? '#fff' : brand.creamSub }}>{r.name}</Text>
                       </Pressable>
@@ -726,7 +802,7 @@ export default function BookScreen() {
                   <View style={{ gap: 9 }}>
                     {visible.map((slot) => {
                       const avail  = slot.status === 'available';
-                      const active = selSlot?.startAt === slot.startAt;
+                      const active = selSlots[0]?.startAt === slot.startAt;
                       return (
                         <Pressable
                           key={slot.id || slot.startAt}
@@ -737,7 +813,7 @@ export default function BookScreen() {
                             backgroundColor: active ? brand.primary : brand.bg,
                             opacity: !avail ? 0.4 : pressed && avail ? 0.8 : 1,
                           })}
-                          onPress={avail ? () => setSelSlot(slot) : undefined}
+                          onPress={avail ? () => toggleSlot(slot) : undefined}
                           disabled={!avail}
                         >
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -757,12 +833,13 @@ export default function BookScreen() {
                       <View style={g.legendItem}><View style={[g.legendDot, { backgroundColor: brand.success }]} /><Text style={[g.legendText, { color: brand.creamMuted }]}>Available</Text></View>
                       <View style={g.legendItem}><View style={[g.legendDot, { backgroundColor: brand.surface2 }]} /><Text style={[g.legendText, { color: brand.creamMuted }]}>Booked</Text></View>
                     </View>
+                    <Text style={[g.multiHint, { color: brand.creamMuted }]}>Tap to select — you can pick more than one slot.</Text>
                     <View style={g.slotGrid}>
                       {visible.map((slot) => (
                         <SlotChip
                           key={slot.id || slot.startAt} slot={slot}
-                          selected={selSlot?.startAt === slot.startAt && selSlot?.resourceId === slot.resourceId}
-                          onPress={() => setSelSlot(slot)}
+                          selected={selSlots.some((s) => s.startAt === slot.startAt && s.resourceId === slot.resourceId)}
+                          onPress={() => toggleSlot(slot)}
                         />
                       ))}
                     </View>
@@ -772,21 +849,43 @@ export default function BookScreen() {
             )}
 
             {/* Selection summary */}
-            {selSlot && (
+            {selSlots.length === 1 && (
               <View style={[g.summary, { backgroundColor: 'rgba(22,163,74,0.06)', borderColor: 'rgba(22,163,74,0.20)' }]}>
                 <Ionicons name="checkmark-circle" size={16} color={brand.success} />
                 <View style={{ flex: 1 }}>
                   <Text style={[g.sumTime, { color: brand.cream }]}>
-                    {isFullDay ? `Full Day · ${selDate}` : `${fmt12(selSlot.startTime)}${selSlot.endTime ? ` – ${fmt12(selSlot.endTime)}` : ''}`}
+                    {isFullDay ? `Full Day · ${selDate}` : `${fmt12(selSlots[0].startTime)}${selSlots[0].endTime ? ` – ${fmt12(selSlots[0].endTime)}` : ''}`}
                   </Text>
                   {isServiceBiz && selServiceIds.length > 0 ? (
                     <Text style={[g.sumSvc, { color: brand.creamSub }]} numberOfLines={1}>
                       {selServiceIds.map((id) => biz.services?.find((s) => s.id === id)?.name).filter(Boolean).join(', ')}
                     </Text>
                   ) : null}
-                  {!isServiceBiz && selSlot.resourceName ? <Text style={[g.sumSvc, { color: brand.creamSub }]}>{selSlot.resourceName}</Text> : null}
+                  {!isServiceBiz && selSlots[0].resourceName ? <Text style={[g.sumSvc, { color: brand.creamSub }]}>{selSlots[0].resourceName}</Text> : null}
                 </View>
-                {selSlot.pricePerSlot > 0 && <Text style={[g.sumPrice, { color: brand.success }]}>₹{selSlot.pricePerSlot.toLocaleString('en-IN')}</Text>}
+                {selSlots[0].pricePerSlot > 0 && <Text style={[g.sumPrice, { color: brand.success }]}>₹{selSlots[0].pricePerSlot.toLocaleString('en-IN')}</Text>}
+              </View>
+            )}
+
+            {selSlots.length > 1 && (
+              <View style={[g.summary, { flexDirection: 'column', alignItems: 'stretch', backgroundColor: 'rgba(22,163,74,0.06)', borderColor: 'rgba(22,163,74,0.20)' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Ionicons name="checkmark-circle" size={16} color={brand.success} />
+                  <Text style={[g.sumTime, { color: brand.cream, flex: 1 }]}>{selSlots.length} slots selected</Text>
+                  <Text style={[g.sumPrice, { color: brand.success }]}>₹{totalPrice.toLocaleString('en-IN')}</Text>
+                </View>
+                <View style={g.multiChipRow}>
+                  {selSlots.map((slot) => (
+                    <Pressable
+                      key={slotKey(slot)}
+                      style={[g.multiChip, { borderColor: brand.border1, backgroundColor: brand.bg }]}
+                      onPress={() => toggleSlot(slot)}
+                    >
+                      <Text style={[g.multiChipText, { color: brand.cream }]}>{fmt12(slot.startTime)}</Text>
+                      <Ionicons name="close" size={12} color={brand.creamMuted} />
+                    </Pressable>
+                  ))}
+                </View>
               </View>
             )}
           </View>
@@ -797,16 +896,20 @@ export default function BookScreen() {
 
       {/* Footer */}
       <View style={[g.footer, { borderTopColor: brand.border1, backgroundColor: brand.bg, paddingBottom: insets.bottom + 6 }]}>
-        {selSlot && !paying && (
+        {selSlots.length > 0 && !paying && (
           <View style={g.footerStrip}>
             <View style={{ flex: 1 }}>
               <Text style={[g.footerStripTime, { color: brand.cream }]} numberOfLines={1}>
-                {isFullDay ? 'Full Day' : `${fmt12(selSlot.startTime)}${selSlot.endTime ? ` – ${fmt12(selSlot.endTime)}` : ''}`}
+                {isFullDay
+                  ? 'Full Day'
+                  : selSlots.length > 1
+                    ? `${selSlots.length} slots`
+                    : `${fmt12(selSlots[0].startTime)}${selSlots[0].endTime ? ` – ${fmt12(selSlots[0].endTime)}` : ''}`}
               </Text>
               <Text style={[g.footerStripDate, { color: brand.creamSub }]}>{fmtDateShort(selDate)}</Text>
             </View>
-            {selSlot.pricePerSlot > 0
-              ? <Text style={[g.footerStripPrice, { color: brand.primary }]}>₹{selSlot.pricePerSlot.toLocaleString('en-IN')}</Text>
+            {totalPrice > 0
+              ? <Text style={[g.footerStripPrice, { color: brand.primary }]}>₹{totalPrice.toLocaleString('en-IN')}</Text>
               : <Text style={[g.footerStripFree, { color: brand.success }]}>Free</Text>}
           </View>
         )}
@@ -863,12 +966,17 @@ const g = StyleSheet.create({
   legendDot:  { width: 7, height: 7, borderRadius: 4 },
   legendText: { fontSize: 11 },
 
-  slotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  slotGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  multiHint: { fontSize: 11, marginBottom: 8 },
 
   summary:  { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, padding: 12, borderRadius: 14, borderWidth: 1, borderLeftWidth: 3 },
   sumTime:  { fontSize: 13, fontWeight: '700' },
   sumSvc:   { fontSize: 11, marginTop: 2 },
   sumPrice: { fontSize: 16, fontWeight: '800' },
+
+  multiChipRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  multiChip:     { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.pill, borderWidth: 1 },
+  multiChipText: { fontSize: 11, fontWeight: '600' },
 
   guestInput: { borderWidth: 1, borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
 

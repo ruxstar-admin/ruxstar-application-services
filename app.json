@@ -100,6 +100,12 @@
           "cameraPermission": "Allow Ruxstar to use your camera for identity verification."
         }
       ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Ruxstar to use your location to pin your business on the map for nearby customers."
+        }
+      ],
       "expo-font",
       "expo-secure-store",
       "expo-video",

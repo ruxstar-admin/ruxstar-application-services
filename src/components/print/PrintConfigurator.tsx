@@ -15,6 +15,8 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
@@ -488,10 +490,30 @@ export function PrintConfigurator({
 
   const price = computePrice(category, shop.pricing, selection);
 
+  /** Reads a local picked-file uri into the `data:<mime>;base64,...` shape the backend expects. */
+  async function loadAsDataUri(uri: string, mimeType: string, name: string) {
+    const base64 = await new File(uri).base64();
+    setDesignImage(`data:${mimeType};base64,${base64}`);
+    setDesignFileName(name);
+  }
+
   async function handlePickFile() {
     setError('');
     setUploading(true);
     try {
+      if (perPage) {
+        // Documents (per-page pricing) — actually let the vendor pick a PDF,
+        // not just photos, since that's what the button already promises.
+        const result = await DocumentPicker.getDocumentAsync({
+          type: ['application/pdf', 'image/*'],
+          copyToCacheDirectory: true,
+        });
+        if (result.canceled || !result.assets?.[0]) return;
+        const asset = result.assets[0];
+        await loadAsDataUri(asset.uri, asset.mimeType ?? 'application/pdf', asset.name ?? 'document');
+        return;
+      }
+
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         Alert.alert('Permission needed', 'Allow photo library access to upload your file.');
@@ -504,8 +526,8 @@ export function PrintConfigurator({
       });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
-      setDesignImage(asset.uri);
-      setDesignFileName(asset.fileName ?? asset.uri.split('/').pop() ?? 'image');
+      const name = asset.fileName ?? asset.uri.split('/').pop() ?? 'image';
+      await loadAsDataUri(asset.uri, asset.mimeType ?? 'image/jpeg', name);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not read that file.');
     } finally {

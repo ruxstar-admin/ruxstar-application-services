@@ -173,6 +173,7 @@ export default function AddBusinessScreen() {
         address,
         description: form.description.trim(),
         ...(bookingMode ? { bookingMode } : {}),
+        ...(form.geo ? { geo: form.geo } : {}),
       });
 
       // Upload thumbnail if vendor picked one

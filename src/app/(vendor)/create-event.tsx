@@ -159,7 +159,9 @@ export default function CreateEventScreen() {
 
   // Basics
   const [tournamentType, setTournamentType] = useState(isTournament ? typeLabel : '');
-  const [title,          setTitle]          = useState('');
+  // Defaults to the business name so vendors aren't re-typing what they already
+  // entered when the business was created — still freely editable per event.
+  const [title,          setTitle]          = useState(businessName || '');
   const [description,    setDescription]    = useState('');
 
   // Participation
@@ -380,7 +382,7 @@ export default function CreateEventScreen() {
 
               <View style={s.fieldGroup}>
                 <Text style={s.fieldLabel}>
-                  Title <Text style={s.required}>*</Text>
+                  {isTournament ? 'Tournament name' : 'Event name'} <Text style={s.required}>*</Text>
                 </Text>
                 <TextInput
                   style={[fieldStyle, s.input]}
@@ -390,13 +392,14 @@ export default function CreateEventScreen() {
                   onChangeText={(v) => { setTitle(v); setError(''); }}
                   returnKeyType="next"
                 />
+                <Text style={s.hint}>Starts as your business name — rename it for this specific {isTournament ? 'tournament' : 'event'}.</Text>
               </View>
 
               <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>Description</Text>
+                <Text style={s.fieldLabel}>Event description <Text style={s.optionalTag}>(optional)</Text></Text>
                 <TextInput
                   style={[fieldStyle, s.input, s.multiline]}
-                  placeholder="What's this about? What should participants expect?"
+                  placeholder="What's happening at this event? Different from your overall business description."
                   placeholderTextColor={Brand.creamMuted}
                   value={description}
                   onChangeText={setDescription}
@@ -570,10 +573,10 @@ export default function CreateEventScreen() {
             <View style={s.stepWrap}>
               {/* Rules */}
               <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>Rules & eligibility</Text>
+                <Text style={s.fieldLabel}>Rules & eligibility & Amenities</Text>
                 <TextInput
                   style={[fieldStyle, s.input, s.multiline]}
-                  placeholder={'Eligibility, format rules, what to bring, code of conduct…'}
+                  placeholder={'Eligibility, format rules, amenities provided, what to bring, code of conduct…'}
                   placeholderTextColor={Brand.creamMuted}
                   value={rules}
                   onChangeText={setRules}
