@@ -22,8 +22,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import type { BrandTokens } from '@/hooks/useTheme';
 import { useAuthStore } from '@/stores/auth-store';
+import { usePendingPaymentStore } from '@/stores/pending-payment-store';
 import {
   getPublicEvent,
   registerForEvent,
@@ -62,9 +65,11 @@ function InfoRow({
   icon: keyof typeof Ionicons.glyphMap;
   text: string;
 }) {
+  const { brand } = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
   return (
     <View style={s.infoRow}>
-      <Ionicons name={icon} size={14} color={Brand.creamMuted} />
+      <Ionicons name={icon} size={14} color={brand.creamMuted} />
       <Text style={s.infoText}>{text}</Text>
     </View>
   );
@@ -73,6 +78,8 @@ function InfoRow({
 // ─── Chip ─────────────────────────────────────────────────────────────────────
 
 function Chip({ label }: { label: string }) {
+  const { brand } = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
   return (
     <View style={s.chip}>
       <Text style={s.chipText}>{label}</Text>
@@ -83,6 +90,8 @@ function Chip({ label }: { label: string }) {
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function Skeleton() {
+  const { brand } = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
   return (
     <View style={{ gap: Spacing.three, padding: Spacing.four }}>
       <View style={[s.bone, { height: 200, borderRadius: Radius.xl }]} />
@@ -102,6 +111,8 @@ function SuccessScreen({
 }: {
   event: PublicEvent;
 }) {
+  const { brand } = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
   return (
     <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
       <View style={s.successWrap}>
@@ -118,7 +129,7 @@ function SuccessScreen({
         ) : null}
 
         <View style={s.freeNotice}>
-          <Ionicons name="checkmark-circle" size={16} color={Brand.success} />
+          <Ionicons name="checkmark-circle" size={16} color={brand.success} />
           <Text style={s.freeNoticeText}>Your spot is confirmed. See you there!</Text>
         </View>
 
@@ -145,6 +156,9 @@ function SuccessScreen({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function EventDetailScreen() {
+  const { brand } = useTheme();
+  const s = useMemo(() => createStyles(brand), [brand]);
+
   const { id: eventId = '' } = useLocalSearchParams<{ id: string }>();
   const token = useAuthStore((s) => s.token);
 
@@ -160,9 +174,13 @@ export default function EventDetailScreen() {
   const [teamName, setTeamName] = useState('');
   const [members,  setMembers]  = useState<string[]>([]);
 
+  const savePendingPayment  = usePendingPaymentStore((s) => s.save);
+  const clearPendingPayment = usePendingPaymentStore((s) => s.clear);
+
   // Cashfree native payment
   const { startPayment, paying } = useCashfreePayment({
-    onSuccess: (_bookingId) => {
+    onSuccess: (bookingId) => {
+      clearPendingPayment(bookingId);
       router.replace('/(user)/orders' as never);
     },
     onError: (msg) => {
@@ -229,6 +247,14 @@ export default function EventDetailScreen() {
       });
 
       if (result.paymentRequired && result.paymentSessionId) {
+        // Cache the session before attempting payment so it can be resumed
+        // from Orders later if the SDK call fails or the app is killed.
+        savePendingPayment({
+          id: result.registrationId, kind: 'event',
+          paymentSessionId: result.paymentSessionId,
+          cashfreeOrderId:  result.orderId,
+          mode:             'sandbox', // backend determines actual mode
+        });
         // Trigger native Cashfree payment sheet immediately
         startPayment({
           paymentSessionId: result.paymentSessionId,
@@ -262,7 +288,7 @@ export default function EventDetailScreen() {
       <SafeAreaView style={s.screen} edges={['top']}>
         <View style={s.topBar}>
           <Pressable style={s.backBtn} onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="arrow-back" size={18} color={Brand.cream} />
+            <Ionicons name="arrow-back" size={18} color={brand.cream} />
           </Pressable>
         </View>
         <Skeleton />
@@ -275,7 +301,7 @@ export default function EventDetailScreen() {
       <SafeAreaView style={s.screen} edges={['top']}>
         <View style={s.topBar}>
           <Pressable style={s.backBtn} onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="arrow-back" size={18} color={Brand.cream} />
+            <Ionicons name="arrow-back" size={18} color={brand.cream} />
           </Pressable>
         </View>
         <View style={s.centered}>
@@ -376,7 +402,7 @@ export default function EventDetailScreen() {
           {/* Capacity */}
           {event.capacity != null && (
             <View style={s.capacityRow}>
-              <Ionicons name="people-outline" size={13} color={Brand.creamMuted} />
+              <Ionicons name="people-outline" size={13} color={brand.creamMuted} />
               <Text style={s.capacityText}>
                 {isFull
                   ? 'Sold out'
@@ -420,12 +446,12 @@ export default function EventDetailScreen() {
             {/* Closed / Full states */}
             {isClosed ? (
               <View style={s.closedBanner}>
-                <Ionicons name="lock-closed-outline" size={14} color={Brand.creamMuted} />
+                <Ionicons name="lock-closed-outline" size={14} color={brand.creamMuted} />
                 <Text style={s.closedText}>Registration is closed.</Text>
               </View>
             ) : isFull ? (
               <View style={s.fullBanner}>
-                <Ionicons name="close-circle-outline" size={14} color={Brand.error} />
+                <Ionicons name="close-circle-outline" size={14} color={brand.error} />
                 <Text style={s.fullText}>This event is full.</Text>
               </View>
             ) : (
@@ -437,7 +463,7 @@ export default function EventDetailScreen() {
                     <TextInput
                       style={s.input}
                       placeholder="Your team's name"
-                      placeholderTextColor={Brand.creamMuted}
+                      placeholderTextColor={brand.creamMuted}
                       value={teamName}
                       onChangeText={(v) => { setTeamName(v); setFormError(''); }}
                     />
@@ -450,7 +476,7 @@ export default function EventDetailScreen() {
                         key={i}
                         style={[s.input, { marginTop: Spacing.one + 2 }]}
                         placeholder={`Player ${i + 1}${i === 0 ? ' (captain)' : ''}`}
-                        placeholderTextColor={Brand.creamMuted}
+                        placeholderTextColor={brand.creamMuted}
                         value={val}
                         onChangeText={(v) => updateMember(i, v)}
                       />
@@ -461,7 +487,7 @@ export default function EventDetailScreen() {
                 {/* Error */}
                 {formError ? (
                   <View style={s.formErr}>
-                    <Ionicons name="alert-circle" size={14} color={Brand.error} />
+                    <Ionicons name="alert-circle" size={14} color={brand.error} />
                     <Text style={s.formErrText}>{formError}</Text>
                   </View>
                 ) : null}
@@ -495,7 +521,7 @@ export default function EventDetailScreen() {
 
                 {!isFree && (
                   <Text style={s.payNote}>
-                    <Ionicons name="shield-checkmark-outline" size={10} color={Brand.creamMuted} />
+                    <Ionicons name="shield-checkmark-outline" size={10} color={brand.creamMuted} />
                     {'  '}Secure payment via Cashfree
                   </Text>
                 )}
@@ -510,18 +536,18 @@ export default function EventDetailScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  screen:      { flex: 1, backgroundColor: Brand.bg },
+const createStyles = (brand: BrandTokens) => StyleSheet.create({
+  screen:      { flex: 1, backgroundColor: brand.bg },
   scrollContent: { paddingBottom: 40 },
 
   // Top bar (loading/error states)
   topBar:  { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
-  backBtn: { width: 38, height: 38, borderRadius: Radius.md, backgroundColor: Brand.surface1, borderWidth: 1, borderColor: Brand.border1, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 38, height: 38, borderRadius: Radius.md, backgroundColor: brand.surface1, borderWidth: 1, borderColor: brand.border1, alignItems: 'center', justifyContent: 'center' },
 
   // Cover
   coverWrap:     { height: 220, position: 'relative' },
   cover:         { width: '100%', height: '100%' },
-  coverFallback: { width: '100%', height: '100%', backgroundColor: Brand.primaryGlow, alignItems: 'center', justifyContent: 'center' },
+  coverFallback: { width: '100%', height: '100%', backgroundColor: brand.primaryGlow, alignItems: 'center', justifyContent: 'center' },
   coverEmoji:    { fontSize: 64 },
   coverBackBtn:  { position: 'absolute', top: Spacing.three, left: Spacing.three, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
   kindBadge:     { position: 'absolute', top: Spacing.three, right: Spacing.three, backgroundColor: 'rgba(0,0,0,0.50)', borderRadius: Radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
@@ -532,85 +558,85 @@ const s = StyleSheet.create({
 
   // Body
   body:     { padding: Spacing.four, gap: Spacing.three },
-  title:    { fontSize: 22, fontWeight: '800', color: Brand.cream, letterSpacing: -0.3, lineHeight: 28 },
-  subTitle: { fontSize: 13, color: Brand.primary, fontWeight: '600' },
+  title:    { fontSize: 22, fontWeight: '800', color: brand.cream, letterSpacing: -0.3, lineHeight: 28 },
+  subTitle: { fontSize: 13, color: brand.primary, fontWeight: '600' },
 
   // Info block
   infoBlock: { gap: Spacing.two },
   infoRow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  infoText:  { fontSize: 13, color: Brand.creamSub, flex: 1, lineHeight: 18 },
+  infoText:  { fontSize: 13, color: brand.creamSub, flex: 1, lineHeight: 18 },
 
   // Chips
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one + 2 },
-  chip:    { paddingHorizontal: Spacing.two + 2, paddingVertical: 5, borderRadius: Radius.pill, backgroundColor: Brand.surface1, borderWidth: 1, borderColor: Brand.border1 },
-  chipText:{ fontSize: 11, fontWeight: '600', color: Brand.creamSub },
+  chip:    { paddingHorizontal: Spacing.two + 2, paddingVertical: 5, borderRadius: Radius.pill, backgroundColor: brand.surface1, borderWidth: 1, borderColor: brand.border1 },
+  chipText:{ fontSize: 11, fontWeight: '600', color: brand.creamSub },
 
   // Capacity
   capacityRow:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  capacityText: { fontSize: 12, color: Brand.creamMuted },
+  capacityText: { fontSize: 12, color: brand.creamMuted },
 
   // Sections
   section:      { gap: 6 },
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: Brand.cream },
-  sectionText:  { fontSize: 13, color: Brand.creamSub, lineHeight: 20 },
+  sectionLabel: { fontSize: 13, fontWeight: '700', color: brand.cream },
+  sectionText:  { fontSize: 13, color: brand.creamSub, lineHeight: 20 },
 
   // Registration box
-  regBox:   { backgroundColor: Brand.surface1, borderRadius: Radius.xl, borderWidth: 1, borderColor: Brand.border1, padding: Spacing.three, gap: Spacing.two, marginTop: Spacing.one },
+  regBox:   { backgroundColor: brand.surface1, borderRadius: Radius.xl, borderWidth: 1, borderColor: brand.border1, padding: Spacing.three, gap: Spacing.two, marginTop: Spacing.one },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  price:    { fontSize: 22, fontWeight: '800', color: Brand.success, letterSpacing: -0.4 },
-  priceUnit:{ fontSize: 12, color: Brand.creamMuted },
+  price:    { fontSize: 22, fontWeight: '800', color: brand.success, letterSpacing: -0.4 },
+  priceUnit:{ fontSize: 12, color: brand.creamMuted },
 
-  closedBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Brand.surface2, borderRadius: Radius.md, padding: Spacing.two + 2 },
-  closedText:   { fontSize: 13, color: Brand.creamSub },
+  closedBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: brand.surface2, borderRadius: Radius.md, padding: Spacing.two + 2 },
+  closedText:   { fontSize: 13, color: brand.creamSub },
   fullBanner:   { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(220,38,38,0.06)', borderRadius: Radius.md, padding: Spacing.two + 2, borderWidth: 1, borderColor: 'rgba(220,38,38,0.15)' },
-  fullText:     { fontSize: 13, color: Brand.error },
+  fullText:     { fontSize: 13, color: brand.error },
 
   // Team form
   teamForm:   { gap: Spacing.one + 2 },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: Brand.creamSub },
-  req:        { color: Brand.error },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: brand.creamSub },
+  req:        { color: brand.error },
   input: {
-    borderWidth: 1, borderColor: Brand.border2, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: brand.border2, borderRadius: Radius.md,
     paddingHorizontal: Spacing.three, paddingVertical: 11,
-    fontSize: 14, color: Brand.cream, backgroundColor: Brand.bg,
+    fontSize: 14, color: brand.cream, backgroundColor: brand.bg,
   },
 
   // Error
   formErr:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(220,38,38,0.06)', borderRadius: Radius.md, padding: Spacing.two, borderWidth: 1, borderColor: 'rgba(220,38,38,0.15)' },
-  formErrText: { fontSize: 12, color: Brand.error, flex: 1 },
+  formErrText: { fontSize: 12, color: brand.error, flex: 1 },
 
   // Register button
-  regBtn:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Brand.primary, borderRadius: Radius.lg, paddingVertical: 16, shadowColor: Brand.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 5 },
+  regBtn:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: brand.primary, borderRadius: Radius.lg, paddingVertical: 16, shadowColor: brand.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 5 },
   regBtnDisabled: { opacity: 0.6 },
   regBtnText:     { color: '#fff', fontSize: 15, fontWeight: '700' },
-  payNote:        { textAlign: 'center', fontSize: 11, color: Brand.creamMuted, lineHeight: 16 },
+  payNote:        { textAlign: 'center', fontSize: 11, color: brand.creamMuted, lineHeight: 16 },
 
   // Centered states
   centered:   { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four, gap: Spacing.two },
-  errorTitle: { fontSize: 16, fontWeight: '700', color: Brand.cream },
-  errorSub:   { fontSize: 13, color: Brand.creamSub, textAlign: 'center' },
-  retryBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Brand.primary, borderRadius: Radius.pill, paddingHorizontal: Spacing.four, paddingVertical: Spacing.two, marginTop: Spacing.one },
+  errorTitle: { fontSize: 16, fontWeight: '700', color: brand.cream },
+  errorSub:   { fontSize: 13, color: brand.creamSub, textAlign: 'center' },
+  retryBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: brand.primary, borderRadius: Radius.pill, paddingHorizontal: Spacing.four, paddingVertical: Spacing.two, marginTop: Spacing.one },
   retryBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   // Skeleton
-  bone: { backgroundColor: Brand.surface2, borderRadius: Radius.md },
+  bone: { backgroundColor: brand.surface2, borderRadius: Radius.md },
 
   // Success
   successWrap:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four, gap: Spacing.three },
-  successIcon:    { width: 80, height: 80, borderRadius: 40, backgroundColor: Brand.surface1, borderWidth: 1, borderColor: Brand.border1, alignItems: 'center', justifyContent: 'center' },
-  successTitle:   { fontSize: 22, fontWeight: '800', color: Brand.cream, textAlign: 'center' },
-  successEvent:   { fontSize: 15, fontWeight: '600', color: Brand.creamSub, textAlign: 'center' },
-  successWhen:    { fontSize: 13, color: Brand.creamMuted, textAlign: 'center' },
+  successIcon:    { width: 80, height: 80, borderRadius: 40, backgroundColor: brand.surface1, borderWidth: 1, borderColor: brand.border1, alignItems: 'center', justifyContent: 'center' },
+  successTitle:   { fontSize: 22, fontWeight: '800', color: brand.cream, textAlign: 'center' },
+  successEvent:   { fontSize: 15, fontWeight: '600', color: brand.creamSub, textAlign: 'center' },
+  successWhen:    { fontSize: 13, color: brand.creamMuted, textAlign: 'center' },
   payNotice:      { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: 'rgba(217,119,6,0.06)', borderRadius: Radius.lg, borderWidth: 1, borderColor: 'rgba(217,119,6,0.20)', padding: Spacing.three },
-  payNoticeText:  { flex: 1, fontSize: 13, color: Brand.creamSub, lineHeight: 19 },
-  payNoticeLink:  { color: Brand.primary, fontWeight: '700' },
+  payNoticeText:  { flex: 1, fontSize: 13, color: brand.creamSub, lineHeight: 19 },
+  payNoticeLink:  { color: brand.primary, fontWeight: '700' },
   freeNotice:     { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(22,163,74,0.06)', borderRadius: Radius.lg, borderWidth: 1, borderColor: 'rgba(22,163,74,0.20)', padding: Spacing.three },
-  freeNoticeText: { fontSize: 13, color: Brand.creamSub },
+  freeNoticeText: { fontSize: 13, color: brand.creamSub },
   successActions:  { gap: Spacing.two, width: '100%', marginTop: Spacing.two },
-  payBtn:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Brand.success, borderRadius: Radius.lg, paddingVertical: 14, shadowColor: Brand.success, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
+  payBtn:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: brand.success, borderRadius: Radius.lg, paddingVertical: 14, shadowColor: brand.success, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
   payBtnText:      { color: '#fff', fontWeight: '800', fontSize: 15 },
-  primaryBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Brand.primary, borderRadius: Radius.lg, paddingVertical: 14 },
+  primaryBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: brand.primary, borderRadius: Radius.lg, paddingVertical: 14 },
   primaryBtnText:  { color: '#fff', fontWeight: '700', fontSize: 14 },
-  secondaryBtn:    { alignItems: 'center', paddingVertical: 14, borderRadius: Radius.lg, borderWidth: 1, borderColor: Brand.border1, backgroundColor: Brand.surface1 },
-  secondaryBtnText:{ color: Brand.creamSub, fontWeight: '600', fontSize: 14 },
+  secondaryBtn:    { alignItems: 'center', paddingVertical: 14, borderRadius: Radius.lg, borderWidth: 1, borderColor: brand.border1, backgroundColor: brand.surface1 },
+  secondaryBtnText:{ color: brand.creamSub, fontWeight: '600', fontSize: 14 },
 });

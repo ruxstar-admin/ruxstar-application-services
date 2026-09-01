@@ -14,7 +14,7 @@ import {
   ScrollView, KeyboardAvoidingView, Platform,
   ActivityIndicator,
 } from 'react-native';
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, SlideInUp } from 'react-native-reanimated';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -128,6 +128,20 @@ export default function EditBusinessModal({ business, onClose, onSubmit }: Props
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       setGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      try {
+        const [addr] = await Location.reverseGeocodeAsync({
+          latitude:  pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        });
+        if (addr) {
+          const formatted = [addr.name || addr.street, addr.city || addr.subregion, addr.region]
+            .filter(Boolean)
+            .join(', ');
+          if (formatted) setAddress(formatted);
+        }
+      } catch {
+        // Reverse geocoding is best-effort — the GPS pin still lands even if this fails.
+      }
     } catch {
       Alert.alert('Could not get your location', 'Make sure location services are turned on, then try again.');
     } finally {
@@ -213,19 +227,6 @@ export default function EditBusinessModal({ business, onClose, onSubmit }: Props
                 />
               </Field>
 
-              <Field label="Address">
-                <TextInput
-                  style={s.input}
-                  placeholder="Street, area, city"
-                  placeholderTextColor={brand.creamMuted}
-                  value={address}
-                  onChangeText={setAddress}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                  editable={!saving}
-                />
-              </Field>
-
               <Pressable
                 style={[s.locateBtn, geo && s.locateBtnDone]}
                 disabled={locating || saving}
@@ -244,6 +245,19 @@ export default function EditBusinessModal({ business, onClose, onSubmit }: Props
                   {locating ? 'Getting your location…' : geo ? 'Location pinned — tap to update' : 'Use current location'}
                 </Text>
               </Pressable>
+
+              <Field label="Address" hint="Fills automatically from location above">
+                <TextInput
+                  style={s.input}
+                  placeholder="Street, area, city"
+                  placeholderTextColor={brand.creamMuted}
+                  value={address}
+                  onChangeText={setAddress}
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                  editable={!saving}
+                />
+              </Field>
 
               <Field label="Description" hint="required">
                 <TextInput

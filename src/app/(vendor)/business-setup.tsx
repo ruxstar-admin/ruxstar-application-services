@@ -1044,6 +1044,8 @@ const POD_STEP_ICONS: Record<PodStepId, keyof typeof Ionicons.glyphMap> = {
 type PricingDraft = {
   enabled:        boolean;
   basePrice:      string;
+  perPageBw:      string;
+  perPageColor:   string;
   minQuantity:    string;
   turnaroundDays: string;
 };
@@ -1052,6 +1054,8 @@ function makePricingDraft(cat: PrintCategory, existing?: import('@/types/print')
   return {
     enabled:        existing?.enabled ?? true,
     basePrice:      existing?.basePrice != null ? String(existing.basePrice) : '0',
+    perPageBw:      existing?.perPage?.bw    != null ? String(existing.perPage.bw)    : '0',
+    perPageColor:   existing?.perPage?.color != null ? String(existing.perPage.color) : '0',
     minQuantity:    String(existing?.minQuantity ?? cat.minQuantity ?? 1),
     turnaroundDays: String(existing?.turnaroundDays ?? 3),
   };
@@ -1274,13 +1278,20 @@ function PodSetupFlow({
         const pricing: Record<string, import('@/types/print').CategoryPricing> = {};
         for (const id of selectedCategories) {
           const d = categoryPricing[id];
+          const cat = catalog.find((c) => c.id === id);
           if (d) {
-            const base = Math.max(0, parseInt(d.basePrice, 10) || 0);
             pricing[id] = {
               enabled:        d.enabled,
               minQuantity:    Math.max(1, parseInt(d.minQuantity,    10) || 1),
               turnaroundDays: Math.max(1, parseInt(d.turnaroundDays, 10) || days),
-              ...(base > 0 ? { basePrice: base } : {}),
+              ...(cat?.pricingModel === 'per_page'
+                ? { perPage: {
+                      bw:    Math.max(0, parseInt(d.perPageBw,    10) || 0),
+                      color: Math.max(0, parseInt(d.perPageColor, 10) || 0),
+                    } }
+                : (Math.max(0, parseInt(d.basePrice, 10) || 0)) > 0
+                  ? { basePrice: Math.max(0, parseInt(d.basePrice, 10) || 0) }
+                  : {}),
             };
           }
         }
@@ -1563,24 +1574,55 @@ function PodSetupFlow({
                     {draft.enabled && (
                       <View style={pod.pricingFields}>
                         {/* Base price */}
-                        <View style={pod.pricingRow}>
-                          <View style={{ flex: 1, gap: 4 }}>
-                            <Text style={step.fieldLabel}>
-                              Base price (₹ per {cat.pricingModel === 'per_page' ? 'page' : 'unit'})
-                            </Text>
-                            <View style={step.priceRow}>
-                              <Text style={step.rupee}>₹</Text>
-                              <TextInput
-                                style={[fieldStyle, { flex: 1, paddingLeft: Spacing.two }]}
-                                placeholder="0"
-                                placeholderTextColor={Brand.creamMuted}
-                                value={draft.basePrice}
-                                onChangeText={(v) => updatePricing(catId, { basePrice: v.replace(/\D/g, '') })}
-                                keyboardType="numeric"
-                              />
+                        {cat.pricingModel === 'per_page' ? (
+                          <View style={pod.pricingTwoCol}>
+                            <View style={{ flex: 1, gap: 4 }}>
+                              <Text style={step.fieldLabel}>B/W price (₹ per page)</Text>
+                              <View style={step.priceRow}>
+                                <Text style={step.rupee}>₹</Text>
+                                <TextInput
+                                  style={[fieldStyle, { flex: 1, paddingLeft: Spacing.two }]}
+                                  placeholder="0"
+                                  placeholderTextColor={Brand.creamMuted}
+                                  value={draft.perPageBw}
+                                  onChangeText={(v) => updatePricing(catId, { perPageBw: v.replace(/\D/g, '') })}
+                                  keyboardType="numeric"
+                                />
+                              </View>
+                            </View>
+                            <View style={{ flex: 1, gap: 4 }}>
+                              <Text style={step.fieldLabel}>Colour price (₹ per page)</Text>
+                              <View style={step.priceRow}>
+                                <Text style={step.rupee}>₹</Text>
+                                <TextInput
+                                  style={[fieldStyle, { flex: 1, paddingLeft: Spacing.two }]}
+                                  placeholder="0"
+                                  placeholderTextColor={Brand.creamMuted}
+                                  value={draft.perPageColor}
+                                  onChangeText={(v) => updatePricing(catId, { perPageColor: v.replace(/\D/g, '') })}
+                                  keyboardType="numeric"
+                                />
+                              </View>
                             </View>
                           </View>
-                        </View>
+                        ) : (
+                          <View style={pod.pricingRow}>
+                            <View style={{ flex: 1, gap: 4 }}>
+                              <Text style={step.fieldLabel}>Base price (₹ per unit)</Text>
+                              <View style={step.priceRow}>
+                                <Text style={step.rupee}>₹</Text>
+                                <TextInput
+                                  style={[fieldStyle, { flex: 1, paddingLeft: Spacing.two }]}
+                                  placeholder="0"
+                                  placeholderTextColor={Brand.creamMuted}
+                                  value={draft.basePrice}
+                                  onChangeText={(v) => updatePricing(catId, { basePrice: v.replace(/\D/g, '') })}
+                                  keyboardType="numeric"
+                                />
+                              </View>
+                            </View>
+                          </View>
+                        )}
 
                         {/* Min qty + Turnaround row */}
                         <View style={pod.pricingTwoCol}>
@@ -1609,13 +1651,21 @@ function PodSetupFlow({
                         </View>
 
                         {/* From price summary */}
-                        {parseInt(draft.basePrice, 10) > 0 ? (
-                          <Text style={pod.fromPrice}>
-                            From ₹{parseInt(draft.basePrice, 10).toLocaleString('en-IN')} per {cat.pricingModel === 'per_page' ? 'page' : 'unit'}
-                          </Text>
-                        ) : (
-                          <Text style={pod.fromPriceMuted}>From — per {cat.pricingModel === 'per_page' ? 'page' : 'unit'}</Text>
-                        )}
+                        {(() => {
+                          const isPerPage = cat.pricingModel === 'per_page';
+                          const bw    = parseInt(draft.perPageBw,    10) || 0;
+                          const color = parseInt(draft.perPageColor, 10) || 0;
+                          const from  = isPerPage
+                            ? (bw > 0 && color > 0 ? Math.min(bw, color) : Math.max(bw, color))
+                            : (parseInt(draft.basePrice, 10) || 0);
+                          return from > 0 ? (
+                            <Text style={pod.fromPrice}>
+                              From ₹{from.toLocaleString('en-IN')} per {isPerPage ? 'page' : 'unit'}
+                            </Text>
+                          ) : (
+                            <Text style={pod.fromPriceMuted}>From — per {isPerPage ? 'page' : 'unit'}</Text>
+                          );
+                        })()}
                       </View>
                     )}
                   </View>

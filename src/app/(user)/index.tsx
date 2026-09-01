@@ -28,7 +28,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Radius, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
-import { resolveCategoryDef } from '@/constants/categories';
+import { resolveBizCategoryDef } from '@/constants/categories';
 import {
   listPublicBusinesses,
   listPublicEvents,
@@ -396,15 +396,16 @@ export default function UserHomeScreen() {
     [businesses],
   );
 
-  // Unique categories — resolve from combined typeLabel+categoryLabel so service businesses
-  // with the same generic categoryLabel (e.g. "Appointments") get distinct tiles
+  // Unique categories — resolve from the specific type label first (falling
+  // back to the parent categoryLabel only when the type label alone doesn't
+  // match anything), so e.g. "Sports turf & courts" tiles as Sports instead
+  // of leaking the word "venue" from its parent "Bookings & venues" label.
   const categories = useMemo(() => {
     const seenShort = new Set<string>();
     const cats: { short: string; icon: keyof typeof Ionicons.glyphMap }[] = [];
     for (const b of businesses) {
-      const combined = `${b.typeLabel} ${b.categoryLabel}`.trim();
-      if (!combined) continue;
-      const def = resolveCategoryDef(combined);
+      if (!b.typeLabel && !b.categoryLabel) continue;
+      const def = resolveBizCategoryDef(b.typeLabel, b.categoryLabel);
       if (!seenShort.has(def.short)) {
         seenShort.add(def.short);
         cats.push({ short: def.short, icon: def.icon });

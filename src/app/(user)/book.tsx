@@ -35,6 +35,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/stores/auth-store';
+import { usePendingPaymentStore } from '@/stores/pending-payment-store';
 import {
   getPublicBusiness,
   getPublicSlots,
@@ -460,6 +461,9 @@ export default function BookScreen() {
   // selected slots can be booked & paid for one at a time, in sequence.
   const paymentWaiterRef = useRef<{ resolve: () => void; reject: (msg: string) => void } | null>(null);
 
+  const savePendingPayment  = usePendingPaymentStore((s) => s.save);
+  const clearPendingPayment = usePendingPaymentStore((s) => s.clear);
+
   const { startPayment, paying } = useCashfreePayment({
     onSuccess: () => { paymentWaiterRef.current?.resolve(); paymentWaiterRef.current = null; },
     onError:   (msg) => { paymentWaiterRef.current?.reject(msg); paymentWaiterRef.current = null; },
@@ -565,7 +569,16 @@ export default function BookScreen() {
           staffId:    isServiceBiz && selStaffId ? selStaffId : undefined,
         });
         if (result.paymentSessionId) {
+          // Cache the session before attempting payment so it can be resumed
+          // from Orders later if the SDK call fails or the app is killed.
+          savePendingPayment({
+            id: result.bookingId, kind: 'booking',
+            paymentSessionId: result.paymentSessionId,
+            cashfreeOrderId:  result.orderId,
+            mode:             result.mode,
+          });
           await payAndWait({ paymentSessionId: result.paymentSessionId, orderId: result.orderId, bookingId: result.bookingId, mode: result.mode });
+          clearPendingPayment(result.bookingId);
         }
         lastResult = result;
         confirmedCount++;

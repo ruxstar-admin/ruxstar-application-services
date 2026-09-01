@@ -19,6 +19,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth-store';
+import { usePendingPaymentStore } from '@/stores/pending-payment-store';
+import { useCashfreePayment } from '@/utils/cashfree-native';
 import {
   listCustomerBookings,
   listMyEventRegistrations,
@@ -96,12 +98,14 @@ function BookingCard({
   cancelling,
   onRefund,
   refunding,
+  onResumed,
 }: {
   booking:    CustomerBooking;
   onCancel:   (id: string) => void;
   cancelling: boolean;
   onRefund:   (id: string) => void;
   refunding:  boolean;
+  onResumed:  () => void;
 }) {
   const { brand } = useTheme();
   const { weekday, day, month } = dayParts(booking.startAt);
@@ -113,6 +117,26 @@ function BookingCard({
   const amount           = booking.amount ?? booking.pricePerSlot;
   const isPaid           = booking.paymentStatus === 'paid';
   const canRefund        = isCancelled && isPaid && !isRefunded;
+
+  const pending             = usePendingPaymentStore((s) => s.byId[booking.id]);
+  const clearPendingPayment = usePendingPaymentStore((s) => s.clear);
+  const [resuming, setResuming] = useState(false);
+
+  const { startPayment } = useCashfreePayment({
+    onSuccess: () => { clearPendingPayment(booking.id); setResuming(false); onResumed(); },
+    onError:   (msg) => { setResuming(false); Alert.alert('Payment failed', msg); },
+  });
+
+  function handleResume() {
+    if (!pending) return;
+    setResuming(true);
+    startPayment({
+      paymentSessionId: pending.paymentSessionId,
+      orderId:          pending.cashfreeOrderId,
+      bookingId:        booking.id,
+      mode:              pending.mode,
+    });
+  }
 
   const handleCancel = () => {
     Alert.alert(
@@ -181,7 +205,24 @@ function BookingCard({
           </Pressable>
         )}
 
-        {isUpcoming && isPendingPayment && (
+        {isUpcoming && isPendingPayment && pending && (
+          <Pressable
+            style={[card.resumeBtn, { backgroundColor: brand.primary }, resuming && card.disabledBtn]}
+            onPress={handleResume}
+            disabled={resuming}
+          >
+            {resuming ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="card-outline" size={12} color="#fff" />
+                <Text style={card.resumeText}>Resume payment</Text>
+              </>
+            )}
+          </Pressable>
+        )}
+
+        {isUpcoming && isPendingPayment && !pending && (
           <View style={[card.noticeBadge, { backgroundColor: `${brand.warning}18`, borderColor: `${brand.warning}40` }]}>
             <Ionicons name="time-outline" size={12} color={brand.warning} />
             <Text style={[card.noticeText, { color: brand.warning }]}>Payment still in process</Text>
@@ -237,13 +278,15 @@ const card = StyleSheet.create({
   refundText: { fontSize: 12, fontWeight: '600', color: '#3B82F6' },
   noticeBadge:{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, marginTop: Spacing.two, borderRadius: Radius.pill, paddingHorizontal: Spacing.three, paddingVertical: 5, borderWidth: 1 },
   noticeText: { fontSize: 12, fontWeight: '600' },
+  resumeBtn:  { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 5, marginTop: Spacing.two, borderRadius: Radius.pill, paddingHorizontal: Spacing.three, paddingVertical: 6 },
+  resumeText: { fontSize: 12, fontWeight: '700', color: '#fff' },
   amountCol:  { alignItems: 'flex-end', justifyContent: 'flex-start', paddingTop: 2 },
   amount:     { fontSize: 15, fontWeight: '700' },
 });
 
 // ─── Event Registration Card ──────────────────────────────────────────────────
 
-function EventCard({ reg }: { reg: CustomerEventRegistration }) {
+function EventCard({ reg, onResumed }: { reg: CustomerEventRegistration; onResumed: () => void }) {
   const { brand } = useTheme();
   const emoji     = reg.kind === 'tournament' ? '🏆' : '🎉';
   const isFree    = reg.amount === 0;
@@ -252,6 +295,27 @@ function EventCard({ reg }: { reg: CustomerEventRegistration }) {
         day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata',
       })
     : '';
+
+  const isPendingPayment = reg.status === 'pending_payment';
+  const pending             = usePendingPaymentStore((s) => s.byId[reg.id]);
+  const clearPendingPayment = usePendingPaymentStore((s) => s.clear);
+  const [resuming, setResuming] = useState(false);
+
+  const { startPayment } = useCashfreePayment({
+    onSuccess: () => { clearPendingPayment(reg.id); setResuming(false); onResumed(); },
+    onError:   (msg) => { setResuming(false); Alert.alert('Payment failed', msg); },
+  });
+
+  function handleResume() {
+    if (!pending) return;
+    setResuming(true);
+    startPayment({
+      paymentSessionId: pending.paymentSessionId,
+      orderId:          pending.cashfreeOrderId,
+      bookingId:        reg.id,
+      mode:              pending.mode,
+    });
+  }
 
   return (
     <View style={[card.wrap, { backgroundColor: brand.surface1, borderColor: brand.border1 }]}>
@@ -269,6 +333,23 @@ function EventCard({ reg }: { reg: CustomerEventRegistration }) {
         <View style={{ marginTop: 4 }}>
           <StatusBadge status={reg.status} label={statusLabel(reg.status)} size="sm" />
         </View>
+
+        {isPendingPayment && pending && (
+          <Pressable
+            style={[card.resumeBtn, { backgroundColor: brand.primary }, resuming && card.disabledBtn]}
+            onPress={handleResume}
+            disabled={resuming}
+          >
+            {resuming ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="card-outline" size={12} color="#fff" />
+                <Text style={card.resumeText}>Resume payment</Text>
+              </>
+            )}
+          </Pressable>
+        )}
       </View>
 
       <View style={card.amountCol}>
@@ -724,7 +805,7 @@ export default function CustomerOrdersScreen() {
               return <SectionHeaderRow title={item.title} count={item.count} accent={item.accent} />;
             }
             if (item.type === 'event-reg') {
-              return <EventCard reg={item.reg} />;
+              return <EventCard reg={item.reg} onResumed={load} />;
             }
             if (item.type === 'print-order') {
               return <PrintOrderCard order={item.order} />;
@@ -739,6 +820,7 @@ export default function CustomerOrdersScreen() {
                 cancelling={cancellingId === item.booking.id}
                 onRefund={handleRefund}
                 refunding={refundingId === item.booking.id}
+                onResumed={load}
               />
             );
           }}

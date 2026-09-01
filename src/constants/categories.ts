@@ -19,6 +19,8 @@ export const CATEGORY_DEFS: CategoryDef[] = [
   { short: 'Prints',       icon: 'print-outline',          match: /print|banner|poster|sticker|flex|merch/i },
 ];
 
+const FALLBACK_MATCH = /.*/;
+
 export function resolveCategoryDef(label: string): CategoryDef {
   const l = label.toLowerCase();
   for (const def of CATEGORY_DEFS) {
@@ -26,5 +28,23 @@ export function resolveCategoryDef(label: string): CategoryDef {
   }
   // fallback — use the full first word (no truncation), with a generic icon
   const short = label.split(/[\s&,]/)[0];
-  return { short, icon: 'grid-outline', match: /.*/ };
+  return { short, icon: 'grid-outline', match: FALLBACK_MATCH };
+}
+
+/**
+ * Resolves a business's filter category from its specific type label first
+ * (e.g. "Sports turf & courts"), only falling back to the broader parent
+ * category label (e.g. "Bookings & venues") when the type label alone
+ * doesn't match anything.
+ *
+ * The parent category label is a generic umbrella and can leak misleading
+ * keywords — "Bookings & venues" contains the word "venue", which used to
+ * make every turf/court business match the Venues bucket instead of Sports
+ * whenever both labels were concatenated before matching.
+ */
+export function resolveBizCategoryDef(typeLabel: string, categoryLabel: string): CategoryDef {
+  const fromType = resolveCategoryDef(typeLabel);
+  if (fromType.match !== FALLBACK_MATCH) return fromType;
+  const combined = `${typeLabel} ${categoryLabel}`.trim();
+  return resolveCategoryDef(combined || typeLabel);
 }

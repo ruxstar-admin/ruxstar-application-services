@@ -20,7 +20,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import type { BrandTokens } from '@/hooks/useTheme';
 import { useAuthStore } from '@/stores/auth-store';
 import {
   listVendorBookings,
@@ -56,6 +58,8 @@ type ListItem =
 // ─── Booking Row ──────────────────────────────────────────────────────────────
 
 function BookingRow({ booking }: { booking: VendorBooking }) {
+  const { brand } = useTheme();
+  const r = useMemo(() => createRStyles(brand), [brand]);
   const timeLabel = booking.startAt
     ? formatTime12(booking.startAt.slice(11, 16))
     : '';
@@ -88,6 +92,9 @@ function BookingRow({ booking }: { booking: VendorBooking }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function AppointmentsBoardScreen() {
+  const { brand } = useTheme();
+  const s = useMemo(() => createSStyles(brand), [brand]);
+
   const { businessId, businessName } =
     useLocalSearchParams<{ businessId: string; businessName: string }>();
   const token = useAuthStore((s) => s.token);
@@ -148,7 +155,7 @@ export default function AppointmentsBoardScreen() {
       {/* Header */}
       <View style={s.header}>
         <Pressable onPress={() => router.navigate('/(vendor)/businesses' as never)} hitSlop={8} style={s.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={Brand.cream} />
+          <Ionicons name="chevron-back" size={22} color={brand.cream} />
         </Pressable>
         <View style={s.headerMid}>
           <Text style={s.headerTitle} numberOfLines={1}>{businessName || 'Appointments'}</Text>
@@ -160,19 +167,19 @@ export default function AppointmentsBoardScreen() {
           style={s.refreshBtn}
           onPress={() => router.push({ pathname: '/(vendor)/business-setup', params: { id: businessId, edit: '1' } } as never)}
         >
-          <Ionicons name="create-outline" size={18} color={Brand.primary} />
+          <Ionicons name="create-outline" size={18} color={brand.primary} />
         </Pressable>
         <Pressable onPress={() => load(true)} hitSlop={8} style={s.refreshBtn} disabled={loading || refreshing}>
           {refreshing
-            ? <ActivityIndicator size="small" color={Brand.primary} />
-            : <Ionicons name="refresh-outline" size={18} color={Brand.cream} />}
+            ? <ActivityIndicator size="small" color={brand.primary} />
+            : <Ionicons name="refresh-outline" size={18} color={brand.cream} />}
         </Pressable>
       </View>
 
       {/* Stats bar */}
       {!loading && !error && (
         <View style={s.statsBar}>
-          <Ionicons name="people-outline" size={14} color={Brand.primary} />
+          <Ionicons name="people-outline" size={14} color={brand.primary} />
           <Text style={s.statsText}>
             <Text style={s.statsNum}>{upcoming.length}</Text>
             {' '}upcoming · confirmed &amp; paid only
@@ -183,12 +190,12 @@ export default function AppointmentsBoardScreen() {
       {/* Body */}
       {loading && !refreshing ? (
         <View style={s.center}>
-          <ActivityIndicator size="large" color={Brand.primary} />
+          <ActivityIndicator size="large" color={brand.primary} />
           <Text style={s.loadingText}>Loading appointments…</Text>
         </View>
       ) : error ? (
         <View style={s.center}>
-          <Ionicons name="cloud-offline-outline" size={36} color={Brand.creamMuted} />
+          <Ionicons name="cloud-offline-outline" size={36} color={brand.creamMuted} />
           <Text style={s.errorText}>{error}</Text>
           <Pressable style={s.retryBtn} onPress={() => load()}>
             <Ionicons name="refresh-outline" size={14} color="#fff" />
@@ -207,13 +214,13 @@ export default function AppointmentsBoardScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => load(true)}
-              tintColor={Brand.primary}
+              tintColor={brand.primary}
             />
           }
           ListEmptyComponent={
             <View style={s.empty}>
               <View style={s.emptyIcon}>
-                <Ionicons name="calendar-outline" size={32} color={Brand.creamMuted} />
+                <Ionicons name="calendar-outline" size={32} color={brand.creamMuted} />
               </View>
               <Text style={s.emptyTitle}>No upcoming appointments</Text>
               <Text style={s.emptySub}>
@@ -239,29 +246,29 @@ export default function AppointmentsBoardScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const r = StyleSheet.create({
+const createRStyles = (brand: BrandTokens) => StyleSheet.create({
   row: {
     flexDirection:    'row',
     alignItems:       'center',
-    backgroundColor:  Brand.surface1,
+    backgroundColor:  brand.surface1,
     borderRadius:     Radius.lg,
     borderWidth:      1,
-    borderColor:      Brand.border1,
+    borderColor:      brand.border1,
     paddingHorizontal: Spacing.three,
     paddingVertical:  Spacing.two + 2,
     marginBottom:     Spacing.one + 2,
     gap:              Spacing.two,
   },
   left:     { flex: 1, gap: 2 },
-  time:     { fontSize: 14, fontWeight: '700', color: Brand.cream },
-  service:  { fontSize: 12, color: Brand.creamSub },
-  customer: { fontSize: 11, color: Brand.creamMuted },
-  amount:   { fontSize: 14, fontWeight: '700', color: Brand.success },
-  free:     { fontSize: 13, fontWeight: '600', color: Brand.creamMuted },
+  time:     { fontSize: 14, fontWeight: '700', color: brand.cream },
+  service:  { fontSize: 12, color: brand.creamSub },
+  customer: { fontSize: 11, color: brand.creamMuted },
+  amount:   { fontSize: 14, fontWeight: '700', color: brand.success },
+  free:     { fontSize: 13, fontWeight: '600', color: brand.creamMuted },
 });
 
-const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Brand.bg },
+const createSStyles = (brand: BrandTokens) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: brand.bg },
 
   header: {
     flexDirection:    'row',
@@ -269,14 +276,14 @@ const s = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical:  Spacing.two + 2,
     borderBottomWidth: 1,
-    borderBottomColor: Brand.border1,
+    borderBottomColor: brand.border1,
     gap:              Spacing.two,
   },
-  backBtn:    { width: 36, height: 36, borderRadius: Radius.md, backgroundColor: Brand.surface1, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Brand.border1 },
+  backBtn:    { width: 36, height: 36, borderRadius: Radius.md, backgroundColor: brand.surface1, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: brand.border1 },
   headerMid:  { flex: 1 },
-  headerTitle:{ fontSize: 16, fontWeight: '700', color: Brand.cream },
-  headerSub:  { fontSize: 11, color: Brand.creamMuted, marginTop: 1 },
-  refreshBtn: { width: 36, height: 36, borderRadius: Radius.md, backgroundColor: Brand.surface1, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Brand.border1 },
+  headerTitle:{ fontSize: 16, fontWeight: '700', color: brand.cream },
+  headerSub:  { fontSize: 11, color: brand.creamMuted, marginTop: 1 },
+  refreshBtn: { width: 36, height: 36, borderRadius: Radius.md, backgroundColor: brand.surface1, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: brand.border1 },
 
   statsBar: {
     flexDirection:    'row',
@@ -285,25 +292,25 @@ const s = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingVertical:  Spacing.two,
     borderBottomWidth: 1,
-    borderBottomColor: Brand.border1,
-    backgroundColor:  Brand.surface1,
+    borderBottomColor: brand.border1,
+    backgroundColor:  brand.surface1,
   },
-  statsText: { fontSize: 12, color: Brand.creamMuted },
-  statsNum:  { fontWeight: '700', color: Brand.cream },
+  statsText: { fontSize: 12, color: brand.creamMuted },
+  statsNum:  { fontWeight: '700', color: brand.cream },
 
   listContent: { padding: Spacing.four, paddingBottom: 60 },
 
   dayHeader:     { marginTop: Spacing.three, marginBottom: Spacing.two },
-  dayHeaderText: { fontSize: 11, fontWeight: '700', color: Brand.primary, textTransform: 'uppercase', letterSpacing: 0.6 },
+  dayHeaderText: { fontSize: 11, fontWeight: '700', color: brand.primary, textTransform: 'uppercase', letterSpacing: 0.6 },
 
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.four },
-  loadingText: { fontSize: 13, color: Brand.creamMuted },
-  errorText:   { fontSize: 13, color: Brand.creamSub, textAlign: 'center' },
-  retryBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Brand.primary, borderRadius: Radius.pill, paddingHorizontal: Spacing.four, paddingVertical: 10, marginTop: Spacing.one },
+  loadingText: { fontSize: 13, color: brand.creamMuted },
+  errorText:   { fontSize: 13, color: brand.creamSub, textAlign: 'center' },
+  retryBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: brand.primary, borderRadius: Radius.pill, paddingHorizontal: Spacing.four, paddingVertical: 10, marginTop: Spacing.one },
   retryBtnText:{ color: '#fff', fontWeight: '700', fontSize: 13 },
 
   empty:      { alignItems: 'center', paddingTop: Spacing.six, gap: Spacing.two },
-  emptyIcon:  { width: 72, height: 72, borderRadius: Radius.xl, backgroundColor: Brand.surface1, borderWidth: 1, borderColor: Brand.border1, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.two },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: Brand.cream },
-  emptySub:   { fontSize: 13, color: Brand.creamSub, textAlign: 'center', lineHeight: 19, paddingHorizontal: Spacing.four },
+  emptyIcon:  { width: 72, height: 72, borderRadius: Radius.xl, backgroundColor: brand.surface1, borderWidth: 1, borderColor: brand.border1, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.two },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: brand.cream },
+  emptySub:   { fontSize: 13, color: brand.creamSub, textAlign: 'center', lineHeight: 19, paddingHorizontal: Spacing.four },
 });

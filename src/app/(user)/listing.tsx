@@ -20,7 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/hooks/useTheme';
 import { Radius, Spacing } from '@/constants/theme';
-import { resolveCategoryDef } from '@/constants/categories';
+import { resolveCategoryDef, resolveBizCategoryDef } from '@/constants/categories';
 import {
   listPublicBusinesses,
   businessEmoji,
@@ -52,17 +52,13 @@ function sortBusinesses(list: PublicBusiness[], sort: SortKey): PublicBusiness[]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// True if a business belongs to a given short category name.
-// Tries regex resolution first, then falls back to substring matching so
-// edge-case API labels (e.g. "Clinic Services") still match "Clinic".
+// True if a business belongs to a given short category name. Resolves from
+// the specific type label first (falling back to the parent category label
+// only when the type label alone doesn't match anything) — see
+// resolveBizCategoryDef for why matching against the combined string first
+// mis-buckets businesses like "Sports turf & courts" as "Venues".
 function bizMatchesCat(b: { typeLabel: string; categoryLabel: string }, cat: string): boolean {
-  const combined = `${b.typeLabel} ${b.categoryLabel}`;
-  if (resolveCategoryDef(combined).short === cat) return true;
-  const catLower = cat.toLowerCase();
-  const cLower   = combined.toLowerCase();
-  return cLower.split(/\W+/).includes(catLower) ||
-    b.typeLabel.toLowerCase().includes(catLower) ||
-    b.categoryLabel.toLowerCase().includes(catLower);
+  return resolveBizCategoryDef(b.typeLabel, b.categoryLabel).short === cat;
 }
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
@@ -104,9 +100,8 @@ export default function ListingScreen() {
     const seenShort = new Set<string>();
     const opts: DropdownOption[] = [{ value: 'all', label: 'All Categories', icon: 'grid-outline' }];
     for (const b of businesses) {
-      const combined = `${b.typeLabel} ${b.categoryLabel}`.trim();
-      if (!combined) continue;
-      const def = resolveCategoryDef(combined);
+      if (!b.typeLabel && !b.categoryLabel) continue;
+      const def = resolveBizCategoryDef(b.typeLabel, b.categoryLabel);
       if (!seenShort.has(def.short)) {
         seenShort.add(def.short);
         opts.push({ value: def.short, label: def.short, icon: def.icon });

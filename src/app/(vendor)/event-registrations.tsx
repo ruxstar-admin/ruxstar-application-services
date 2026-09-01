@@ -23,7 +23,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import type { BrandTokens } from '@/hooks/useTheme';
 import { useAuthStore } from '@/stores/auth-store';
 import {
   getVendorEvent,
@@ -37,12 +39,12 @@ import {
 
 type RegFilter = 'all' | 'confirmed' | 'pending_payment' | 'cancelled';
 
-function statusColor(status: string): { text: string; bg: string; border: string } {
+function statusColor(status: string, brand: BrandTokens): { text: string; bg: string; border: string } {
   switch (status) {
-    case 'confirmed':      return { text: Brand.success,   bg: 'rgba(22,163,74,0.08)',  border: 'rgba(22,163,74,0.25)'  };
+    case 'confirmed':      return { text: brand.success,   bg: 'rgba(22,163,74,0.08)',  border: 'rgba(22,163,74,0.25)'  };
     case 'pending_payment':return { text: '#D97706',        bg: 'rgba(217,119,6,0.08)', border: 'rgba(217,119,6,0.25)'  };
-    case 'cancelled':      return { text: Brand.error,     bg: 'rgba(220,38,38,0.08)', border: 'rgba(220,38,38,0.20)'  };
-    default:               return { text: Brand.creamMuted, bg: Brand.surface2,          border: Brand.border1            };
+    case 'cancelled':      return { text: brand.error,     bg: 'rgba(220,38,38,0.08)', border: 'rgba(220,38,38,0.20)'  };
+    default:               return { text: brand.creamMuted, bg: brand.surface2,          border: brand.border1            };
   }
 }
 
@@ -55,11 +57,11 @@ function statusLabel(status: string): string {
   }
 }
 
-function eventStatusColor(s: EventStatus): { text: string; bg: string; border: string } {
+function eventStatusColor(s: EventStatus, brand: BrandTokens): { text: string; bg: string; border: string } {
   switch (s) {
-    case 'published':  return { text: Brand.success,  bg: 'rgba(22,163,74,0.08)', border: 'rgba(22,163,74,0.25)' };
-    case 'cancelled':  return { text: Brand.error,    bg: 'rgba(220,38,38,0.08)', border: 'rgba(220,38,38,0.20)' };
-    case 'completed':  return { text: Brand.primary,  bg: Brand.primaryGlow,       border: 'rgba(124,58,237,0.20)'};
+    case 'published':  return { text: brand.success,  bg: 'rgba(22,163,74,0.08)', border: 'rgba(22,163,74,0.25)' };
+    case 'cancelled':  return { text: brand.error,    bg: 'rgba(220,38,38,0.08)', border: 'rgba(220,38,38,0.20)' };
+    case 'completed':  return { text: brand.primary,  bg: brand.primaryGlow,       border: 'rgba(124,58,237,0.20)'};
     default:           return { text: '#D97706',       bg: 'rgba(217,119,6,0.08)', border: 'rgba(217,119,6,0.25)' };
   }
 }
@@ -78,7 +80,9 @@ function formatEventDate(iso: string | null): string {
 // ─── Registration Row ─────────────────────────────────────────────────────────
 
 function RegistrationRow({ reg }: { reg: EventRegistration }) {
-  const sc = statusColor(reg.status);
+  const { brand } = useTheme();
+  const r  = useMemo(() => createRStyles(brand), [brand]);
+  const sc = statusColor(reg.status, brand);
   const isTeam  = reg.format === 'team';
   const name    = isTeam && reg.teamName ? reg.teamName : reg.customerName;
   const initial = (name || '?').charAt(0).toUpperCase();
@@ -123,6 +127,8 @@ function RegistrationRow({ reg }: { reg: EventRegistration }) {
 // ─── Stats box ────────────────────────────────────────────────────────────────
 
 function StatBox({ label, value }: { label: string; value: string }) {
+  const { brand } = useTheme();
+  const st = useMemo(() => createStStyles(brand), [brand]);
   return (
     <View style={st.box}>
       <Text style={st.value}>{value}</Text>
@@ -134,6 +140,9 @@ function StatBox({ label, value }: { label: string; value: string }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function EventRegistrationsScreen() {
+  const { brand } = useTheme();
+  const g = useMemo(() => createGStyles(brand), [brand]);
+
   const { eventId, businessName = 'Event' } = useLocalSearchParams<{
     eventId: string;
     businessName?: string;
@@ -228,9 +237,9 @@ export default function EventRegistrationsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={g.screen} edges={['top']}>
-        <Header title={businessName} onBack={() => router.navigate('/(vendor)/businesses' as never)} />
+        <Header g={g} title={businessName} onBack={() => router.navigate('/(vendor)/businesses' as never)} />
         <View style={g.center}>
-          <ActivityIndicator size="large" color={Brand.primary} />
+          <ActivityIndicator size="large" color={brand.primary} />
         </View>
       </SafeAreaView>
     );
@@ -239,9 +248,9 @@ export default function EventRegistrationsScreen() {
   if (error || !event) {
     return (
       <SafeAreaView style={g.screen} edges={['top']}>
-        <Header title={businessName} onBack={() => router.navigate('/(vendor)/businesses' as never)} />
+        <Header g={g} title={businessName} onBack={() => router.navigate('/(vendor)/businesses' as never)} />
         <View style={g.center}>
-          <Ionicons name="cloud-offline-outline" size={40} color={Brand.creamMuted} />
+          <Ionicons name="cloud-offline-outline" size={40} color={brand.creamMuted} />
           <Text style={g.errorText}>{error || 'Event not found.'}</Text>
           <Pressable style={g.retryBtn} onPress={load}>
             <Text style={g.retryBtnText}>Retry</Text>
@@ -251,13 +260,13 @@ export default function EventRegistrationsScreen() {
     );
   }
 
-  const evSC = eventStatusColor(event.status);
+  const evSC = eventStatusColor(event.status, brand);
   const revenue = event.entryFee * event.confirmedCount;
 
   return (
     <SafeAreaView style={g.screen} edges={['top']}>
       {/* Header */}
-      <Header title={businessName} onBack={() => router.navigate('/(vendor)/businesses' as never)} />
+      <Header g={g} title={businessName} onBack={() => router.navigate('/(vendor)/businesses' as never)} />
 
       <FlatList
         data={filtered}
@@ -288,7 +297,7 @@ export default function EventRegistrationsScreen() {
                 <ActionBtn
                   label="Publish"
                   icon="checkmark-circle-outline"
-                  color={Brand.success}
+                  color={brand.success}
                   busy={actionBusy === 'publish'}
                   onPress={() => doAction('publish')}
                 />
@@ -297,7 +306,7 @@ export default function EventRegistrationsScreen() {
                 <ActionBtn
                   label="Unpublish"
                   icon="eye-off-outline"
-                  color={Brand.warning}
+                  color={brand.warning}
                   busy={actionBusy === 'unpublish'}
                   onPress={() => doAction('unpublish')}
                 />
@@ -305,17 +314,20 @@ export default function EventRegistrationsScreen() {
               <ActionBtn
                 label="Edit"
                 icon="create-outline"
-                color={Brand.primary}
+                color={brand.primary}
                 busy={false}
                 onPress={() =>
-                  Alert.alert('Coming Soon', 'Event editing will be available in a future update.')
+                  router.push({
+                    pathname: '/(vendor)/create-event',
+                    params: { eventId: event.id, businessId: event.businessId, businessName },
+                  } as never)
                 }
               />
               {event.status !== 'cancelled' && (
                 <ActionBtn
                   label="Cancel"
                   icon="close-circle-outline"
-                  color={Brand.error}
+                  color={brand.error}
                   busy={actionBusy === 'cancel'}
                   onPress={() => doAction('cancel')}
                 />
@@ -335,13 +347,13 @@ export default function EventRegistrationsScreen() {
               <View style={g.detailRow}>
                 {event.venue ? (
                   <View style={g.detailItem}>
-                    <Ionicons name="location-outline" size={13} color={Brand.creamMuted} />
+                    <Ionicons name="location-outline" size={13} color={brand.creamMuted} />
                     <Text style={g.detailText} numberOfLines={1}>{event.venue}</Text>
                   </View>
                 ) : null}
                 {event.registrationDeadline ? (
                   <View style={g.detailItem}>
-                    <Ionicons name="time-outline" size={13} color={Brand.creamMuted} />
+                    <Ionicons name="time-outline" size={13} color={brand.creamMuted} />
                     <Text style={g.detailText}>
                       Reg closes: {formatEventDate(event.registrationDeadline)}
                     </Text>
@@ -358,11 +370,11 @@ export default function EventRegistrationsScreen() {
 
             {/* Search */}
             <View style={g.searchWrap}>
-              <Ionicons name="search-outline" size={15} color={Brand.creamMuted} />
+              <Ionicons name="search-outline" size={15} color={brand.creamMuted} />
               <TextInput
                 style={g.searchInput}
                 placeholder="Search by name, team, or phone…"
-                placeholderTextColor={Brand.creamMuted}
+                placeholderTextColor={brand.creamMuted}
                 value={search}
                 onChangeText={setSearch}
                 clearButtonMode="while-editing"
@@ -390,7 +402,7 @@ export default function EventRegistrationsScreen() {
             {/* Empty state */}
             {filtered.length === 0 && (
               <View style={g.emptyWrap}>
-                <Ionicons name="people-outline" size={36} color={Brand.creamMuted} />
+                <Ionicons name="people-outline" size={36} color={brand.creamMuted} />
                 <Text style={g.emptyTitle}>
                   {registrations.length === 0
                     ? (event.status === 'draft' ? 'Publish to start accepting registrations' : 'No registrations yet')
@@ -406,7 +418,7 @@ export default function EventRegistrationsScreen() {
           </>
         }
         renderItem={({ item }) => <RegistrationRow reg={item} />}
-        ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: Brand.border1, marginHorizontal: Spacing.four }} />}
+        ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: brand.border1, marginHorizontal: Spacing.four }} />}
       />
     </SafeAreaView>
   );
@@ -423,6 +435,8 @@ function ActionBtn({
   busy:  boolean;
   onPress: () => void;
 }) {
+  const { brand } = useTheme();
+  const a = useMemo(() => createAStyles(brand), [brand]);
   return (
     <Pressable
       style={[a.btn, { borderColor: `${color}40` }]}
@@ -439,11 +453,12 @@ function ActionBtn({
 
 // ─── Header ───────────────────────────────────────────────────────────────────
 
-function Header({ title, onBack }: { title: string; onBack: () => void }) {
+function Header({ g, title, onBack }: { g: ReturnType<typeof createGStyles>; title: string; onBack: () => void }) {
+  const { brand } = useTheme();
   return (
     <View style={g.header}>
       <Pressable onPress={onBack} hitSlop={8} style={g.backBtn}>
-        <Ionicons name="chevron-back" size={22} color={Brand.cream} />
+        <Ionicons name="chevron-back" size={22} color={brand.cream} />
       </Pressable>
       <Text style={g.headerTitle} numberOfLines={1}>{title}</Text>
       <View style={{ width: 36 }} />
@@ -453,26 +468,26 @@ function Header({ title, onBack }: { title: string; onBack: () => void }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const g = StyleSheet.create({
-  screen:    { flex: 1, backgroundColor: Brand.bg },
+const createGStyles = (brand: BrandTokens) => StyleSheet.create({
+  screen:    { flex: 1, backgroundColor: brand.bg },
   center:    { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.four },
   listContent: { paddingBottom: 40 },
 
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: Spacing.three, paddingVertical: Spacing.two + 2,
-    borderBottomWidth: 1, borderBottomColor: Brand.border1, gap: Spacing.two,
+    borderBottomWidth: 1, borderBottomColor: brand.border1, gap: Spacing.two,
   },
-  backBtn:     { width: 36, height: 36, borderRadius: Radius.md, backgroundColor: Brand.surface1, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Brand.border1 },
-  headerTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: Brand.cream, textAlign: 'center' },
+  backBtn:     { width: 36, height: 36, borderRadius: Radius.md, backgroundColor: brand.surface1, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: brand.border1 },
+  headerTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: brand.cream, textAlign: 'center' },
 
   eventHeader: {
     flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two,
-    padding: Spacing.four, borderBottomWidth: 1, borderBottomColor: Brand.border1,
+    padding: Spacing.four, borderBottomWidth: 1, borderBottomColor: brand.border1,
   },
   eventIcon:  { fontSize: 28, marginTop: 2 },
-  eventTitle: { fontSize: 17, fontWeight: '800', color: Brand.cream, lineHeight: 22 },
-  eventDate:  { fontSize: 12, color: Brand.creamMuted, marginTop: 3 },
+  eventTitle: { fontSize: 17, fontWeight: '800', color: brand.cream, lineHeight: 22 },
+  eventDate:  { fontSize: 12, color: brand.creamMuted, marginTop: 3 },
   statusBadge: {
     paddingHorizontal: 8, paddingVertical: 3,
     borderRadius: Radius.pill, borderWidth: 1,
@@ -483,41 +498,41 @@ const g = StyleSheet.create({
   actionRow: {
     flexDirection: 'row', gap: Spacing.two, flexWrap: 'wrap',
     paddingHorizontal: Spacing.four, paddingVertical: Spacing.three,
-    borderBottomWidth: 1, borderBottomColor: Brand.border1,
+    borderBottomWidth: 1, borderBottomColor: brand.border1,
   },
 
   statsRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1, borderBottomColor: Brand.border1,
+    borderBottomWidth: 1, borderBottomColor: brand.border1,
   },
 
   detailRow: {
     gap: Spacing.one + 2,
     paddingHorizontal: Spacing.four, paddingVertical: Spacing.two + 2,
-    borderBottomWidth: 1, borderBottomColor: Brand.border1,
+    borderBottomWidth: 1, borderBottomColor: brand.border1,
   },
   detailItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  detailText: { fontSize: 12, color: Brand.creamSub, flex: 1 },
+  detailText: { fontSize: 12, color: brand.creamSub, flex: 1 },
 
   regHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: Spacing.four, paddingTop: Spacing.three, paddingBottom: Spacing.one + 2,
   },
-  regTitle: { fontSize: 15, fontWeight: '700', color: Brand.cream, flex: 1 },
+  regTitle: { fontSize: 15, fontWeight: '700', color: brand.cream, flex: 1 },
   regCount: {
-    fontSize: 12, fontWeight: '700', color: Brand.primary,
-    backgroundColor: Brand.primaryGlow, borderRadius: Radius.pill,
+    fontSize: 12, fontWeight: '700', color: brand.primary,
+    backgroundColor: brand.primaryGlow, borderRadius: Radius.pill,
     paddingHorizontal: 7, paddingVertical: 2,
   },
 
   searchWrap: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.two,
     marginHorizontal: Spacing.four, marginBottom: Spacing.two,
-    backgroundColor: Brand.surface1, borderRadius: Radius.md,
+    backgroundColor: brand.surface1, borderRadius: Radius.md,
     paddingHorizontal: Spacing.three, paddingVertical: 10,
-    borderWidth: 1, borderColor: Brand.border1,
+    borderWidth: 1, borderColor: brand.border1,
   },
-  searchInput: { flex: 1, fontSize: 14, color: Brand.cream, padding: 0 },
+  searchInput: { flex: 1, fontSize: 14, color: brand.cream, padding: 0 },
 
   chipRow: {
     flexDirection: 'row', gap: Spacing.two,
@@ -528,40 +543,40 @@ const g = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: Spacing.two + 2, paddingVertical: 6,
     borderRadius: Radius.pill, borderWidth: 1,
-    borderColor: Brand.border2, backgroundColor: Brand.surface1,
+    borderColor: brand.border2, backgroundColor: brand.surface1,
   },
-  chipActive:     { backgroundColor: Brand.primary, borderColor: Brand.primary },
-  chipText:       { fontSize: 12, fontWeight: '600', color: Brand.creamSub },
+  chipActive:     { backgroundColor: brand.primary, borderColor: brand.primary },
+  chipText:       { fontSize: 12, fontWeight: '600', color: brand.creamSub },
   chipTextActive: { color: '#fff' },
-  chipCount:      { fontSize: 11, fontWeight: '700', color: Brand.creamMuted },
+  chipCount:      { fontSize: 11, fontWeight: '700', color: brand.creamMuted },
   chipCountActive:{ color: 'rgba(255,255,255,0.8)' },
 
   emptyWrap:  { alignItems: 'center', gap: Spacing.one + 2, padding: Spacing.five },
-  emptyTitle: { fontSize: 15, fontWeight: '700', color: Brand.cream, textAlign: 'center' },
-  emptySub:   { fontSize: 13, color: Brand.creamSub, textAlign: 'center', lineHeight: 18 },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: brand.cream, textAlign: 'center' },
+  emptySub:   { fontSize: 13, color: brand.creamSub, textAlign: 'center', lineHeight: 18 },
 
-  errorText:    { color: Brand.error, textAlign: 'center', fontSize: 14 },
-  retryBtn:     { backgroundColor: Brand.primary, borderRadius: Radius.pill, paddingHorizontal: Spacing.four, paddingVertical: Spacing.two + 2 },
+  errorText:    { color: brand.error, textAlign: 'center', fontSize: 14 },
+  retryBtn:     { backgroundColor: brand.primary, borderRadius: Radius.pill, paddingHorizontal: Spacing.four, paddingVertical: Spacing.two + 2 },
   retryBtnText: { color: '#fff', fontWeight: '600' },
 });
 
-const r = StyleSheet.create({
+const createRStyles = (brand: BrandTokens) => StyleSheet.create({
   row: {
     flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two,
     paddingHorizontal: Spacing.four, paddingVertical: Spacing.three,
   },
   avatar: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: Brand.primaryGlow,
+    backgroundColor: brand.primaryGlow,
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { fontSize: 15, fontWeight: '800', color: Brand.primary },
+  avatarText: { fontSize: 15, fontWeight: '800', color: brand.primary },
   info:    { flex: 1, gap: 2 },
-  name:    { fontSize: 14, fontWeight: '700', color: Brand.cream },
-  sub:     { fontSize: 12, color: Brand.creamMuted },
-  players: { fontSize: 11, color: Brand.creamSub, marginTop: 2, lineHeight: 15 },
+  name:    { fontSize: 14, fontWeight: '700', color: brand.cream },
+  sub:     { fontSize: 12, color: brand.creamMuted },
+  players: { fontSize: 11, color: brand.creamSub, marginTop: 2, lineHeight: 15 },
   right:   { alignItems: 'flex-end', gap: 4 },
-  amount:  { fontSize: 13, fontWeight: '700', color: Brand.cream },
+  amount:  { fontSize: 13, fontWeight: '700', color: brand.cream },
   badge: {
     paddingHorizontal: 7, paddingVertical: 2,
     borderRadius: Radius.pill, borderWidth: 1,
@@ -569,21 +584,21 @@ const r = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '700' },
 });
 
-const st = StyleSheet.create({
+const createStStyles = (brand: BrandTokens) => StyleSheet.create({
   box: {
     flex: 1, alignItems: 'center', paddingVertical: Spacing.three,
-    borderRightWidth: 1, borderRightColor: Brand.border1,
+    borderRightWidth: 1, borderRightColor: brand.border1,
   },
-  value: { fontSize: 16, fontWeight: '800', color: Brand.cream },
-  label: { fontSize: 10, color: Brand.creamMuted, marginTop: 2, fontWeight: '500' },
+  value: { fontSize: 16, fontWeight: '800', color: brand.cream },
+  label: { fontSize: 10, color: brand.creamMuted, marginTop: 2, fontWeight: '500' },
 });
 
-const a = StyleSheet.create({
+const createAStyles = (brand: BrandTokens) => StyleSheet.create({
   btn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: Spacing.three, paddingVertical: 8,
     borderRadius: Radius.pill, borderWidth: 1,
-    backgroundColor: Brand.surface1,
+    backgroundColor: brand.surface1,
   },
   label: { fontSize: 13, fontWeight: '600' },
 });

@@ -517,11 +517,20 @@ export type DetailsForm = {
   geo?:        { lat: number; lng: number };
 };
 
+/** Matches a reverse-geocoded region name against our fixed state list, case-insensitively. */
+function matchIndianState(raw?: string | null): string {
+  if (!raw) return '';
+  const norm = raw.trim().toLowerCase();
+  return INDIAN_STATES.find((s) => s.toLowerCase() === norm) ?? raw.trim();
+}
+
 /**
  * Requests foreground location permission and reads the device's current
- * position. Deliberately only ever reads the device's own GPS — never
- * derived from a typed address — matching the backend's `normalizeGeo`
- * contract in businessAddress.js.
+ * position. The `geo` lat/lng is deliberately only ever the device's own
+ * GPS — never derived from a typed address — matching the backend's
+ * `normalizeGeo` contract in businessAddress.js. The state/city/area text
+ * fields, however, are best-effort reverse-geocoded from that same GPS fix
+ * so the vendor doesn't have to re-type what we already know.
  */
 async function captureCurrentLocation(
   onChange: (patch: Partial<DetailsForm>) => void,
@@ -537,7 +546,26 @@ async function captureCurrentLocation(
       return;
     }
     const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-    onChange({ geo: { lat: pos.coords.latitude, lng: pos.coords.longitude } });
+    const patch: Partial<DetailsForm> = {
+      geo: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+    };
+    try {
+      const [addr] = await Location.reverseGeocodeAsync({
+        latitude:  pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      });
+      if (addr) {
+        const state = matchIndianState(addr.region);
+        if (state) patch.state = state;
+        const city = addr.city || addr.subregion || addr.district || '';
+        if (city) patch.city = city;
+        const area = addr.name || addr.street || addr.district || '';
+        if (area) patch.area = area;
+      }
+    } catch {
+      // Reverse geocoding is best-effort — the GPS pin still lands even if this fails.
+    }
+    onChange(patch);
   } catch {
     Alert.alert('Could not get your location', 'Make sure location services are turned on, then try again.');
   } finally {
@@ -654,6 +682,31 @@ export function DetailsStep({
       {/* Location — State → City → Area */}
       <Field label="Location" required>
         <Pressable
+          style={[s.locateBtn, form.geo && s.locateBtnDone]}
+          disabled={locating}
+          onPress={() => {
+            setLocating(true);
+            captureCurrentLocation(onChange, () => setLocating(false));
+          }}
+        >
+          {locating ? (
+            <ActivityIndicator size="small" color={brand.primary} />
+          ) : (
+            <Ionicons
+              name={form.geo ? 'checkmark-circle' : 'locate-outline'}
+              size={16}
+              color={form.geo ? brand.success : brand.primary}
+            />
+          )}
+          <Text style={[s.locateBtnText, form.geo && s.locateBtnTextDone]}>
+            {locating ? 'Getting your location…' : form.geo ? 'Location pinned — tap to update' : 'Use current location'}
+          </Text>
+        </Pressable>
+        <Text style={[s.fieldHintFull, { marginBottom: 8 }]}>
+          Fills state, city & area below automatically — you can still edit them.
+        </Text>
+
+        <Pressable
           style={s.dropdownBtn}
           onPress={() => { setShowStatePicker((p) => !p); setShowCityPicker(false); }}
         >
@@ -766,31 +819,6 @@ export function DetailsStep({
             {addressPreview ? (
               <Text style={s.addressPreview} numberOfLines={2}>{addressPreview}</Text>
             ) : null}
-
-            <Pressable
-              style={[s.locateBtn, form.geo && s.locateBtnDone]}
-              disabled={locating}
-              onPress={() => {
-                setLocating(true);
-                captureCurrentLocation(onChange, () => setLocating(false));
-              }}
-            >
-              {locating ? (
-                <ActivityIndicator size="small" color={brand.primary} />
-              ) : (
-                <Ionicons
-                  name={form.geo ? 'checkmark-circle' : 'locate-outline'}
-                  size={16}
-                  color={form.geo ? brand.success : brand.primary}
-                />
-              )}
-              <Text style={[s.locateBtnText, form.geo && s.locateBtnTextDone]}>
-                {locating ? 'Getting your location…' : form.geo ? 'Location pinned — tap to update' : 'Use current location'}
-              </Text>
-            </Pressable>
-            <Text style={s.fieldHintFull}>
-              Pins your business on the map so nearby customers can find you.
-            </Text>
           </>
         ) : null}
       </Field>

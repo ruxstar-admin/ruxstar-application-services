@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Brand, Radius, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth-store';
+import { usePendingPaymentStore } from '@/stores/pending-payment-store';
 import {
   bookCreatorOffer,
   getPublicCreatorOffer,
@@ -119,8 +120,12 @@ export default function CreatorOfferScreen() {
   const [imgError,   setImgError]   = useState(false);
   const [brief,      setBrief]      = useState('');
 
+  const savePendingPayment  = usePendingPaymentStore((s) => s.save);
+  const clearPendingPayment = usePendingPaymentStore((s) => s.clear);
+
   const { startPayment, paying } = useCashfreePayment({
     onSuccess: (bookingId) => {
+      clearPendingPayment(bookingId);
       router.replace({ pathname: '/(user)/payment-status', params: { bookingId, kind: 'creator' } } as never);
     },
     onError: (msg) => {
@@ -159,6 +164,14 @@ export default function CreatorOfferScreen() {
     try {
       const { booking, payment } = await bookCreatorOffer(token, offerId, brief.trim());
       if (payment) {
+        // Cache the session before attempting payment so it can be resumed
+        // from Orders later if the SDK call fails or the app is killed.
+        savePendingPayment({
+          id: booking.id, kind: 'creator',
+          paymentSessionId: payment.paymentSessionId,
+          cashfreeOrderId:  payment.orderId,
+          mode:             payment.mode,
+        });
         startPayment({
           paymentSessionId: payment.paymentSessionId,
           orderId:          payment.orderId,

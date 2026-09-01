@@ -24,7 +24,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import type { BrandTokens } from '@/hooks/useTheme';
 import { useAuthStore } from '@/stores/auth-store';
 import {
   listBusinessSlots,
@@ -90,7 +92,7 @@ function rangeLabel(from: string, to: string): string {
 
 type CalendarMode = 'block' | 'price';
 
-function slotColor(slot: BusinessSlot, base: number): {
+function slotColor(slot: BusinessSlot, base: number, brand: BrandTokens): {
   bg: string; border: string; text: string; sub: string;
 } {
   const isDemand = slot.status === 'available' && slot.pricePerSlot > (slot.basePricePerSlot ?? base);
@@ -98,17 +100,19 @@ function slotColor(slot: BusinessSlot, base: number): {
     case 'available':
       return isDemand
         ? { bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.30)',  text: '#92400E', sub: '#B45309' }
-        : { bg: 'rgba(22,163,74,0.06)',  border: 'rgba(22,163,74,0.25)',  text: Brand.success, sub: '#16A34A' };
+        : { bg: 'rgba(22,163,74,0.06)',  border: 'rgba(22,163,74,0.25)',  text: brand.success, sub: '#16A34A' };
     case 'blocked':
-      return { bg: Brand.surface2,        border: Brand.border2,           text: Brand.creamSub, sub: Brand.creamMuted };
+      return { bg: brand.surface2,        border: brand.border2,           text: brand.creamSub, sub: brand.creamMuted };
     case 'booked':
       return { bg: 'rgba(37,99,235,0.06)', border: 'rgba(37,99,235,0.20)', text: '#1D4ED8',  sub: '#3B82F6' };
     default:
-      return { bg: Brand.surface1,        border: Brand.border1,           text: Brand.creamMuted, sub: Brand.creamMuted };
+      return { bg: brand.surface1,        border: brand.border1,           text: brand.creamMuted, sub: brand.creamMuted };
   }
 }
 
 function SlotSkeleton() {
+  const { brand } = useTheme();
+  const sk = useMemo(() => createSkStyles(brand), [brand]);
   return (
     <View style={sk.grid}>
       {Array.from({ length: 12 }).map((_, i) => (
@@ -121,6 +125,10 @@ function SlotSkeleton() {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function SlotCalendarScreen() {
+  const { brand } = useTheme();
+  const s     = useMemo(() => createSStyles(brand), [brand]);
+  const modal = useMemo(() => createModalStyles(brand), [brand]);
+
   const { id: businessId, name: businessName = 'Business' } = useLocalSearchParams<{
     id: string;
     name: string;
@@ -332,7 +340,7 @@ export default function SlotCalendarScreen() {
       {/* Header */}
       <View style={s.header}>
         <Pressable style={s.backBtn} onPress={() => router.navigate('/(vendor)/businesses' as never)} hitSlop={8}>
-          <Ionicons name="arrow-back" size={18} color={Brand.cream} />
+          <Ionicons name="arrow-back" size={18} color={brand.cream} />
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={s.headerTitle} numberOfLines={1}>{businessName}</Text>
@@ -350,12 +358,12 @@ export default function SlotCalendarScreen() {
           onPress={() => router.push({ pathname: '/(vendor)/business-setup', params: { id: businessId, edit: '1' } } as never)}
           hitSlop={6}
         >
-          <Ionicons name="create-outline" size={15} color={Brand.primary} />
+          <Ionicons name="create-outline" size={15} color={brand.primary} />
         </Pressable>
         <Pressable style={s.refreshBtn} onPress={() => load(true)} disabled={loading || refreshing}>
           {refreshing
-            ? <ActivityIndicator size="small" color={Brand.primary} />
-            : <Ionicons name="refresh-outline" size={18} color={Brand.creamSub} />}
+            ? <ActivityIndicator size="small" color={brand.primary} />
+            : <Ionicons name="refresh-outline" size={18} color={brand.creamSub} />}
         </Pressable>
       </View>
 
@@ -366,7 +374,7 @@ export default function SlotCalendarScreen() {
           onPress={() => setRangeStart((s) => addDays(s, -7))}
           disabled={rangeStart <= today}
         >
-          <Ionicons name="chevron-back" size={18} color={rangeStart <= today ? Brand.creamMuted : Brand.cream} />
+          <Ionicons name="chevron-back" size={18} color={rangeStart <= today ? brand.creamMuted : brand.cream} />
         </Pressable>
 
         <Pressable
@@ -386,7 +394,7 @@ export default function SlotCalendarScreen() {
         </Pressable>
 
         <Pressable style={s.weekArrow} onPress={() => setRangeStart((s) => addDays(s, 7))}>
-          <Ionicons name="chevron-forward" size={18} color={Brand.cream} />
+          <Ionicons name="chevron-forward" size={18} color={brand.cream} />
         </Pressable>
       </View>
 
@@ -422,7 +430,7 @@ export default function SlotCalendarScreen() {
             <Ionicons
               name="ban-outline"
               size={12}
-              color={mode === 'block' ? '#fff' : Brand.creamSub}
+              color={mode === 'block' ? '#fff' : brand.creamSub}
             />
             <Text style={[s.modeSegText, mode === 'block' && s.modeSegTextActive]}>Block</Text>
           </Pressable>
@@ -434,7 +442,7 @@ export default function SlotCalendarScreen() {
             <Ionicons
               name="trending-up-outline"
               size={12}
-              color={mode === 'price' ? '#92400E' : Brand.creamSub}
+              color={mode === 'price' ? '#92400E' : brand.creamSub}
             />
             <Text style={[s.modeSegText, mode === 'price' && s.modeSegTextPrice]}>Surge Price</Text>
           </Pressable>
@@ -463,10 +471,10 @@ export default function SlotCalendarScreen() {
       {/* Error banner */}
       {error ? (
         <View style={s.errorBanner}>
-          <Ionicons name="warning-outline" size={14} color={Brand.error} />
+          <Ionicons name="warning-outline" size={14} color={brand.error} />
           <Text style={s.errorText}>{error}</Text>
           <Pressable onPress={() => setError('')} hitSlop={8}>
-            <Ionicons name="close-outline" size={16} color={Brand.creamMuted} />
+            <Ionicons name="close-outline" size={16} color={brand.creamMuted} />
           </Pressable>
         </View>
       ) : null}
@@ -475,7 +483,7 @@ export default function SlotCalendarScreen() {
       {!loading && data && (
         <View style={s.statsRow}>
           <View style={s.statChip}>
-            <View style={[s.statDot, { backgroundColor: Brand.success }]} />
+            <View style={[s.statDot, { backgroundColor: brand.success }]} />
             <Text style={s.statText}>{dayStats.available} open</Text>
           </View>
           {dayStats.demand > 0 && (
@@ -485,7 +493,7 @@ export default function SlotCalendarScreen() {
             </View>
           )}
           <View style={s.statChip}>
-            <View style={[s.statDot, { backgroundColor: Brand.creamMuted }]} />
+            <View style={[s.statDot, { backgroundColor: brand.creamMuted }]} />
             <Text style={s.statText}>{dayStats.blocked} blocked</Text>
           </View>
           <View style={s.statChip}>
@@ -504,7 +512,7 @@ export default function SlotCalendarScreen() {
         contentContainerStyle={s.slotContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Brand.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={brand.primary} />
         }
       >
         {loading ? (
@@ -512,7 +520,7 @@ export default function SlotCalendarScreen() {
         ) : !dayHasSlots ? (
           <View style={s.emptyState}>
             <View style={s.emptyIconWrap}>
-              <Ionicons name="moon-outline" size={28} color={Brand.creamMuted} />
+              <Ionicons name="moon-outline" size={28} color={brand.creamMuted} />
             </View>
             <Text style={s.emptyTitle}>No slots this day</Text>
             <Text style={s.emptySub}>Closed or past hours for {dayAbbr(selectedDate, today)}</Text>
@@ -525,14 +533,14 @@ export default function SlotCalendarScreen() {
               <View key={resource.id} style={s.resourceSection}>
                 {resources.length > 1 && (
                   <View style={s.resourceHeader}>
-                    <Ionicons name="cube-outline" size={12} color={Brand.creamMuted} />
+                    <Ionicons name="cube-outline" size={12} color={brand.creamMuted} />
                     <Text style={s.resourceLabel}>{resource.name}</Text>
                     <Text style={s.resourcePrice}>₹{resource.pricePerSlot}/slot</Text>
                   </View>
                 )}
                 <View style={s.slotGrid}>
                   {slots.map((slot) => {
-                    const colors  = slotColor(slot, basePrice);
+                    const colors  = slotColor(slot, basePrice, brand);
                     const isBusy  = busySlotId === slot.id;
                     const isDemand = slot.status === 'available' && slot.pricePerSlot > (slot.basePricePerSlot ?? basePrice);
                     const canTap  = slot.status !== 'booked' && !isBusy;
@@ -606,13 +614,13 @@ export default function SlotCalendarScreen() {
                 )}
               </View>
               <Pressable onPress={() => setPriceEdit(null)} hitSlop={12}>
-                <Ionicons name="close" size={20} color={Brand.creamSub} />
+                <Ionicons name="close" size={20} color={brand.creamSub} />
               </Pressable>
             </View>
 
             {priceError ? (
               <View style={modal.errorRow}>
-                <Ionicons name="alert-circle-outline" size={13} color={Brand.error} />
+                <Ionicons name="alert-circle-outline" size={13} color={brand.error} />
                 <Text style={modal.errorText}>{priceError}</Text>
               </View>
             ) : null}
@@ -629,7 +637,7 @@ export default function SlotCalendarScreen() {
                 onChangeText={(v) => { setPriceInput(v.replace(/\D/g, '')); setPriceError(''); }}
                 keyboardType="numeric"
                 placeholder="Enter surge price"
-                placeholderTextColor={Brand.creamMuted}
+                placeholderTextColor={brand.creamMuted}
                 autoFocus
               />
             </View>
@@ -663,41 +671,41 @@ export default function SlotCalendarScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const sk = StyleSheet.create({
+const createSkStyles = (brand: BrandTokens) => StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one + 2, padding: Spacing.four },
-  chip: { width: '22%', height: 52, backgroundColor: Brand.surface2, borderRadius: Radius.md },
+  chip: { width: '22%', height: 52, backgroundColor: brand.surface2, borderRadius: Radius.md },
 });
 
-const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Brand.bg },
+const createSStyles = (brand: BrandTokens) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: brand.bg },
 
   // Header
-  header:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.four, paddingVertical: Spacing.two + 2, borderBottomWidth: 1, borderBottomColor: Brand.border1, gap: Spacing.two },
-  backBtn:   { width: 36, height: 36, borderRadius: Radius.md, backgroundColor: Brand.surface1, borderWidth: 1, borderColor: Brand.border1, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '800', color: Brand.cream, letterSpacing: -0.2 },
-  headerSub:   { fontSize: 11, color: Brand.creamSub, marginTop: 1 },
-  editSetupBtn:{ width: 36, height: 36, borderRadius: Radius.md, backgroundColor: Brand.primaryGlow, borderWidth: 1, borderColor: 'rgba(124,58,237,0.18)', alignItems: 'center', justifyContent: 'center' },
-  refreshBtn:  { width: 36, height: 36, borderRadius: Radius.md, backgroundColor: Brand.surface1, borderWidth: 1, borderColor: Brand.border1, alignItems: 'center', justifyContent: 'center' },
+  header:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.four, paddingVertical: Spacing.two + 2, borderBottomWidth: 1, borderBottomColor: brand.border1, gap: Spacing.two },
+  backBtn:   { width: 36, height: 36, borderRadius: Radius.md, backgroundColor: brand.surface1, borderWidth: 1, borderColor: brand.border1, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 16, fontWeight: '800', color: brand.cream, letterSpacing: -0.2 },
+  headerSub:   { fontSize: 11, color: brand.creamSub, marginTop: 1 },
+  editSetupBtn:{ width: 36, height: 36, borderRadius: Radius.md, backgroundColor: brand.primaryGlow, borderWidth: 1, borderColor: 'rgba(124,58,237,0.18)', alignItems: 'center', justifyContent: 'center' },
+  refreshBtn:  { width: 36, height: 36, borderRadius: Radius.md, backgroundColor: brand.surface1, borderWidth: 1, borderColor: brand.border1, alignItems: 'center', justifyContent: 'center' },
 
   // Week nav
-  weekNav:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.three, paddingVertical: Spacing.one + 4, borderBottomWidth: 1, borderBottomColor: Brand.border1 },
-  weekArrow:        { width: 34, height: 34, borderRadius: Radius.md, backgroundColor: Brand.surface1, borderWidth: 1, borderColor: Brand.border1, alignItems: 'center', justifyContent: 'center' },
+  weekNav:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.three, paddingVertical: Spacing.one + 4, borderBottomWidth: 1, borderBottomColor: brand.border1 },
+  weekArrow:        { width: 34, height: 34, borderRadius: Radius.md, backgroundColor: brand.surface1, borderWidth: 1, borderColor: brand.border1, alignItems: 'center', justifyContent: 'center' },
   weekArrowDisabled:{ opacity: 0.4 },
   weekLabelWrap:    { flex: 1, alignItems: 'center', gap: 4 },
-  weekLabel:        { fontSize: 13, fontWeight: '600', color: Brand.cream },
+  weekLabel:        { fontSize: 13, fontWeight: '600', color: brand.cream },
   todayJumpPill: {
     paddingHorizontal: 8, paddingVertical: 3,
     borderRadius: Radius.pill,
-    backgroundColor: Brand.primaryGlow,
+    backgroundColor: brand.primaryGlow,
     borderWidth: 1, borderColor: 'rgba(124,58,237,0.20)',
   },
-  todayJumpText: { fontSize: 10, fontWeight: '700', color: Brand.primary },
+  todayJumpText: { fontSize: 10, fontWeight: '700', color: brand.primary },
 
   // Day grid — full-width 7-column layout
   dayGrid: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: Brand.border1,
+    borderBottomColor: brand.border1,
   },
   dayCell: {
     flex: 1,
@@ -705,28 +713,28 @@ const s = StyleSheet.create({
     paddingVertical: Spacing.two,
     gap: 2,
     borderRightWidth: 1,
-    borderRightColor: Brand.border1,
+    borderRightColor: brand.border1,
   },
-  dayCellActive:     { backgroundColor: Brand.primary },
-  dayCellAbbr:       { fontSize: 9, fontWeight: '600', color: Brand.creamMuted, textTransform: 'uppercase', letterSpacing: 0.3 },
+  dayCellActive:     { backgroundColor: brand.primary },
+  dayCellAbbr:       { fontSize: 9, fontWeight: '600', color: brand.creamMuted, textTransform: 'uppercase', letterSpacing: 0.3 },
   dayCellAbbrActive: { color: 'rgba(255,255,255,0.75)' },
-  dayCellNum:        { fontSize: 17, fontWeight: '800', color: Brand.cream, lineHeight: 20 },
+  dayCellNum:        { fontSize: 17, fontWeight: '800', color: brand.cream, lineHeight: 20 },
   dayCellNumActive:  { color: '#fff' },
   dayCellDot:           { width: 4, height: 4, borderRadius: 2, backgroundColor: 'transparent' },
-  dayCellDotToday:      { backgroundColor: Brand.primary },
+  dayCellDotToday:      { backgroundColor: brand.primary },
   dayCellDotTodayActive:{ backgroundColor: '#fff' },
 
   // Controls
-  controls:     { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, gap: Spacing.two, borderBottomWidth: 1, borderBottomColor: Brand.border1 },
+  controls:     { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, gap: Spacing.two, borderBottomWidth: 1, borderBottomColor: brand.border1 },
 
   // Mode — segmented control
   modeSegment: {
     flexDirection: 'row',
     alignSelf: 'flex-start',
-    backgroundColor: Brand.surface1,
+    backgroundColor: brand.surface1,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Brand.border1,
+    borderColor: brand.border1,
     overflow: 'hidden',
   },
   modeSegItem: {
@@ -737,41 +745,41 @@ const s = StyleSheet.create({
     paddingVertical: 8,
   },
   modeSegItemActive: {
-    backgroundColor: Brand.primary,
+    backgroundColor: brand.primary,
   },
   modeSegItemPrice: {
     backgroundColor: 'rgba(217,119,6,0.10)',
   },
   modeSegDivider: {
     width: 1,
-    backgroundColor: Brand.border1,
+    backgroundColor: brand.border1,
   },
-  modeSegText:      { fontSize: 12, fontWeight: '600', color: Brand.creamSub },
+  modeSegText:      { fontSize: 12, fontWeight: '600', color: brand.creamSub },
   modeSegTextActive:{ color: '#fff' },
   modeSegTextPrice: { color: '#92400E', fontWeight: '700' },
   resourceFilter: { flexDirection: 'row', gap: Spacing.one + 2 },
-  resPill:       { paddingHorizontal: Spacing.two + 2, paddingVertical: 5, borderRadius: Radius.pill, borderWidth: 1, borderColor: Brand.border1, backgroundColor: Brand.surface1 },
-  resPillActive: { backgroundColor: Brand.primaryGlow, borderColor: Brand.primary },
-  resPillText:   { fontSize: 12, fontWeight: '500', color: Brand.creamSub },
-  resPillTextActive: { color: Brand.primary, fontWeight: '700' },
+  resPill:       { paddingHorizontal: Spacing.two + 2, paddingVertical: 5, borderRadius: Radius.pill, borderWidth: 1, borderColor: brand.border1, backgroundColor: brand.surface1 },
+  resPillActive: { backgroundColor: brand.primaryGlow, borderColor: brand.primary },
+  resPillText:   { fontSize: 12, fontWeight: '500', color: brand.creamSub },
+  resPillTextActive: { color: brand.primary, fontWeight: '700' },
 
   // Error
   errorBanner: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, backgroundColor: 'rgba(220,38,38,0.06)', paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderBottomWidth: 1, borderBottomColor: 'rgba(220,38,38,0.12)' },
-  errorText:   { flex: 1, fontSize: 12, color: Brand.error },
+  errorText:   { flex: 1, fontSize: 12, color: brand.error },
 
   // Stats
-  statsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderBottomWidth: 1, borderBottomColor: Brand.border1 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderBottomWidth: 1, borderBottomColor: brand.border1 },
   statChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statDot:  { width: 7, height: 7, borderRadius: 4 },
-  statText: { fontSize: 11, fontWeight: '600', color: Brand.creamSub },
-  statHint: { fontSize: 11, color: Brand.creamMuted },
+  statText: { fontSize: 11, fontWeight: '600', color: brand.creamSub },
+  statHint: { fontSize: 11, color: brand.creamMuted },
 
   // Slot content
   slotContent: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, paddingBottom: 80, gap: Spacing.three },
   resourceSection: { gap: Spacing.two },
   resourceHeader:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  resourceLabel:   { fontSize: 11, fontWeight: '700', color: Brand.creamSub, textTransform: 'uppercase', letterSpacing: 0.5, flex: 1 },
-  resourcePrice:   { fontSize: 11, color: Brand.creamMuted },
+  resourceLabel:   { fontSize: 11, fontWeight: '700', color: brand.creamSub, textTransform: 'uppercase', letterSpacing: 0.5, flex: 1 },
+  resourcePrice:   { fontSize: 11, color: brand.creamMuted },
   slotGrid:        { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one + 2 },
   slotChip:        { width: '22%', borderRadius: Radius.md, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 6, alignItems: 'center', gap: 3 },
   slotChipDim:     { opacity: 0.7 },
@@ -780,29 +788,29 @@ const s = StyleSheet.create({
 
   // Empty state
   emptyState:   { alignItems: 'center', paddingTop: Spacing.six, gap: Spacing.two },
-  emptyIconWrap:{ width: 64, height: 64, borderRadius: Radius.xl, backgroundColor: Brand.surface1, alignItems: 'center', justifyContent: 'center' },
-  emptyTitle:   { fontSize: 16, fontWeight: '700', color: Brand.cream },
-  emptySub:     { fontSize: 13, color: Brand.creamSub },
+  emptyIconWrap:{ width: 64, height: 64, borderRadius: Radius.xl, backgroundColor: brand.surface1, alignItems: 'center', justifyContent: 'center' },
+  emptyTitle:   { fontSize: 16, fontWeight: '700', color: brand.cream },
+  emptySub:     { fontSize: 13, color: brand.creamSub },
 });
 
-const modal = StyleSheet.create({
+const createModalStyles = (brand: BrandTokens) => StyleSheet.create({
   overlay:  { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet:    { backgroundColor: Brand.bg, borderTopLeftRadius: Radius.xxl, borderTopRightRadius: Radius.xxl, paddingHorizontal: Spacing.four, paddingTop: Spacing.two, paddingBottom: Spacing.six, gap: Spacing.three, borderWidth: 1, borderBottomWidth: 0, borderColor: Brand.border1 },
-  handle:   { width: 40, height: 4, borderRadius: 2, backgroundColor: Brand.border2, alignSelf: 'center', marginBottom: Spacing.two },
+  sheet:    { backgroundColor: brand.bg, borderTopLeftRadius: Radius.xxl, borderTopRightRadius: Radius.xxl, paddingHorizontal: Spacing.four, paddingTop: Spacing.two, paddingBottom: Spacing.six, gap: Spacing.three, borderWidth: 1, borderBottomWidth: 0, borderColor: brand.border1 },
+  handle:   { width: 40, height: 4, borderRadius: 2, backgroundColor: brand.border2, alignSelf: 'center', marginBottom: Spacing.two },
   header:   { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   headerIcon: { width: 38, height: 38, borderRadius: Radius.md, backgroundColor: 'rgba(217,119,6,0.10)', alignItems: 'center', justifyContent: 'center' },
-  title:    { fontSize: 16, fontWeight: '700', color: Brand.cream },
-  sub:      { fontSize: 12, color: Brand.creamSub, marginTop: 1 },
+  title:    { fontSize: 16, fontWeight: '700', color: brand.cream },
+  sub:      { fontSize: 12, color: brand.creamSub, marginTop: 1 },
   errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(220,38,38,0.06)', borderRadius: Radius.md, padding: Spacing.two },
-  errorText:{ fontSize: 12, color: Brand.error, flex: 1 },
-  label:    { fontSize: 12, color: Brand.creamSub },
-  inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Brand.border2, borderRadius: Radius.md, backgroundColor: Brand.surface1, paddingHorizontal: Spacing.three },
-  rupee:    { fontSize: 16, color: Brand.creamSub, marginRight: 4 },
-  input:    { flex: 1, fontSize: 18, fontWeight: '700', color: Brand.cream, paddingVertical: 14 },
+  errorText:{ fontSize: 12, color: brand.error, flex: 1 },
+  label:    { fontSize: 12, color: brand.creamSub },
+  inputRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: brand.border2, borderRadius: Radius.md, backgroundColor: brand.surface1, paddingHorizontal: Spacing.three },
+  rupee:    { fontSize: 16, color: brand.creamSub, marginRight: 4 },
+  input:    { flex: 1, fontSize: 18, fontWeight: '700', color: brand.cream, paddingVertical: 14 },
   actions:  { flexDirection: 'row', gap: Spacing.two, justifyContent: 'flex-end' },
-  resetBtn: { paddingHorizontal: Spacing.three, paddingVertical: 12, borderRadius: Radius.pill, borderWidth: 1, borderColor: Brand.border2 },
-  resetBtnText: { fontSize: 13, fontWeight: '600', color: Brand.creamSub },
+  resetBtn: { paddingHorizontal: Spacing.three, paddingVertical: 12, borderRadius: Radius.pill, borderWidth: 1, borderColor: brand.border2 },
+  resetBtnText: { fontSize: 13, fontWeight: '600', color: brand.creamSub },
   saveBtn:  { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#D97706', borderRadius: Radius.pill, paddingVertical: 14 },
   saveBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });
