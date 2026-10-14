@@ -149,7 +149,7 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   subtitle: { ...Typography.body, color: Brand.textMuted },
   fields: { gap: Spacing.three },
-  switchLink: { alignSelf: 'flex-end' },
+  switchLink: { alignSelf: 'center' },
   signupRow: { flexDirection: 'row', justifyContent: 'center', marginTop: Spacing.three },
   signupText: { ...Typography.caption, color: Brand.textMuted },
 });
