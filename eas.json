@@ -30,7 +30,8 @@
         "APP_ENV": "preview",
         "EXPO_PUBLIC_API_URL": "https://ruxstar-backend-services-391710984982.us-central1.run.app",
         "EXPO_PUBLIC_APP_SCHEME": "ruxstarapplicationservices",
-        "EXPO_PUBLIC_ONESIGNAL_APP_ID": "06b05483-fd96-4370-8aa1-abf713c4dca0"
+        "EXPO_PUBLIC_ONESIGNAL_APP_ID": "06b05483-fd96-4370-8aa1-abf713c4dca0",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://2c6953ecc7c662d101e114496b2b7d70@o4512253778919424.ingest.de.sentry.io/4512253782458449"
       }
     },
     "production": {
@@ -45,7 +46,8 @@
         "APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://ruxstar-backend-services-391710984982.us-central1.run.app",
         "EXPO_PUBLIC_APP_SCHEME": "ruxstarapplicationservices",
-        "EXPO_PUBLIC_ONESIGNAL_APP_ID": "06b05483-fd96-4370-8aa1-abf713c4dca0"
+        "EXPO_PUBLIC_ONESIGNAL_APP_ID": "06b05483-fd96-4370-8aa1-abf713c4dca0",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://2c6953ecc7c662d101e114496b2b7d70@o4512253778919424.ingest.de.sentry.io/4512253782458449"
       }
     }
   },
@@ -58,4 +60,3 @@
     }
   }
 }
- 
