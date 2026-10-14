@@ -10,8 +10,6 @@ interface AuthFormLayoutProps {
   onBack: () => void;
   /** Rendered after the body (primary button, secondary links). */
   actions: React.ReactNode;
-  /** Absolutely-positioned layer above the form (e.g. a Toast). Does not scroll. */
-  overlay?: React.ReactNode;
   /** Pass a ref to let a screen scroll the form itself (e.g. when a later field gains focus). */
   scrollRef?: React.RefObject<ScrollView | null>;
   children: React.ReactNode;
@@ -26,7 +24,7 @@ const SCROLL_AFTER_KEYBOARD_MS = 60;
  * the last field at a fixed gap, and the view scrolls so the primary button is on screen as soon
  * as the keyboard appears. Uses only core React Native (works in Expo Go).
  */
-export function AuthFormLayout({ title, onBack, actions, overlay, scrollRef, children }: AuthFormLayoutProps) {
+export function AuthFormLayout({ title, onBack, actions, scrollRef, children }: AuthFormLayoutProps) {
   const ownRef = useRef<ScrollView>(null);
   const ref = scrollRef ?? ownRef;
 
@@ -58,7 +56,6 @@ export function AuthFormLayout({ title, onBack, actions, overlay, scrollRef, chi
           <View style={styles.spacer} />
           <View style={styles.actions}>{actions}</View>
         </ScrollView>
-        {overlay}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

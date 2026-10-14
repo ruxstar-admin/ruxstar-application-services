@@ -20,7 +20,6 @@ Screens must never import `expo-haptics` directly.
 | `select` | Moving between options, OTP cell advance, link presses |
 | `success` | Verified OTP, login/signup complete |
 | `error` | Failed request, wrong OTP (OTP cells also shake) |
-| `warning` | Non-failure nudge, e.g. "try OTP login" toast after repeated wrong passwords |
 
 ## Motion
 Durations/easings from `Motion` in `src/constants/motion.ts`. Stack transitions use
@@ -34,7 +33,4 @@ District app screenshots: `../../../resources/WhatsApp Image 2026-09-04 *.jpeg`.
 - `AuthFormLayout` scrolls to the end whenever the keyboard opens, so the primary button is visible
   right under the focused field. A screen can also pass `scrollRef` to scroll when a later field
   gains focus (Login does this for the password field).
-- `Toast` (`components/ui/Toast.tsx`) is a non-blocking, auto-dismissing notice rendered through
-  `AuthFormLayout`'s `overlay` prop. `TextLink`'s `attentionKey` prop makes a link shake.
-- Login nudge: after 2 wrong passwords in a row, a toast + `Feedback.warning` + a shake on
-  "Log in with OTP instead" steer the user to OTP login.
+- Login nudge: the "Log in with OTP instead" link sits right under the password field (right-aligned). After 2 wrong passwords in a row it shakes (`TextLink`'s `attentionKey`) to draw the eye. No toast.
