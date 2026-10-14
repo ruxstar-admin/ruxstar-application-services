@@ -45,7 +45,9 @@ export const PhoneInput = forwardRef<TextInput, PhoneInputProps>(({ value, onCha
             }}
             keyboardType="number-pad"
             maxLength={10}
-            placeholder="10-digit mobile number"
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}
+            placeholder="Mobile number"
             placeholderTextColor={Brand.textFaint}
             textContentType="telephoneNumber"
             autoComplete="tel"
@@ -74,5 +76,5 @@ const styles = StyleSheet.create({
   flag: { fontSize: 20 },
   code: { ...Typography.body, color: Brand.text },
   field: { flex: 1, paddingHorizontal: Spacing.three },
-  input: { ...Typography.body, color: Brand.text, height: '100%' },
+  input: { ...Typography.body, color: Brand.text, flex: 1, paddingVertical: 0, includeFontPadding: false, textAlignVertical: 'center' },
 });

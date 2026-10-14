@@ -70,5 +70,5 @@ const styles = StyleSheet.create({
   },
   boxFocused: { borderColor: Brand.textMuted },
   boxError: { borderColor: Brand.error },
-  input: { flex: 1, ...Typography.body, color: Brand.text, height: '100%' },
+  input: { flex: 1, ...Typography.body, color: Brand.text, paddingVertical: 0, includeFontPadding: false, textAlignVertical: 'center' },
 });
