@@ -1,39 +1,63 @@
-import { forwardRef } from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+import { forwardRef, useState } from 'react';
+import { Pressable, StyleSheet, TextInput, TextInputProps, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { FieldFrame } from '@/components/ui/FieldFrame';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { Feedback } from '@/lib/haptics';
 
 interface InputFieldProps extends TextInputProps {
   label?: string;
   error?: string;
-  leftAdornment?: React.ReactNode;
+  hint?: string;
 }
 
+/** Labelled text field. `secureTextEntry` automatically gets a show/hide toggle. */
 export const InputField = forwardRef<TextInput, InputFieldProps>(
-  ({ label, error, leftAdornment, style, ...rest }, ref) => (
-    <View>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.container, error && styles.containerError]}>
-        {leftAdornment}
-        <TextInput
-          ref={ref}
-          style={[styles.input, style]}
-          placeholderTextColor={Brand.textFaint}
-          {...rest}
-        />
-      </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-    </View>
-  ),
+  ({ label, error, hint, style, secureTextEntry, onFocus, onBlur, ...rest }, ref) => {
+    const [focused, setFocused] = useState(false);
+    const [revealed, setRevealed] = useState(false);
+
+    return (
+      <FieldFrame label={label} error={error} hint={hint}>
+        <View style={[styles.box, focused && styles.boxFocused, !!error && styles.boxError]}>
+          <TextInput
+            ref={ref}
+            style={[styles.input, style]}
+            placeholderTextColor={Brand.textFaint}
+            accessibilityLabel={label}
+            secureTextEntry={secureTextEntry && !revealed}
+            onFocus={(e) => {
+              setFocused(true);
+              onFocus?.(e);
+            }}
+            onBlur={(e) => {
+              setFocused(false);
+              onBlur?.(e);
+            }}
+            {...rest}
+          />
+          {secureTextEntry ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+              hitSlop={12}
+              onPress={() => {
+                Feedback.select();
+                setRevealed((v) => !v);
+              }}
+            >
+              <Ionicons name={revealed ? 'eye-off-outline' : 'eye-outline'} size={22} color={Brand.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
+      </FieldFrame>
+    );
+  },
 );
 InputField.displayName = 'InputField';
 
 const styles = StyleSheet.create({
-  label: {
-    ...Typography.caption,
-    color: Brand.textMuted,
-    marginBottom: Spacing.two,
-  },
-  container: {
+  box: {
     flexDirection: 'row',
     alignItems: 'center',
     height: 56,
@@ -42,19 +66,9 @@ const styles = StyleSheet.create({
     borderColor: Brand.border,
     backgroundColor: Brand.bg,
     paddingHorizontal: Spacing.three,
+    gap: Spacing.two,
   },
-  containerError: {
-    borderColor: Brand.error,
-  },
-  input: {
-    flex: 1,
-    ...Typography.body,
-    color: Brand.text,
-    height: '100%',
-  },
-  error: {
-    ...Typography.caption,
-    color: Brand.error,
-    marginTop: Spacing.one,
-  },
+  boxFocused: { borderColor: Brand.textMuted },
+  boxError: { borderColor: Brand.error },
+  input: { flex: 1, ...Typography.body, color: Brand.text, height: '100%' },
 });

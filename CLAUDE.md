@@ -218,7 +218,7 @@ npx expo run:ios          # Build & run on iOS simulator
 npx expo lint             # Run ESLint (expo lint wraps eslint)
 ```
 
-No test runner is configured. There is no `npm test` command — don't invent one unprompted.
+`npm test` runs Jest (jest-expo). Put tests in `__tests__/` next to the code; cover pure logic (validators, error mapping) rather than snapshotting screens.
 
 ---
 

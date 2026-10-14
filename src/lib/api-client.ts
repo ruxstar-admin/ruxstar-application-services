@@ -3,11 +3,24 @@ import { ApiError } from './api-error';
 
 type Json = Record<string, unknown>;
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
 const request = async <T>(path: string, init: RequestInit): Promise<T> => {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...init.headers },
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', ...init.headers },
+    });
+  } catch (err) {
+    throw err instanceof Error && err.name === 'AbortError' ? ApiError.timeout() : ApiError.network();
+  } finally {
+    clearTimeout(timer);
+  }
 
   const body = await res.json().catch(() => ({}));
 

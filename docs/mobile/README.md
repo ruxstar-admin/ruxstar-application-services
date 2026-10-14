@@ -17,6 +17,7 @@ Also read, in this order: `../../AGENTS.md` (Expo docs version to follow), `../.
 ## Quality gates (run before every commit)
 ```bash
 npx tsc --noEmit        # strict TypeScript, must be clean
+npm test                # Jest unit tests, must pass
 npx expo lint           # must be clean
 npx expo-doctor         # must pass all checks
 ```

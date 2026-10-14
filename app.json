@@ -122,7 +122,8 @@
         }
       ],
       "expo-image",
-      "expo-status-bar"
+      "expo-status-bar",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": false,

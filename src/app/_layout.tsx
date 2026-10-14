@@ -14,6 +14,9 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans';
 import * as SplashScreen from 'expo-splash-screen';
 import { Brand } from '@/constants/theme';
+import { initMonitoring, wrapRoot } from '@/lib/monitoring';
+
+initMonitoring();
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -82,7 +85,7 @@ function AuthGuard() {
   return null;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
@@ -105,3 +108,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default wrapRoot(RootLayout);

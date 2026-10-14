@@ -6,37 +6,37 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { AuthHero } from '@/features/auth/components/AuthHero';
 import { PhoneInput } from '@/features/auth/components/PhoneInput';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { TextLink } from '@/components/ui/TextLink';
 import { AuthService } from '@/services/auth-service';
 import { ApiError } from '@/lib/api-error';
-import { Feedback } from '@/lib/haptics';
+import { useAuthRequest } from '@/features/auth/hooks/use-auth-request';
+import { isValidMobile } from '@/features/auth/lib/validators';
 import { useDelayedFocus } from '@/hooks/use-delayed-focus';
 
 export function WelcomeScreen() {
   const router = useRouter();
   const phoneRef = useDelayedFocus<TextInput>();
+  const { run, loading, error, errorFor, clearError } = useAuthRequest();
 
   const [mobile, setMobile] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const handleContinue = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      await AuthService.signupSendOtp(mobile);
-      router.push({ pathname: '/(auth)/otp', params: { mode: 'signup', mobile } });
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        router.push({ pathname: '/(auth)/login', params: { mobile } });
-        return;
+    const sent = await run('signup-otp-send', async () => {
+      try {
+        await AuthService.signupSendOtp(mobile);
+        return true;
+      } catch (err) {
+        // 409 = number already registered: not an error, send them to log in instead.
+        if (err instanceof ApiError && err.kind === 'conflict') return false;
+        throw err;
       }
-      Feedback.error();
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
-    } finally {
-      setLoading(false);
-    }
+    });
+
+    if (sent === undefined) return;
+    if (sent) router.push({ pathname: '/(auth)/otp', params: { mode: 'signup', mobile } });
+    else router.push({ pathname: '/(auth)/login', params: { mobile } });
   };
 
   return (
@@ -53,9 +53,21 @@ export function WelcomeScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          <PhoneInput ref={phoneRef} value={mobile} onChangeText={setMobile} error={error ?? undefined} />
+          <PhoneInput
+            ref={phoneRef}
+            value={mobile}
+            onChangeText={(text) => {
+              setMobile(text);
+              clearError();
+            }}
+            error={errorFor('mobile')}
+          />
 
-          <PrimaryButton label="Continue" onPress={handleContinue} disabled={mobile.length !== 10} loading={loading} />
+          {error?.target === 'form' ? (
+            <ErrorBanner message={error.message} onRetry={error.retryable ? handleContinue : undefined} />
+          ) : null}
+
+          <PrimaryButton label="Continue" onPress={handleContinue} disabled={!isValidMobile(mobile)} loading={loading} />
 
           <View style={styles.footer}>
             <Text style={styles.terms}>By continuing, you agree to our</Text>
@@ -80,7 +92,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.five,
     paddingBottom: Spacing.three,
-    gap: Spacing.four,
+    gap: Spacing.three,
   },
   heading: { ...Typography.heading, color: Brand.text, textAlign: 'center' },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },

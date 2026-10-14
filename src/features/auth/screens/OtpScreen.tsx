@@ -6,12 +6,14 @@ import { Brand, Spacing, Typography } from '@/constants/theme';
 import { AuthFormLayout } from '@/features/auth/components/AuthFormLayout';
 import { OtpInput } from '@/features/auth/components/OtpInput';
 import { Chip } from '@/components/ui/Chip';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { TextLink } from '@/components/ui/TextLink';
 import { AuthService } from '@/services/auth-service';
 import { useAuthStore } from '@/stores/auth-store';
-import { ApiError } from '@/lib/api-error';
+import { useAuthRequest } from '@/features/auth/hooks/use-auth-request';
 import { useOtpTimer } from '@/features/auth/hooks/use-otp-timer';
+import { OTP_LENGTH } from '@/features/auth/lib/validators';
 import { Feedback } from '@/lib/haptics';
 
 type OtpMode = 'login' | 'signup';
@@ -20,46 +22,52 @@ export function OtpScreen() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
   const { mode, mobile } = useLocalSearchParams<{ mode: OtpMode; mobile: string }>();
-
-  const [otp, setOtp] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { run, loading, error, errorFor, clearError } = useAuthRequest();
   const { secondsLeft, canResend, restart } = useOtpTimer();
 
-  const handleVerify = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      if (mode === 'signup') {
-        const { signupToken } = await AuthService.signupVerifyOtp(mobile, otp);
-        Feedback.success();
-        router.push({ pathname: '/(auth)/register', params: { signupToken, mobile } });
-      } else {
-        const { token, user } = await AuthService.loginVerifyOtp(mobile, otp);
-        Feedback.success();
-        setAuth(token, user);
-      }
-    } catch (err) {
-      setOtp('');
-      setError(err instanceof ApiError ? err.message : 'Invalid or expired OTP');
-    } finally {
-      setLoading(false);
+  const [otp, setOtp] = useState('');
+
+  const verify = async (code: string) => {
+    if (mode === 'signup') {
+      const result = await run(
+        'otp-verify',
+        () => AuthService.signupVerifyOtp(mobile, code),
+        () => setOtp(''),
+      );
+      if (!result) return;
+      Feedback.success();
+      router.push({ pathname: '/(auth)/register', params: { signupToken: result.signupToken, mobile } });
+      return;
     }
+
+    const result = await run(
+      'otp-verify',
+      () => AuthService.loginVerifyOtp(mobile, code),
+      () => setOtp(''),
+    );
+    if (!result) return;
+    Feedback.success();
+    setAuth(result.token, result.user);
+  };
+
+  const handleChange = (value: string) => {
+    setOtp(value);
+    clearError();
+    // Submit as soon as the last digit lands (typed, pasted, or SMS-autofilled).
+    if (value.length === OTP_LENGTH) verify(value);
   };
 
   const handleResend = async () => {
     if (!canResend) return;
-    setError(null);
-    try {
-      if (mode === 'signup') await AuthService.signupSendOtp(mobile);
-      else await AuthService.loginSendOtp(mobile);
-      restart();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not resend OTP');
-    }
+    const action = mode === 'signup' ? 'signup-otp-send' : 'login-otp-send';
+    const sent = await run(action, () =>
+      mode === 'signup' ? AuthService.signupSendOtp(mobile) : AuthService.loginSendOtp(mobile),
+    );
+    if (sent) restart();
   };
 
   const countdown = `0:${secondsLeft.toString().padStart(2, '0')}`;
+  const otpError = errorFor('otp');
 
   return (
     <AuthFormLayout
@@ -67,7 +75,12 @@ export function OtpScreen() {
       onBack={() => router.back()}
       actions={
         <>
-          <PrimaryButton label="Continue" onPress={handleVerify} disabled={otp.length !== 6} loading={loading} />
+          <PrimaryButton
+            label="Continue"
+            onPress={() => verify(otp)}
+            disabled={otp.length !== OTP_LENGTH}
+            loading={loading}
+          />
           <View style={styles.center}>
             <TextLink label="Back to login" onPress={() => router.back()} />
           </View>
@@ -78,11 +91,24 @@ export function OtpScreen() {
         We have sent a verification code to{'\n'}+91 {mobile}
       </Text>
 
-      <OtpInput value={otp} onChangeText={setOtp} autoFocus hasError={!!error} />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <View>
+        <OtpInput value={otp} onChangeText={handleChange} autoFocus hasError={!!otpError} />
+        <View style={styles.errorSlot} accessibilityLiveRegion="polite">
+          {otpError ? (
+            <View style={styles.errorRow}>
+              <Ionicons name="alert-circle" size={14} color={Brand.error} />
+              <Text style={styles.errorText}>{otpError}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+
+      {error?.target === 'form' ? (
+        <ErrorBanner message={error.message} onRetry={error.retryable && otp.length === OTP_LENGTH ? () => verify(otp) : undefined} />
+      ) : null}
 
       <View style={styles.resend}>
-        <Text style={styles.resendLabel}>
+        <Text style={styles.resendLabel} maxFontSizeMultiplier={1.3}>
           {'Didn’t get the OTP?'}
           {!canResend ? <Text style={styles.countdown}>{`  (Request again in ${countdown}s)`}</Text> : null}
         </Text>
@@ -101,7 +127,9 @@ export function OtpScreen() {
 
 const styles = StyleSheet.create({
   subtitle: { ...Typography.heading, fontFamily: Typography.body.fontFamily, color: Brand.textMuted },
-  error: { ...Typography.caption, color: Brand.error },
+  errorSlot: { minHeight: 20, marginTop: Spacing.two },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  errorText: { ...Typography.caption, color: Brand.error, flex: 1 },
   resend: { gap: Spacing.three },
   resendLabel: { ...Typography.body, fontSize: 18, color: Brand.textMuted },
   countdown: { ...Typography.body, color: Brand.textFaint },

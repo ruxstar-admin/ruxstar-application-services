@@ -86,6 +86,9 @@ export function OtpInput({ value, onChangeText, autoFocus, hasError }: OtpInputP
           keyboardType="number-pad"
           maxLength={CELL_COUNT}
           selectTextOnFocus
+          textContentType="oneTimeCode"
+          autoComplete={index === 0 ? 'sms-otp' : 'off'}
+          accessibilityLabel={`Digit ${index + 1} of ${CELL_COUNT}`}
         />
       ))}
     </Animated.View>

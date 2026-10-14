@@ -7,3 +7,8 @@
 5. **SMS-only OTP resend** — backend has no WhatsApp channel.
 6. **No "Skip" / guest mode** — District has it; Ruxstar requires an account for every role.
 7. **Hero is brand-only** (logo + rotating category label) until real illustration assets exist.
+8. **Sentry for crash reporting** (`@sentry/react-native`), PII off, sensitive keys scrubbed.
+9. **Jest (jest-expo)** for pure-logic tests. `@react-native/jest-preset` is pinned to the same
+   version as `react-native` — keep them in lockstep when upgrading.
+10. **Forgot password is hidden** until the backend provides a reset flow.
+11. **tsconfig `types: ["jest", "node"]`** — required because TypeScript no longer auto-includes `@types/*`.
