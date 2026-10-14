@@ -1,109 +1,69 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import type { Role } from '@/constants/roles';
+import type { AuthUser } from '@/types/auth';
 
-export type UserRole = 'customer' | 'vendor' | 'delivery';
-
-export interface AuthState {
-  token:       string | null;
-  userId:      string | null;
-  role:        UserRole | null;
-  phone:       string | null;
-  name:        string | null;
+interface AuthState {
+  token: string | null;
+  userId: string | null;
+  role: Role | null;
+  mobile: string | null;
+  name: string | null;
   isAuthenticated: boolean;
-  isLoading:   boolean;
-
-  /** True once AsyncStorage hydration is complete — guards premature redirects */
+  /** Non-persisted: flips true once AsyncStorage rehydration finishes (see AuthGuard). */
   _hasHydrated: boolean;
 
-  /** In-memory only — vendors can browse the user/customer app without changing their role */
-  activeMode: 'vendor' | 'user' | null;
-
-  // Held in memory during registration flow — not persisted
-  pendingPhone:       string | null;
-  pendingSignupToken: string | null;
-
-  setAuth:               (p: { token: string; userId: string; role: UserRole; phone: string; name?: string }) => void;
-  clearAuth:             () => void;
-  setLoading:            (v: boolean) => void;
-  setPendingPhone:       (phone: string) => void;
-  setPendingSignupToken: (token: string) => void;
-  clearPending:          () => void;
-  setHasHydrated:        (v: boolean) => void;
-  setActiveMode:         (m: 'vendor' | 'user' | null) => void;
+  setAuth: (token: string, user: AuthUser) => void;
+  clearAuth: () => void;
+  setHasHydrated: (value: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      token:           null,
-      userId:          null,
-      role:            null,
-      phone:           null,
-      name:            null,
+      token: null,
+      userId: null,
+      role: null,
+      mobile: null,
+      name: null,
       isAuthenticated: false,
-      isLoading:       false,
-      _hasHydrated:    false,
-      activeMode:      null,
-      pendingPhone:       null,
-      pendingSignupToken: null,
+      _hasHydrated: false,
 
-      setAuth: ({ token, userId, role, phone, name }) =>
-        set({ token, userId, role, phone, name: name ?? null, isAuthenticated: true, isLoading: false }),
+      setAuth: (token, user) =>
+        set({
+          token,
+          userId: user._id,
+          role: user.roles[0] ?? null,
+          mobile: user.mobile,
+          name: user.name,
+          isAuthenticated: true,
+        }),
 
       clearAuth: () =>
-        set({ token: null, userId: null, role: null, phone: null, name: null, isAuthenticated: false }),
+        set({
+          token: null,
+          userId: null,
+          role: null,
+          mobile: null,
+          name: null,
+          isAuthenticated: false,
+        }),
 
-      setLoading: (v) => set({ isLoading: v }),
-
-      setPendingPhone:       (phone) => set({ pendingPhone: phone }),
-      setPendingSignupToken: (token) => set({ pendingSignupToken: token }),
-      clearPending:          ()      => set({ pendingPhone: null, pendingSignupToken: null }),
-      setHasHydrated:        (v)     => set({ _hasHydrated: v }),
-      setActiveMode:         (m)     => set({ activeMode: m }),
+      setHasHydrated: (value) => set({ _hasHydrated: value }),
     }),
     {
-      name:    'ruxstar_auth',
+      name: 'ruxstar_auth',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        token:           state.token,
-        userId:          state.userId,
-        role:            state.role,
-        phone:           state.phone,
-        name:            state.name,
+        token: state.token,
+        userId: state.userId,
+        role: state.role,
+        mobile: state.mobile,
+        name: state.name,
         isAuthenticated: state.isAuthenticated,
       }),
-      onRehydrateStorage: () => (state) => {
-        // state can be undefined on storage error — use a direct setState fallback
-        if (state) {
-          state.setHasHydrated(true);
-        } else {
-          useAuthStore.getState().setHasHydrated(true);
-        }
-      },
+      onRehydrateStorage: () => (state) => state?.setHasHydrated(true),
     },
   ),
 );
-
-// Belt-and-suspenders: if onRehydrateStorage never fires (cold start with no storage),
-// onFinishHydration ensures the flag is always set.
-useAuthStore.persist.onFinishHydration(() => {
-  if (!useAuthStore.getState()._hasHydrated) {
-    useAuthStore.setState({ _hasHydrated: true });
-  }
-});
-
-// ─── Post-login route hint ────────────────────────────────────────────────────
-// Login / OTP screens set this BEFORE calling setAuth() so that AuthGuard
-// performs exactly one navigation with no intermediate dashboard flash.
-let _pendingLoginRoute: string | null = null;
-
-export function setPendingLoginRoute(route: string) {
-  _pendingLoginRoute = route;
-}
-
-export function consumePendingLoginRoute(): string | null {
-  const r = _pendingLoginRoute;
-  _pendingLoginRoute = null;
-  return r;
-}

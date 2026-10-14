@@ -1,105 +1,24 @@
-import type { UserRole } from '@/stores/auth-store';
-import { API_URL } from '@/constants/config';
+import { apiPost } from '@/lib/api-client';
+import type { Role } from '@/constants/roles';
+import type { LoginResponse, SendOtpResponse, SignupVerifyOtpResponse } from '@/types/auth';
 
-const BASE_URL = API_URL;
-
-// ─── HTTP helper — matches website's api.ts ──────────────────────────────────
-
-async function post<T>(path: string, body: unknown, token?: string): Promise<T> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
-  const res  = await fetch(`${BASE_URL}/auth/${path}`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    if (res.status === 409) throw new Error("That number's already registered — log in instead.");
-    if (res.status === 404) throw new Error('No account found — sign up first.');
-    throw new Error(data.message ?? data.error ?? `Request failed (${res.status})`);
-  }
-
-  return data as T;
-}
-
-// ─── Response types ───────────────────────────────────────────────────────────
-
-export interface AuthUser {
-  id?:    string;
-  _id?:   string;
-  name?:  string;
-  role?:  string;
-  roles?: string[];
-  mobile?: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  user:  AuthUser;
-}
-
-export interface OtpSentResponse {
-  otp?: string; // dev only — server returns plaintext OTP for testing
-}
-
-export interface SignupVerifyResponse {
-  signupToken: string;
-  otp?:        string; // dev only
-}
-
-// ─── Auth Service ─────────────────────────────────────────────────────────────
-
+/** Mirrors ruxstar-backend-services/routes/auth.routes.js exactly — no endpoints invented. */
 export const AuthService = {
-  // ── Login ──────────────────────────────────────────────────────────────────
+  signupSendOtp: (mobile: string) => apiPost<SendOtpResponse>('/auth/signup/send-otp', { mobile }),
 
-  /** Password login */
-  loginPassword(mobile: string, password: string) {
-    return post<AuthResponse>('login', { mobile, password });
-  },
+  signupVerifyOtp: (mobile: string, otp: string) =>
+    apiPost<SignupVerifyOtpResponse>('/auth/signup/verify-otp', { mobile, otp }),
 
-  /** OTP login — step 1: send */
-  loginSendOtp(mobile: string) {
-    return post<OtpSentResponse>('login/send-otp', { mobile });
-  },
+  signupComplete: (signupToken: string, name: string, password: string, role: Role) =>
+    apiPost<LoginResponse>('/auth/signup/complete', { signupToken, name, password, role }),
 
-  /** OTP login — step 2: verify */
-  loginVerifyOtp(mobile: string, otp: string) {
-    return post<AuthResponse>('login/verify-otp', { mobile, otp });
-  },
+  loginSendOtp: (mobile: string) => apiPost<SendOtpResponse>('/auth/login/send-otp', { mobile }),
 
-  // ── Signup ─────────────────────────────────────────────────────────────────
+  loginVerifyOtp: (mobile: string, otp: string) =>
+    apiPost<LoginResponse>('/auth/login/verify-otp', { mobile, otp }),
 
-  /** Signup — step 1: send OTP */
-  signupSendOtp(mobile: string) {
-    return post<OtpSentResponse>('signup/send-otp', { mobile });
-  },
+  loginWithPassword: (mobile: string, password: string) =>
+    apiPost<LoginResponse>('/auth/login', { mobile, password }),
 
-  /** Signup — step 2: verify OTP → get signupToken */
-  signupVerifyOtp(mobile: string, otp: string) {
-    return post<SignupVerifyResponse>('signup/verify-otp', { mobile, otp });
-  },
-
-  /** Signup — step 3: complete with name, role, password */
-  signupComplete(signupToken: string, name: string, password: string, role: UserRole) {
-    return post<AuthResponse>('signup/complete', { signupToken, name, password, role });
-  },
-
-  // ── Session ────────────────────────────────────────────────────────────────
-
-  logout(token: string) {
-    return post<void>('logout', {}, token);
-  },
+  logout: (token: string) => apiPost<{ message: string }>('/auth/logout', undefined, token),
 };
-
-// ─── Helper — extract role from user object ───────────────────────────────────
-
-export function resolveRole(user: AuthUser): UserRole {
-  const r = (user.role ?? user.roles?.[0] ?? 'customer').toLowerCase();
-  if (r === 'vendor' || r === 'business') return 'vendor';
-  if (r === 'delivery')                   return 'delivery';
-  return 'customer';
-}

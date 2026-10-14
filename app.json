@@ -9,7 +9,12 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "ruxstarapplicationservices",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
+    "androidStatusBar": {
+      "backgroundColor": "#000000",
+      "barStyle": "light-content",
+      "translucent": false
+    },
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.ruxstar.app",
@@ -115,7 +120,9 @@
         {
           "mode": "development"
         }
-      ]
+      ],
+      "expo-image",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": false,

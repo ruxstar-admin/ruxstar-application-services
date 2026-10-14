@@ -1,10 +1,20 @@
-/**
- * Root index — neutral screen while AuthGuard (in _layout.tsx)
- * waits for Zustand hydration then routes to the correct place.
- * The splash overlay in _layout.tsx covers this during hydration.
- */
-import { View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Brand } from '@/constants/theme';
 
+/** Cold-start hydration spinner only — AuthGuard in the root layout owns all redirects. */
 export default function Index() {
-  return <View style={{ flex: 1, backgroundColor: '#0A0314' }} />;
+  return (
+    <View style={styles.container}>
+      <ActivityIndicator color={Brand.primary} />
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Brand.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
