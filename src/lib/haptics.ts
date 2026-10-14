@@ -17,4 +17,6 @@ export const Feedback = {
   select: () => fire(() => Haptics.selectionAsync()),
   success: () => fire(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)),
   error: () => fire(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)),
+  /** Gentle heads-up that isn't a failure, e.g. suggesting a better path (OTP login). */
+  warning: () => fire(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)),
 };
