@@ -4,6 +4,7 @@ import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { Feedback } from '@/lib/haptics';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const SPRING = { damping: 18, stiffness: 300 } as const;
 
 interface PrimaryButtonProps {
   label: string;
@@ -16,6 +17,7 @@ interface PrimaryButtonProps {
 export function PrimaryButton({ label, onPress, loading, disabled, variant = 'primary' }: PrimaryButtonProps) {
   const scale = useSharedValue(1);
   const isDisabled = disabled || loading;
+  const isPrimary = variant === 'primary';
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -23,26 +25,36 @@ export function PrimaryButton({ label, onPress, loading, disabled, variant = 'pr
 
   return (
     <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
       onPress={onPress}
       disabled={isDisabled}
       onPressIn={() => {
-        scale.value = withSpring(0.97, { damping: 18, stiffness: 300 });
-        if (!isDisabled) Feedback.tap();
+        scale.value = withSpring(0.97, SPRING);
+        Feedback.tap();
       }}
       onPressOut={() => {
-        scale.value = withSpring(1, { damping: 18, stiffness: 300 });
+        scale.value = withSpring(1, SPRING);
       }}
       style={[
         styles.base,
-        variant === 'primary' ? styles.primary : styles.outline,
-        isDisabled && styles.disabled,
+        isPrimary ? styles.primary : styles.outline,
+        disabled && !loading && isPrimary && styles.disabled,
         animatedStyle,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? Brand.bg : Brand.primary} />
+        <ActivityIndicator color={isPrimary ? Brand.bg : Brand.primary} />
       ) : (
-        <Text style={[styles.label, variant === 'outline' && styles.labelOutline]}>{label}</Text>
+        <Text
+          style={[
+            styles.label,
+            !isPrimary && styles.labelOutline,
+            disabled && isPrimary && styles.labelDisabled,
+          ]}
+        >
+          {label}
+        </Text>
       )}
     </AnimatedPressable>
   );
@@ -56,23 +68,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: Spacing.four,
   },
-  primary: {
-    backgroundColor: Brand.primary,
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: Brand.border,
-  },
-  disabled: {
-    backgroundColor: Brand.disabled,
-  },
-  label: {
-    ...Typography.body,
-    fontWeight: '700',
-    color: Brand.bg,
-  },
-  labelOutline: {
-    color: Brand.text,
-  },
+  primary: { backgroundColor: Brand.primary },
+  outline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Brand.border },
+  disabled: { backgroundColor: Brand.disabled },
+  label: { ...Typography.bodyStrong, color: Brand.bg },
+  labelOutline: { color: Brand.text },
+  labelDisabled: { color: Brand.disabledText },
 });

@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Brand.border,
-    backgroundColor: Brand.surface,
+    backgroundColor: Brand.bg,
     paddingHorizontal: Spacing.three,
   },
   containerError: {

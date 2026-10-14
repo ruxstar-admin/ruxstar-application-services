@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { Brand, Spacing, Typography } from '@/constants/theme';
+import { AuthFormLayout } from '@/features/auth/components/AuthFormLayout';
 import { OtpInput } from '@/features/auth/components/OtpInput';
+import { Chip } from '@/components/ui/Chip';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { TextLink } from '@/components/ui/TextLink';
 import { AuthService } from '@/services/auth-service';
 import { useAuthStore } from '@/stores/auth-store';
 import { ApiError } from '@/lib/api-error';
@@ -57,63 +59,51 @@ export function OtpScreen() {
     }
   };
 
+  const countdown = `0:${secondsLeft.toString().padStart(2, '0')}`;
+
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <SafeAreaView style={styles.container}>
-        <Animated.View entering={FadeInUp.duration(350)} style={styles.form}>
-          <Text style={styles.title}>Verify your number</Text>
-          <Text style={styles.subtitle}>We sent a 6-digit code to +91 {mobile}</Text>
-
-          <OtpInput value={otp} onChangeText={setOtp} autoFocus hasError={!!error} />
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
+    <AuthFormLayout
+      title="OTP Verification"
+      onBack={() => router.back()}
+      actions={
+        <>
           <PrimaryButton label="Continue" onPress={handleVerify} disabled={otp.length !== 6} loading={loading} />
+          <View style={styles.center}>
+            <TextLink label="Back to login" onPress={() => router.back()} />
+          </View>
+        </>
+      }
+    >
+      <Text style={styles.subtitle}>
+        We have sent a verification code to{'\n'}+91 {mobile}
+      </Text>
 
-          <Pressable onPress={handleResend} disabled={!canResend} style={styles.resendWrap}>
-            <Text style={[styles.resendText, !canResend && styles.resendTextDisabled]}>
-              {canResend ? "Didn't get the code? Resend" : `Resend in 0:${secondsLeft.toString().padStart(2, '0')}`}
-            </Text>
-          </Pressable>
-        </Animated.View>
-      </SafeAreaView>
-    </KeyboardAvoidingView>
+      <OtpInput value={otp} onChangeText={setOtp} autoFocus hasError={!!error} />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <View style={styles.resend}>
+        <Text style={styles.resendLabel}>
+          {'Didn’t get the OTP?'}
+          {!canResend ? <Text style={styles.countdown}>{`  (Request again in ${countdown}s)`}</Text> : null}
+        </Text>
+        <Chip
+          label="SMS"
+          disabled={!canResend}
+          onPress={handleResend}
+          icon={
+            <Ionicons name="chatbox-ellipses-outline" size={18} color={canResend ? Brand.text : Brand.disabledText} />
+          }
+        />
+      </View>
+    </AuthFormLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: Brand.bg,
-    paddingHorizontal: Spacing.four,
-    justifyContent: 'center',
-  },
-  form: {
-    gap: Spacing.four,
-  },
-  title: {
-    ...Typography.title,
-    color: Brand.text,
-  },
-  subtitle: {
-    ...Typography.body,
-    color: Brand.textMuted,
-  },
-  error: {
-    ...Typography.caption,
-    color: Brand.error,
-  },
-  resendWrap: {
-    alignSelf: 'center',
-  },
-  resendText: {
-    ...Typography.caption,
-    color: Brand.secondary,
-  },
-  resendTextDisabled: {
-    color: Brand.textFaint,
-  },
+  subtitle: { ...Typography.heading, fontFamily: Typography.body.fontFamily, color: Brand.textMuted },
+  error: { ...Typography.caption, color: Brand.error },
+  resend: { gap: Spacing.three },
+  resendLabel: { ...Typography.body, fontSize: 18, color: Brand.textMuted },
+  countdown: { ...Typography.body, color: Brand.textFaint },
+  center: { alignItems: 'center' },
 });

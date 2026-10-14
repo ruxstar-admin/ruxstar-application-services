@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NativeSyntheticEvent, StyleSheet, TextInput, TextInputKeyPressEventData } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { Brand, Radius, Typography } from '@/constants/theme';
@@ -16,6 +16,7 @@ interface OtpInputProps {
 
 export function OtpInput({ value, onChangeText, autoFocus, hasError }: OtpInputProps) {
   const inputRefs = useRef<(TextInput | null)[]>([]);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const shake = useSharedValue(0);
 
   useEffect(() => {
@@ -76,7 +77,9 @@ export function OtpInput({ value, onChangeText, autoFocus, hasError }: OtpInputP
           ref={(el) => {
             inputRefs.current[index] = el;
           }}
-          style={[styles.cell, hasError && styles.cellError]}
+          style={[styles.cell, focusedIndex === index && styles.cellFocused, hasError && styles.cellError]}
+          onFocus={() => setFocusedIndex(index)}
+          onBlur={() => setFocusedIndex((current) => (current === index ? null : current))}
           value={value[index] ?? ''}
           onChangeText={(text) => handlePaste(index, text)}
           onKeyPress={(e) => handleKeyPress(index, e)}
@@ -92,18 +95,22 @@ export function OtpInput({ value, onChangeText, autoFocus, hasError }: OtpInputP
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 10,
   },
   cell: {
-    width: 48,
+    flex: 1,
+    maxWidth: 56,
     height: 56,
     borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: Brand.border,
-    backgroundColor: Brand.surface,
+    borderColor: 'transparent',
+    backgroundColor: Brand.surfaceAlt,
     textAlign: 'center',
     ...Typography.title,
     color: Brand.text,
+  },
+  cellFocused: {
+    borderColor: Brand.text,
   },
   cellError: {
     borderColor: Brand.error,

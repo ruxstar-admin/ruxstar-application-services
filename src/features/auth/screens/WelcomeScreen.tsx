@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { Brand, Gradients, Radius, Spacing, Typography } from '@/constants/theme';
+import Animated, { FadeInUp } from 'react-native-reanimated';
+import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { AuthHero } from '@/features/auth/components/AuthHero';
 import { PhoneInput } from '@/features/auth/components/PhoneInput';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { TextLink } from '@/components/ui/TextLink';
 import { AuthService } from '@/services/auth-service';
 import { ApiError } from '@/lib/api-error';
+import { Feedback } from '@/lib/haptics';
 import { useDelayedFocus } from '@/hooks/use-delayed-focus';
 
 export function WelcomeScreen() {
@@ -30,6 +32,7 @@ export function WelcomeScreen() {
         router.push({ pathname: '/(auth)/login', params: { mobile } });
         return;
       }
+      Feedback.error();
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
     } finally {
       setLoading(false);
@@ -38,24 +41,15 @@ export function WelcomeScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <SafeAreaView style={styles.container}>
-        <LinearGradient colors={Gradients.authTop.colors} locations={Gradients.authTop.locations} style={styles.top}>
-          <Animated.View entering={FadeInDown.duration(400)} style={styles.brand}>
-            <Image source={require('@/assets/images/icon.png')} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.wordmark}>Ruxstar</Text>
-          </Animated.View>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <AuthHero />
 
-          <Animated.View entering={FadeInDown.duration(400).delay(150)}>
-            <Text style={styles.tagline}>✦  Connect · Discover · Thrive  ✦</Text>
-          </Animated.View>
-        </LinearGradient>
-
-        <Animated.View entering={FadeInUp.duration(400).delay(150)} style={styles.sheet}>
+        <Animated.View entering={FadeInUp.duration(450).delay(150)} style={styles.sheet}>
           <Text style={styles.heading}>For all your daily needs</Text>
 
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.sheetLabel}>Log in or sign up</Text>
+            <Text style={styles.overline}>Log in or sign up</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -63,14 +57,13 @@ export function WelcomeScreen() {
 
           <PrimaryButton label="Continue" onPress={handleContinue} disabled={mobile.length !== 10} loading={loading} />
 
-          <Pressable onPress={() => router.push('/(auth)/login')} style={styles.loginLink}>
-            <Text style={styles.loginLinkText}>Already have an account? Log in</Text>
-          </Pressable>
-
-          <Text style={styles.terms}>
-            By continuing, you agree to our <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-            <Text style={styles.termsLink}>Privacy Policy</Text>
-          </Text>
+          <View style={styles.footer}>
+            <Text style={styles.terms}>By continuing, you agree to our</Text>
+            <View style={styles.links}>
+              <TextLink muted label="Terms of Services" onPress={() => undefined} />
+              <TextLink muted label="Privacy Policy" onPress={() => undefined} />
+            </View>
+          </View>
         </Animated.View>
       </SafeAreaView>
     </KeyboardAvoidingView>
@@ -78,84 +71,22 @@ export function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: Brand.bg,
-  },
-  top: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexGrow: 1,
-    paddingHorizontal: Spacing.four,
-  },
-  brand: {
-    alignItems: 'center',
-    marginBottom: Spacing.four,
-  },
-  logo: {
-    width: 72,
-    height: 72,
-    borderRadius: 18,
-    marginBottom: Spacing.three,
-  },
-  wordmark: {
-    ...Typography.display,
-    color: Brand.text,
-    letterSpacing: 0.5,
-  },
-  tagline: {
-    ...Typography.caption,
-    color: Brand.primary,
-    letterSpacing: 1,
-  },
+  flex: { flex: 1 },
+  container: { flex: 1, backgroundColor: Brand.bg },
   sheet: {
     backgroundColor: Brand.surface,
     borderTopLeftRadius: Radius.xxl,
     borderTopRightRadius: Radius.xxl,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.five,
+    paddingBottom: Spacing.three,
     gap: Spacing.four,
   },
-  heading: {
-    ...Typography.body,
-    fontWeight: '700',
-    color: Brand.text,
-    textAlign: 'center',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Brand.border,
-  },
-  sheetLabel: {
-    ...Typography.caption,
-    color: Brand.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  loginLink: {
-    alignSelf: 'center',
-  },
-  loginLinkText: {
-    ...Typography.caption,
-    color: Brand.secondary,
-  },
-  terms: {
-    ...Typography.caption,
-    color: Brand.textFaint,
-    textAlign: 'center',
-  },
-  termsLink: {
-    color: Brand.textMuted,
-    textDecorationLine: 'underline',
-  },
+  heading: { ...Typography.heading, color: Brand.text, textAlign: 'center' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: Brand.border },
+  overline: { ...Typography.overline, color: Brand.textMuted },
+  footer: { alignItems: 'center', gap: Spacing.one },
+  terms: { ...Typography.caption, color: Brand.textMuted },
+  links: { flexDirection: 'row', gap: Spacing.four },
 });

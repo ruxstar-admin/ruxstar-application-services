@@ -5,7 +5,17 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '@/stores/auth-store';
 import { consumePendingLoginRoute } from '@/lib/pending-login-route';
 import { ROLES, type Role } from '@/constants/roles';
+import { useFonts } from 'expo-font';
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import * as SplashScreen from 'expo-splash-screen';
 import { Brand } from '@/constants/theme';
+
+SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 const ROLE_HOME: Record<Role, string> = {
   [ROLES.CUSTOMER]: '/(customer)',
@@ -73,6 +83,20 @@ function AuthGuard() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+  });
+  const ready = fontsLoaded || !!fontError;
+
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync().catch(() => undefined);
+  }, [ready]);
+
+  if (!ready) return null;
+
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: Brand.bg }}>
       <StatusBar style="light" />

@@ -31,7 +31,7 @@ repositories:
 |---|---|---|
 | `ruxstar-backend-services` | Node.js + Express + MongoDB (native driver), Cloud Run | Single API for every client below |
 | `ruxstar-frontend-services` | Next.js (App Router) | Web app: landing, login/signup, admin dashboard, thin customer/business/delivery web views |
-| `ruxstar-application-services` (**this repo**) | Expo 54 + Expo Router 6 + React Native 0.81 + TypeScript | The real product: native/web app for the three end-user roles |
+| `ruxstar-application-services` (**this repo**) | Expo 57 + Expo Router 57 + React Native 0.86 + TypeScript | The real product: native/web app for the three end-user roles |
 
 **This mobile app must support three distinct authenticated experiences, sharing one auth
 flow but branching into three separate route groups and dashboards:**
@@ -224,8 +224,8 @@ No test runner is configured. There is no `npm test` command — don't invent on
 
 ## 5. Animation — professional, performant defaults
 
-Stack already installed: `react-native-reanimated ~4.1.1`, `react-native-worklets 0.5.1`,
-`react-native-gesture-handler ~2.28.0`. **Moti and React Native Skia are not yet installed** —
+Stack already installed: `react-native-reanimated 4.5.x`, `react-native-worklets`,
+`react-native-gesture-handler ~2.32`. **Moti and React Native Skia are not yet installed** —
 add them deliberately when the screen calls for them, per the table below.
 
 | Tool | When to reach for it | Cost |
@@ -370,7 +370,9 @@ DigiLocker Aadhaar callback — do not change this scheme without updating `app.
 
 ## 10. Design system (`src/constants/theme.ts`)
 
-Rebuild with these tokens (pre-reset values — confirm against latest Figma/brand guidance
+Tokens now live in `src/constants/theme.ts` and are documented in `docs/mobile/DESIGN_SYSTEM.md` (read that, not the stale pre-reset values below).
+
+Pre-reset values, kept for history only (confirm against latest Figma/brand guidance
 before treating as final):
 
 ```
@@ -420,3 +422,14 @@ stops in each screen.
 - [Best Folder Structure for Expo & React Native Apps — Medium](https://medium.com/@engin.bolat/best-folder-structure-for-expo-react-native-apps-official-recommendations-real-world-ef91722f1241)
 - [How to organize Expo app folder structure — Expo blog](https://expo.dev/blog/expo-app-folder-structure-best-practices)
 - [Designing a Scalable React Native + Expo Router Folder Structure — DEV Community](https://dev.to/sachinrupani/designing-a-scalable-react-native-expo-router-folder-structure-3dnj)
+
+---
+
+## 13. Scope & docs
+
+- **Mobile app only.** Never edit `ruxstar-backend-services` or `ruxstar-frontend-services`
+  from mobile work; report API mismatches instead.
+- Developer docs: `docs/mobile/` (architecture, design system, history, decisions). Update them
+  in the same commit as any change they describe.
+- Never use `fontWeight` with the Plus Jakarta Sans families — use `Typography.*` / `Fonts.*`.
+- Haptics go through `Feedback` (`src/lib/haptics.ts`), never `expo-haptics` directly.
