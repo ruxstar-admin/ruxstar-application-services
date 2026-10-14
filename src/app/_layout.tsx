@@ -15,8 +15,14 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { Brand } from '@/constants/theme';
 import { initMonitoring, wrapRoot } from '@/lib/monitoring';
+import { ErrorFallback } from '@/components/ui/ErrorFallback';
 
 initMonitoring();
+
+/** Expo Router renders this when any screen under the root throws during render. */
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  return <ErrorFallback error={error} retry={retry} />;
+}
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
