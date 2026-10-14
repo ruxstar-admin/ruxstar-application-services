@@ -83,12 +83,21 @@ export function LoginScreen() {
       onBack={() => router.back()}
       scrollRef={scrollRef}
       actions={
-        <PrimaryButton
-          label={mode === 'password' ? 'Log in' : 'Send OTP'}
-          onPress={handleSubmit}
-          disabled={!canSubmit}
-          loading={loading}
-        />
+        <>
+          <PrimaryButton
+            label={mode === 'password' ? 'Log in' : 'Send OTP'}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+            loading={loading}
+          />
+          <View style={styles.switchLink}>
+            <TextLink
+              label={mode === 'password' ? 'Log in with OTP instead' : 'Log in with password instead'}
+              onPress={switchMode}
+              attentionKey={nudgeKey}
+            />
+          </View>
+        </>
       }
     >
       <Text style={styles.subtitle}>Sign in to continue</Text>
@@ -124,14 +133,6 @@ export function LoginScreen() {
             error={errorFor('password')}
           />
         ) : null}
-
-        <View style={styles.switchLink}>
-          <TextLink
-            label={mode === 'password' ? 'Log in with OTP instead' : 'Log in with password instead'}
-            onPress={switchMode}
-            attentionKey={nudgeKey}
-          />
-        </View>
       </View>
 
       {error?.target === 'form' ? (

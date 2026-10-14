@@ -33,4 +33,4 @@ District app screenshots: `../../../resources/WhatsApp Image 2026-09-04 *.jpeg`.
 - `AuthFormLayout` scrolls to the end whenever the keyboard opens, so the primary button is visible
   right under the focused field. A screen can also pass `scrollRef` to scroll when a later field
   gains focus (Login does this for the password field).
-- Login nudge: the "Log in with OTP instead" link sits right under the password field (centered). After 2 wrong passwords in a row it shakes (`TextLink`'s `attentionKey`) to draw the eye. No toast.
+- Login nudge: the "Log in with OTP instead" link sits centered right under the Log in button. After 2 wrong passwords in a row it shakes (`TextLink`'s `attentionKey`) to draw the eye. No toast.
