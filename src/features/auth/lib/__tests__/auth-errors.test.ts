@@ -36,4 +36,10 @@ describe('toAuthError', () => {
   it('falls back to a generic message for non-API errors', () => {
     expect(toAuthError(new TypeError('boom'), 'login-password').target).toBe('form');
   });
+
+  it('maps forgot-password failures to the right field', () => {
+    expect(toAuthError(new ApiError(404, 'x'), 'forgot-otp-send').target).toBe('mobile');
+    expect(toAuthError(new ApiError(409, 'x'), 'password-reset')).toMatchObject({ target: 'password', retryable: false });
+    expect(toAuthError(new ApiError(401, 'x'), 'password-reset').target).toBe('form');
+  });
 });

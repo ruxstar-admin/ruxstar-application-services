@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '@/stores/auth-store';
 import { consumePendingLoginRoute } from '@/lib/pending-login-route';
-import { ROLES, type Role } from '@/constants/roles';
+import { ROLES } from '@/constants/roles';
 import { useFonts } from 'expo-font';
 import {
   PlusJakartaSans_400Regular,
@@ -26,20 +26,15 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-const ROLE_HOME: Record<Role, string> = {
-  [ROLES.CUSTOMER]: '/(customer)',
-  [ROLES.VENDOR]: '/(vendor)/dashboard',
-  [ROLES.DELIVERY]: '/(delivery)/dashboard',
-  [ROLES.ADMIN]: '/(customer)',
-  [ROLES.EMPLOYEE]: '/(customer)',
-};
+/** Every signed-in user lands in the user app; vendors enter their portal from Profile (roles stack on one account). */
+const HOME = '/(customer)/(tabs)';
 
 /** Renderless — controls all navigation after app start. See CLAUDE.md §6. */
 function AuthGuard() {
   const router = useRouter();
   const segments = useSegments();
   const navState = useRootNavigationState();
-  const { isAuthenticated, role, _hasHydrated, setHasHydrated } = useAuthStore();
+  const { isAuthenticated, roles, _hasHydrated, setHasHydrated } = useAuthStore();
   const forcedHydration = useRef(false);
 
   useEffect(() => {
@@ -57,36 +52,23 @@ function AuthGuard() {
     const inAuthGroup = segments[0] === '(auth)';
     const inCustomerGroup = segments[0] === '(customer)';
     const inVendorGroup = segments[0] === '(vendor)';
-    const inDeliveryGroup = segments[0] === '(delivery)';
-    const inNamedGroup = inAuthGroup || inCustomerGroup || inVendorGroup || inDeliveryGroup;
-
-    const home = role ? ROLE_HOME[role] : '/(auth)/welcome';
+    const inPartnerGroup = segments[0] === '(partner)';
+    const inNamedGroup = inAuthGroup || inCustomerGroup || inVendorGroup || inPartnerGroup;
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/welcome');
       return;
     }
 
-    if (isAuthenticated && !inNamedGroup) {
-      const pending = consumePendingLoginRoute();
-      router.replace((pending ?? home) as never);
+    if (isAuthenticated && (!inNamedGroup || inAuthGroup)) {
+      router.replace((consumePendingLoginRoute() ?? HOME) as never);
       return;
     }
 
-    if (isAuthenticated && inAuthGroup) {
-      const pending = consumePendingLoginRoute();
-      router.replace((pending ?? home) as never);
-      return;
-    }
-
-    if (isAuthenticated && role === ROLES.VENDOR && (inCustomerGroup || inDeliveryGroup)) {
-      router.replace(ROLE_HOME[ROLES.VENDOR] as never);
-    } else if (isAuthenticated && role === ROLES.DELIVERY && (inCustomerGroup || inVendorGroup)) {
-      router.replace(ROLE_HOME[ROLES.DELIVERY] as never);
-    } else if (isAuthenticated && role === ROLES.CUSTOMER && (inVendorGroup || inDeliveryGroup)) {
-      router.replace(ROLE_HOME[ROLES.CUSTOMER] as never);
-    }
-  }, [navState?.key, _hasHydrated, isAuthenticated, role, segments, router]);
+    // Role-gated areas: the vendor portal and the delivery partner area each need their role.
+    if (isAuthenticated && inVendorGroup && !roles.includes(ROLES.VENDOR)) router.replace(HOME as never);
+    if (isAuthenticated && inPartnerGroup && !roles.includes(ROLES.DELIVERY)) router.replace(HOME as never);
+  }, [navState?.key, _hasHydrated, isAuthenticated, roles, segments, router]);
 
   return null;
 }

@@ -31,7 +31,7 @@ repositories:
 |---|---|---|
 | `ruxstar-backend-services` | Node.js + Express + MongoDB (native driver), Cloud Run | Single API for every client below |
 | `ruxstar-frontend-services` | Next.js (App Router) | Web app: landing, login/signup, admin dashboard, thin customer/business/delivery web views |
-| `ruxstar-application-services` (**this repo**) | Expo 57 + Expo Router 57 + React Native 0.86 + TypeScript | The real product: native/web app for the three end-user roles |
+| `ruxstar-application-services` (**this repo**) | Expo 57 + Expo Router 57 + React Native 0.86 + TypeScript | The main app: user + vendor experience (delivery is a separate app, admin is web) |
 
 **This mobile app must support three distinct authenticated experiences, sharing one auth
 flow but branching into three separate route groups and dashboards:**
@@ -57,6 +57,9 @@ A user's `roles` array can change (e.g. `becomeVendor` / `becomeCustomer` in `mo
 so treat role as *current session state* from the JWT/profile, not a fixed identity.
 
 ### Domain modules a vendor's business can run
+**Scope is the 13 Oct 2026 review** (see `docs/mobile/PLAN.md`): Social + Print-on-demand, Events, Coaching, PG/hostel.
+Creator routes, general commerce and restaurants are **out**; admin and delivery are not in this app. The legacy
+Booking/Commerce/Creator notes below are historical backend model names.
 - **Booking** — slot/appointment based (salons, studios, courts). Fields: `pricePerSlot`,
   `slotMinutes`, `bookingMode`, `maxGuests`, `resources`, `staff`, `bufferMinutes`.
 - **Commerce** — product catalog + orders (`Product.js`, `CommerceOrder.js`).
@@ -303,8 +306,7 @@ be restored before any role screens are usable):
 5. Cross-group correction: vendor caught in `(customer)`, customer in `(vendor)`, anyone in
    `(delivery)` without the delivery role, etc. → correct group.
 
-`role → home` mapping: `customer` → `(customer)/index`, `vendor` → `(vendor)/dashboard`,
-`delivery` → `(delivery)/dashboard`.
+> **Superseded (DECISIONS #22):** roles stack on one account. Every signed-in user lands in `(customer)/(tabs)`; `(vendor)` is allowed only when `roles` includes `vendor`; delivery is a separate app (no `(delivery)` group).
 
 **`setPendingLoginRoute(destination)`** — call before `setAuth()` in any login/OTP screen, so
 `AuthGuard` can route a freshly-authenticated user straight to a non-default destination (e.g.

@@ -1,5 +1,3 @@
-import { PlaceholderScreen } from '@/components/ui/PlaceholderScreen';
+import { VendorDashboardScreen } from '@/features/vendor/screens/VendorDashboardScreen';
 
-export default function VendorDashboard() {
-  return <PlaceholderScreen title="Vendor Dashboard" />;
-}
+export default VendorDashboardScreen;

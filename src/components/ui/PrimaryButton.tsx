@@ -44,7 +44,7 @@ export function PrimaryButton({ label, onPress, loading, disabled, variant = 'pr
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isPrimary ? Brand.bg : Brand.primary} />
+        <ActivityIndicator color={isPrimary ? Brand.onAction : Brand.primary} />
       ) : (
         <Text
           style={[
@@ -68,10 +68,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: Spacing.four,
   },
-  primary: { backgroundColor: Brand.primary },
+  primary: { backgroundColor: Brand.action },
   outline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Brand.border },
   disabled: { backgroundColor: Brand.disabled },
-  label: { ...Typography.bodyStrong, color: Brand.bg },
+  label: { ...Typography.bodyStrong, color: Brand.onAction },
   labelOutline: { color: Brand.text },
   labelDisabled: { color: Brand.disabledText },
 });

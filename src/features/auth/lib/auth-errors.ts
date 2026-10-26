@@ -10,7 +10,14 @@ export interface AuthError {
   retryable: boolean;
 }
 
-export type AuthAction = 'login-password' | 'login-otp-send' | 'signup-otp-send' | 'otp-verify' | 'signup-complete';
+export type AuthAction =
+  | 'login-password'
+  | 'login-otp-send'
+  | 'signup-otp-send'
+  | 'forgot-otp-send'
+  | 'otp-verify'
+  | 'signup-complete'
+  | 'password-reset';
 
 const GENERIC: AuthError = { message: 'Something went wrong. Please try again.', target: 'form', retryable: true };
 
@@ -42,6 +49,17 @@ export const toAuthError = (err: unknown, action: AuthAction): AuthError => {
     case 'login-otp-send':
       return err.kind === 'not_found'
         ? { message: 'No account found for this number. Sign up to get started.', target: 'mobile', retryable: false }
+        : GENERIC;
+    case 'forgot-otp-send':
+      return err.kind === 'not_found'
+        ? { message: 'No account found for this number.', target: 'mobile', retryable: false }
+        : GENERIC;
+    case 'password-reset':
+      if (err.kind === 'unauthorized') {
+        return { message: 'Your reset session expired. Start again from Forgot password.', target: 'form', retryable: false };
+      }
+      return err.kind === 'conflict'
+        ? { message: 'Choose a password you have not used recently.', target: 'password', retryable: false }
         : GENERIC;
     case 'signup-otp-send':
       return err.kind === 'validation'

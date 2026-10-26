@@ -1,23 +1,11 @@
 import type { ComponentType } from 'react';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { ApiError } from '@/lib/api-error';
+import { redact } from '@/lib/redact';
 
 type SentryModule = typeof import('@sentry/react-native');
 
 const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
-
-/** Keys whose values must never leave the device, even inside breadcrumbs or request bodies. */
-const SENSITIVE_KEY = /pass(word)?|otp|token|authorization|mobile|phone/i;
-
-const scrub = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(scrub);
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, v]) => [key, SENSITIVE_KEY.test(key) ? '[redacted]' : scrub(v)]),
-    );
-  }
-  return value;
-};
 
 let sentry: SentryModule | null = null;
 let loaded = false;
@@ -46,8 +34,8 @@ export const initMonitoring = () => {
       enabled: !__DEV__,
       sendDefaultPii: false,
       tracesSampleRate: 0.1,
-      beforeSend: (event) => scrub(event) as typeof event,
-      beforeBreadcrumb: (breadcrumb) => scrub(breadcrumb) as typeof breadcrumb,
+      beforeSend: (event) => redact(event) as typeof event,
+      beforeBreadcrumb: (breadcrumb) => redact(breadcrumb) as typeof breadcrumb,
     });
   } catch {
     sentry = null;
@@ -62,6 +50,20 @@ export const reportError = (err: unknown, context: string) => {
   try {
     if (err instanceof ApiError && !['server', 'unknown'].includes(err.kind)) return;
     getSentry()?.captureException(err, { tags: { context } });
+  } catch {
+    // Monitoring is best-effort.
+  }
+};
+
+/** Adds a breadcrumb to the next Sentry event. `data` must already be redacted. Never throws. */
+export const addBreadcrumb = (category: string, message: string, level: 'info' | 'warn' | 'error', data?: unknown) => {
+  try {
+    getSentry()?.addBreadcrumb({
+      category,
+      message,
+      level: level === 'warn' ? 'warning' : level,
+      data: data as Record<string, unknown> | undefined,
+    });
   } catch {
     // Monitoring is best-effort.
   }

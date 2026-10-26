@@ -16,7 +16,13 @@ import { useOtpTimer } from '@/features/auth/hooks/use-otp-timer';
 import { OTP_LENGTH } from '@/features/auth/lib/validators';
 import { Feedback } from '@/lib/haptics';
 
-type OtpMode = 'login' | 'signup';
+type OtpMode = 'login' | 'signup' | 'reset';
+
+const RESEND = {
+  signup: { action: 'signup-otp-send', send: AuthService.signupSendOtp },
+  login: { action: 'login-otp-send', send: AuthService.loginSendOtp },
+  reset: { action: 'forgot-otp-send', send: AuthService.forgotSendOtp },
+} as const;
 
 export function OtpScreen() {
   const router = useRouter();
@@ -40,6 +46,18 @@ export function OtpScreen() {
       return;
     }
 
+    if (mode === 'reset') {
+      const result = await run(
+        'otp-verify',
+        () => AuthService.forgotVerifyOtp(mobile, code),
+        () => setOtp(''),
+      );
+      if (!result) return;
+      Feedback.success();
+      router.replace({ pathname: '/(auth)/reset-password', params: { resetToken: result.resetToken, mobile } });
+      return;
+    }
+
     const result = await run(
       'otp-verify',
       () => AuthService.loginVerifyOtp(mobile, code),
@@ -59,10 +77,7 @@ export function OtpScreen() {
 
   const handleResend = async () => {
     if (!canResend) return;
-    const action = mode === 'signup' ? 'signup-otp-send' : 'login-otp-send';
-    const sent = await run(action, () =>
-      mode === 'signup' ? AuthService.signupSendOtp(mobile) : AuthService.loginSendOtp(mobile),
-    );
+    const sent = await run(RESEND[mode].action, () => RESEND[mode].send(mobile));
     if (sent) restart();
   };
 

@@ -1,5 +1,5 @@
 import { Easing } from 'react-native-reanimated';
-import { Brand } from './theme';
+import { Brand, Fonts } from './theme';
 
 /** Shared timing/easing tokens — every transition (screen, worklet, or nav) reads from here. */
 export const Motion = {
@@ -25,4 +25,15 @@ export const STACK_SCREEN_OPTIONS = {
   animation: 'slide_from_right',
   headerShown: false,
   contentStyle: { backgroundColor: Brand.bg },
+} as const;
+
+/** Tab bar look + cross-fade used by every role's tab group, so switching tabs feels identical everywhere. */
+export const TAB_SCREEN_OPTIONS = {
+  headerShown: false,
+  animation: 'fade',
+  tabBarActiveTintColor: Brand.primarySoft,
+  tabBarInactiveTintColor: Brand.textMuted,
+  tabBarStyle: { backgroundColor: Brand.surface, borderTopColor: Brand.border },
+  tabBarLabelStyle: { fontFamily: Fonts.medium, fontSize: 11 },
+  sceneStyle: { backgroundColor: Brand.bg },
 } as const;

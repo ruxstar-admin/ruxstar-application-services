@@ -7,7 +7,9 @@ import type { AuthUser } from '@/types/auth';
 interface AuthState {
   token: string | null;
   userId: string | null;
+  /** Primary role from login (kept for display); `roles` is what authorises access. */
   role: Role | null;
+  roles: Role[];
   mobile: string | null;
   name: string | null;
   isAuthenticated: boolean;
@@ -16,6 +18,9 @@ interface AuthState {
 
   setAuth: (token: string, user: AuthUser) => void;
   clearAuth: () => void;
+  setName: (name: string) => void;
+  /** Adds a role granted after login (e.g. vendor KYC approval) without a fresh sign-in. */
+  addRole: (role: Role) => void;
   setHasHydrated: (value: boolean) => void;
 }
 
@@ -25,6 +30,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       userId: null,
       role: null,
+      roles: [],
       mobile: null,
       name: null,
       isAuthenticated: false,
@@ -35,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
           token,
           userId: user._id,
           role: user.roles[0] ?? null,
+          roles: user.roles,
           mobile: user.mobile,
           name: user.name,
           isAuthenticated: true,
@@ -45,10 +52,15 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           userId: null,
           role: null,
+          roles: [],
           mobile: null,
           name: null,
           isAuthenticated: false,
         }),
+
+      setName: (name) => set({ name }),
+
+      addRole: (role) => set((state) => (state.roles.includes(role) ? state : { roles: [...state.roles, role] })),
 
       setHasHydrated: (value) => set({ _hasHydrated: value }),
     }),
@@ -59,6 +71,7 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         userId: state.userId,
         role: state.role,
+        roles: state.roles,
         mobile: state.mobile,
         name: state.name,
         isAuthenticated: state.isAuthenticated,

@@ -10,6 +10,11 @@ doesn't fit a screen, adapt the mobile side and report the mismatch; never edit 
 | [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) | Tokens, fonts, shared components, haptics table, motion |
 | [HISTORY.md](./HISTORY.md) | Why the app was rebuilt, what changed when |
 | [DECISIONS.md](./DECISIONS.md) | Short log of non-obvious choices |
+| [PLAN.md](./PLAN.md) | Requirements and the phase plan (current phase, open questions) |
+| [LOG.md](./LOG.md) | Work log: what was asked, decided, done, next |
+| [API_CONTRACTS.md](./API_CONTRACTS.md) | Every endpoint the app calls, real vs mocked (backend hand-off) |
+| [HANDOVER.md](./HANDOVER.md) | Run, release, real-vs-mocked, mock switch-over, QA demo values, known gaps |
+| [DELIVERABLES.md](./DELIVERABLES.md) | Paid-module deliverables tracker and post-launch terms |
 
 Also read, in this order: `../../AGENTS.md` (Expo docs version to follow), `../../CLAUDE.md`
 (hard rules for humans and AI agents), `../../../resources/PRD.md` (module build order).

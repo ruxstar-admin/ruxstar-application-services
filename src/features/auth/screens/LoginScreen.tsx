@@ -7,6 +7,7 @@ import { PhoneInput } from '@/features/auth/components/PhoneInput';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { TextLink } from '@/components/ui/TextLink';
 import { AuthService } from '@/services/auth-service';
 import { useAuthStore } from '@/stores/auth-store';
@@ -18,7 +19,12 @@ import { Motion } from '@/constants/motion';
 
 type LoginMode = 'password' | 'otp';
 
-/** From this many wrong passwords in a row, the "Log in with OTP instead" link shakes to draw the eye. */
+const MODE_TABS = [
+  { key: 'password', label: 'Password' },
+  { key: 'otp', label: 'One-time code' },
+] as const;
+
+/** From this many wrong passwords in a row, the "Forgot?" link shakes to draw the eye. */
 const FAILED_ATTEMPTS_BEFORE_NUDGE = 2;
 /** When the keyboard is already open, bring the Log in button into view once the password field takes focus. */
 const SCROLL_AFTER_FOCUS_MS = 120;
@@ -26,7 +32,7 @@ const SCROLL_AFTER_FOCUS_MS = 120;
 export function LoginScreen() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const { mobile: prefillMobile } = useLocalSearchParams<{ mobile?: string }>();
+  const { mobile: prefillMobile, notice } = useLocalSearchParams<{ mobile?: string; notice?: string }>();
   const { run, loading, error, errorFor, clearError } = useAuthRequest();
 
   const [mode, setMode] = useState<LoginMode>('password');
@@ -70,11 +76,11 @@ export function LoginScreen() {
     if (sent) router.push({ pathname: '/(auth)/otp', params: { mode: 'login', mobile } });
   };
 
-  const switchMode = () => {
+  const switchMode = (next: LoginMode) => {
     clearError();
     setFailedAttempts(0);
     setNudgeKey(0);
-    setMode(mode === 'password' ? 'otp' : 'password');
+    setMode(next);
   };
 
   return (
@@ -83,24 +89,17 @@ export function LoginScreen() {
       onBack={() => router.back()}
       scrollRef={scrollRef}
       actions={
-        <>
-          <PrimaryButton
-            label={mode === 'password' ? 'Log in' : 'Send OTP'}
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-            loading={loading}
-          />
-          <View style={styles.switchLink}>
-            <TextLink
-              label={mode === 'password' ? 'Log in with OTP instead' : 'Log in with password instead'}
-              onPress={switchMode}
-              attentionKey={nudgeKey}
-            />
-          </View>
-        </>
+        <PrimaryButton
+          label={mode === 'password' ? 'Log in' : 'Send OTP'}
+          onPress={handleSubmit}
+          disabled={!canSubmit}
+          loading={loading}
+        />
       }
     >
-      <Text style={styles.subtitle}>Sign in to continue</Text>
+      <Text style={styles.subtitle}>Log in with your password or a one-time code.</Text>
+      {notice === 'password-reset' ? <Text style={styles.notice}>Password updated. Log in with your new password.</Text> : null}
+      <SegmentedTabs options={MODE_TABS} value={mode} onChange={switchMode} />
 
       <View style={styles.fields}>
         <PhoneInput
@@ -133,6 +132,16 @@ export function LoginScreen() {
             error={errorFor('password')}
           />
         ) : null}
+        {mode === 'password' ? (
+          <View style={styles.forgot}>
+            <TextLink
+              muted
+              label="Forgot?"
+              attentionKey={nudgeKey}
+              onPress={() => router.push({ pathname: '/(auth)/forgot-password', params: { mobile } })}
+            />
+          </View>
+        ) : null}
       </View>
 
       {error?.target === 'form' ? (
@@ -150,7 +159,8 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   subtitle: { ...Typography.body, color: Brand.textMuted },
   fields: { gap: Spacing.three },
-  switchLink: { alignSelf: 'center' },
+  forgot: { alignSelf: 'flex-end', marginTop: -Spacing.two },
+  notice: { ...Typography.caption, color: Brand.success },
   signupRow: { flexDirection: 'row', justifyContent: 'center', marginTop: Spacing.three },
   signupText: { ...Typography.caption, color: Brand.textMuted },
 });

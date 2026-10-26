@@ -18,3 +18,19 @@ export const passwordError = (password: string): string | null =>
   password.length > 0 && password.length < MIN_PASSWORD_LENGTH
     ? `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`
     : null;
+
+const USERNAME_PATTERN = /^[a-z0-9_.]{3,20}$/;
+
+/** Usernames are lowercase; spaces and other characters are dropped as the user types. */
+export const normalizeUsername = (value: string) => value.toLowerCase().replace(/[^a-z0-9_.]/g, '').slice(0, 20);
+
+export const isValidUsername = (username: string) => USERNAME_PATTERN.test(username);
+
+export const usernameError = (username: string): string | null =>
+  username.length > 0 && !isValidUsername(username) ? 'Use 3–20 letters, numbers, "." or "_".' : null;
+
+export const isPasswordPairValid = (password: string, confirmation: string) =>
+  password.length >= MIN_PASSWORD_LENGTH && password === confirmation;
+
+/** Empty is allowed (email is optional); otherwise a basic address shape. */
+export const isValidEmail = (email: string) => email.length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);

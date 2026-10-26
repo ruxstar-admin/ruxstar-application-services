@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { KeyboardAvoidingView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { HeroBackdrop, type HeroFrame } from '@/features/auth/components/HeroBackdrop';
 import { AuthHero } from '@/features/auth/components/AuthHero';
 import { PhoneInput } from '@/features/auth/components/PhoneInput';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -17,6 +18,8 @@ import { useDelayedFocus } from '@/hooks/use-delayed-focus';
 
 export function WelcomeScreen() {
   const router = useRouter();
+  const [hero, setHero] = useState<HeroFrame>({ y: 0, height: 0 });
+  const insets = useSafeAreaInsets();
   const phoneRef = useDelayedFocus<TextInput>();
   const { run, loading, error, errorFor, clearError } = useAuthRequest();
 
@@ -41,10 +44,16 @@ export function WelcomeScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior="padding">
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <AuthHero />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <HeroBackdrop hero={hero} />
+        <View style={styles.flex} onLayout={(e) => setHero((current) => (current.height ? current : e.nativeEvent.layout))}>
+          <AuthHero />
+        </View>
 
-        <Animated.View entering={FadeInUp.duration(450).delay(150)} style={styles.sheet}>
+        <Animated.View
+          entering={FadeInUp.duration(450).delay(150)}
+          style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.three }]}
+        >
           <Text style={styles.heading}>For all your daily needs</Text>
 
           <View style={styles.dividerRow}>
@@ -91,7 +100,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: Radius.xxl,
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.five,
-    paddingBottom: Spacing.three,
     gap: Spacing.three,
   },
   heading: { ...Typography.heading, color: Brand.text, textAlign: 'center' },

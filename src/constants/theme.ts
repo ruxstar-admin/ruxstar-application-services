@@ -1,18 +1,23 @@
-/** Brand palette sampled directly from resources/logo.png (yellow/blue star on black). */
+/** Ruxstar theme: purple on near-black, white primary action (District-style). Frozen after Phase 1 sign-off. */
 export const Brand = {
-  primary: '#EBDC06', // logo yellow
-  secondary: '#32B2FA', // logo blue
-  bg: '#0B0B0E',
-  surface: '#141417',
-  surfaceAlt: '#1F1F23',
-  border: '#2A2A2E',
+  primary: '#B45CF2', // accent purple (links, active states, focus)
+  primarySoft: '#D9A0FF',
+  primaryDeep: '#7C3AED',
+  secondary: '#32B2FA',
+  action: '#FFFFFF', // primary button fill
+  onAction: '#0D0C12', // text/icon on the primary button
+  bg: '#0D0C12',
+  surface: '#15141B',
+  surfaceAlt: '#1F1D29',
+  border: '#2C2A39',
   text: '#FFFFFF',
-  textMuted: '#9A9A9E',
-  textFaint: '#5C5C60',
+  textMuted: '#9E9CB0',
+  textFaint: '#5E5C70',
   success: '#34C759',
+  warning: '#FFB020',
   error: '#FF453A',
-  disabled: '#3A3A3E',
-  disabledText: '#7A7A80',
+  disabled: '#34323F',
+  disabledText: '#7A7889',
 } as const;
 
 export const Spacing = {
@@ -53,9 +58,9 @@ export const Typography = {
 } as const;
 
 export const Gradients = {
-  /** Hero backdrop: near-black into a warm brand glow, fading back to the sheet colour. */
-  authHero: {
-    colors: [Brand.bg, 'rgba(235,220,6,0.10)', 'rgba(235,220,6,0.28)', Brand.bg] as [string, string, string, string],
-    locations: [0, 0.4, 0.75, 1] as [number, number, number, number],
+  /** Welcome backdrop: near-black at the top deepening into indigo behind the hero, visible around the sheet's rounded corners. */
+  authBackdrop: {
+    colors: ['#0D0C12', '#1A1740', '#2A1B6B', '#2A1B6B'] as [string, string, string, string],
+    locations: [0, 0.3, 0.55, 1] as [number, number, number, number],
   },
 } as const;

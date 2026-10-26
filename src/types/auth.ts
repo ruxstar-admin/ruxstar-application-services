@@ -22,3 +22,13 @@ export interface SendOtpResponse {
 export interface SignupVerifyOtpResponse {
   signupToken: string;
 }
+
+export interface ResetVerifyOtpResponse {
+  resetToken: string;
+}
+
+export interface UsernameCheckResponse {
+  available: boolean;
+  /** Alternatives offered when the requested name is taken. */
+  suggestions: string[];
+}
