@@ -10,6 +10,8 @@ interface UsernameFieldProps {
   value: string;
   onChange: (value: string) => void;
   check: { status: UsernameStatus; suggestions: string[] };
+  /** Server-side error, for example taken between the check and signup. */
+  error?: string;
 }
 
 const HINTS: Partial<Record<UsernameStatus, { text: string; color: string }>> = {
@@ -18,11 +20,12 @@ const HINTS: Partial<Record<UsernameStatus, { text: string; color: string }>> = 
   error: { text: 'Could not check right now. Edit the name to try again.', color: Brand.error },
 };
 
-/** Username input with live availability and one-tap alternatives when the name is taken. */
-export function UsernameField({ value, onChange, check }: UsernameFieldProps) {
+/** Username input with live availability, and one-tap ideas while empty or when the name is taken. */
+export function UsernameField({ value, onChange, check, error }: UsernameFieldProps) {
   const format = usernameError(value);
   const taken = check.status === 'taken';
-  const hint = HINTS[check.status];
+  const hint = error ? undefined : HINTS[check.status];
+  const showIdeas = check.suggestions.length > 0 && (taken || value.length === 0);
 
   return (
     <View style={styles.wrap}>
@@ -34,10 +37,10 @@ export function UsernameField({ value, onChange, check }: UsernameFieldProps) {
         autoCapitalize="none"
         autoCorrect={false}
         autoComplete="username-new"
-        error={format ?? (taken ? 'That username is taken.' : undefined)}
+        error={format ?? error ?? (taken ? 'That username is taken.' : undefined)}
       />
       {hint && !format ? <Text style={[styles.hint, { color: hint.color }]}>{hint.text}</Text> : null}
-      {taken ? (
+      {showIdeas ? (
         <View style={styles.suggestions}>
           {check.suggestions.map((suggestion) => (
             <Chip

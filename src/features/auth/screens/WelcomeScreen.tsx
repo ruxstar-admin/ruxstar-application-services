@@ -28,11 +28,11 @@ export function WelcomeScreen() {
   const handleContinue = async () => {
     const sent = await run('signup-otp-send', async () => {
       try {
-        await AuthService.signupSendOtp(mobile);
+        await AuthService.sendOtp(mobile, 'signup');
         return true;
       } catch (err) {
-        // 409 = number already registered: not an error, send them to log in instead.
-        if (err instanceof ApiError && err.kind === 'conflict') return false;
+        // Number already registered: not an error, send them to log in instead.
+        if (err instanceof ApiError && err.code === 'PHONE_TAKEN') return false;
         throw err;
       }
     });

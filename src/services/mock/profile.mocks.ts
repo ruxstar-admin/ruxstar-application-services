@@ -1,20 +1,6 @@
 import { ApiError } from '@/lib/api-error';
-import type { BlockedUser, NotificationPrefs, Profile, Session } from '@/types/profile';
+import type { BlockedUser, NotificationPrefs, Profile } from '@/types/profile';
 import { defineMocks } from './registry';
-
-const me: Profile = {
-  id: 'me',
-  name: '',
-  username: 'you.ster',
-  bio: 'Learning pottery on weekends. Printing assignments on weekdays.',
-  link: '',
-  posts: 11,
-  engagements: 4,
-  rating: null,
-  memberSince: 'Sep 2026',
-  badges: ['user'],
-  email: '',
-};
 
 const others: Record<string, Profile> = {
   'priya-nair': {
@@ -32,12 +18,6 @@ const others: Record<string, Profile> = {
   },
 };
 
-let sessions: Session[] = [
-  { id: 's1', device: 'This phone', location: 'Hyderabad, IN', lastActive: 'Active now', current: true },
-  { id: 's2', device: 'Chrome on Windows', location: 'Hyderabad, IN', lastActive: '2 days ago', current: false },
-  { id: 's3', device: 'iPad', location: 'Bengaluru, IN', lastActive: '12 days ago', current: false },
-];
-
 let prefs: NotificationPrefs = { orders: true, messages: true, social: false, work: true, digest: false };
 
 let blocked: BlockedUser[] = [
@@ -45,40 +25,15 @@ let blocked: BlockedUser[] = [
   { id: 'u-meera', name: 'Meera Joshi', username: 'meera.j' },
 ];
 
-/** Called by other mocks when an approval grants a role (e.g. KYC approval). */
-export const addProfileBadge = (badge: Profile['badges'][number]) => {
-  if (!me.badges.includes(badge)) me.badges = [...me.badges, badge];
-};
-
 const field = (body: Record<string, unknown> | undefined, key: string) => String(body?.[key] ?? '');
 
 defineMocks({
-  'GET /profile/me': { mocked: true, latencyMs: 300, handle: () => ({ ...me }) },
-
-  'POST /profile/update': {
-    mocked: true,
-    handle: ({ body }) => {
-      Object.assign(me, body);
-      return { ...me };
-    },
-  },
-
   'POST /users/profile': {
     mocked: true,
     handle: ({ body }) => {
       const found = others[field(body, 'userId')];
       if (!found) throw new ApiError(404, 'User not found');
       return { ...found };
-    },
-  },
-
-  'GET /profile/sessions': { mocked: true, handle: () => sessions.map((s) => ({ ...s })) },
-
-  'POST /profile/sessions/revoke': {
-    mocked: true,
-    handle: ({ body }) => {
-      sessions = sessions.filter((s) => s.id !== field(body, 'id') || s.current);
-      return { message: 'Session ended' };
     },
   },
 

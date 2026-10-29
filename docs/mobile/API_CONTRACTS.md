@@ -2,40 +2,43 @@
 
 The hand-off to the backend team. One row per endpoint. **Status:** `real` = exists and the app uses
 it · `mocked` = does not exist yet, the app uses a mock (`src/services/mock`) · `partial` = exists but
-differs from what the screen needs (note says how). Base URL: `EXPO_PUBLIC_API_URL`. Auth: `Authorization: Bearer <jwt>`.
+differs from what the screen needs (note says how). Base URL: `EXPO_PUBLIC_API_URL`. Auth: `Authorization: Bearer <access token>`.
 
 Mocks are switched per route with `mocked: true|false`, or globally with `EXPO_PUBLIC_USE_MOCKS`.
 
-## Account / auth
-| Method + path | Request | Response | Status | Used by | Notes |
-|---|---|---|---|---|---|
-| POST `/auth/signup/send-otp` | `{ mobile }` | `SendOtpResponse` | real | Welcome | 409 = already registered → app sends user to Login |
-| POST `/auth/signup/verify-otp` | `{ mobile, otp }` | `SignupVerifyOtpResponse` (`signupToken`) | real | OTP | |
-| POST `/auth/signup/complete` | `{ signupToken, name, password, role }` | `LoginResponse` | real | Register details | No username / consent / photo fields yet |
-| POST `/auth/login` | `{ mobile, password }` | `LoginResponse` | real | Login | No attempt counter / lockout (PRD Module 2) |
-| POST `/auth/login/send-otp` | `{ mobile }` | `SendOtpResponse` | real | Login | |
-| POST `/auth/login/verify-otp` | `{ mobile, otp }` | `LoginResponse` | real | OTP | |
-| POST `/auth/logout` | – (Bearer) | `{ message }` | real | Settings | Does not return a session/device id |
-| POST `/auth/forgot-password/send-otp` | `{ mobile }` | `SendOtpResponse` | **mocked** | Forgot password | Demo OTP `123456`; `000000` = wrong code |
-| POST `/auth/forgot-password/verify-otp` | `{ mobile, otp }` | `{ resetToken }` | **mocked** | OTP (reset mode) | 5 wrong tries → 429 |
-| POST `/auth/forgot-password/reset` | `{ resetToken, password }` | `{ message }` | **mocked** | Reset password | 401 expired token; 409 = reused one of last 3 passwords; backend must also invalidate all sessions (PRD Module 3) |
-| POST `/account/username/check` | `{ username }` | `{ available, suggestions[] }` | **mocked** | Register | 3–20 chars `[a-z0-9_.]` |
-| POST `/account/username` | `{ username }` (Bearer) | `{ username }` | **mocked** | Register (post-signup) | 409 if taken |
-| POST `/account/consent` | `{ version }` (Bearer) | `{ version, acceptedAt }` | **mocked** | Register (post-signup) | Versioned + timestamped (PRD Module 1) |
+## Account / auth (real, `/v1/account` — the API's OpenAPI spec is the source of truth)
+Every `/v1` call sends `X-Client: app` and `X-App-Version`. Success is `{ data, meta }` (the client returns
+`data`); failure is `{ error: { code, message, details } }`. Phone numbers are 10 digits without +91.
 
-## Profile & settings (all mocked — `src/services/mock/profile.mocks.ts`)
-| Method + path | Request | Response | Used by |
-|---|---|---|---|
-| GET `/profile/me` | – (Bearer) | `Profile` (name + mobile come from the account) | Profile, Edit profile |
-| POST `/profile/update` | `ProfileUpdate` | `Profile` | Edit profile |
-| POST `/users/profile` | `{ userId }` | `Profile` or 404 | User profile |
-| GET `/profile/sessions` | – | `Session[]` | Sessions & devices |
-| POST `/profile/sessions/revoke` | `{ id }` | `{ message }` (current session cannot be revoked) | Sessions & devices |
-| GET / POST `/settings/notifications` | – / partial `NotificationPrefs` | `NotificationPrefs` | Notification preferences |
-| GET `/settings/blocked` | – | `BlockedUser[]` | Blocked users |
-| POST `/users/block` · `/users/unblock` | `{ userId, name, username }` · `{ userId }` | `{ message }` | Report sheet, Blocked users |
-| POST `/users/report` | `{ userId, reason }` (spam · fake · abuse · undelivered · other) | `{ message }` | Report sheet |
-| POST `/account/export` · `/account/pause` · `/account/delete` | – | `{ message }` | Account & data |
+| Method + path | Request | Response | Used by | Notes |
+|---|---|---|---|---|
+| POST `/otp` | `{ phone, purpose: signup \| login \| reset }` | `{ sentTo, expiresInSeconds, resendInSeconds }` | Welcome, Login, Forgot, OTP resend | `PHONE_TAKEN` (signup) → Login; `NOT_FOUND` (login/reset); `OTP_LIMIT` with `retryAfterSeconds` |
+| POST `/otp/verify` | `{ phone, purpose, code }` | `{ verificationToken, expiresInSeconds }` | OTP (signup, reset) | `OTP_INVALID` with `attemptsLeft`; `OTP_EXPIRED`; 5 wrong → 5-minute lock |
+| POST `/signup` | `{ verificationToken, name, password, acceptTerms: true, username, dob, gender, email?, deviceId, deviceName }` | `{ user, tokens }` | Register details | `USERNAME_TAKEN`, `EMAIL_TAKEN`, `VALIDATION_FAILED` (dob under 13, name, password) |
+| POST `/login` | `{ phone, password, deviceId, deviceName }` | `{ user, tokens }` | Login (password) | `INVALID_CREDENTIALS`; `ACCOUNT_LOCKED` after 5 tries, 15 minutes |
+| POST `/login/code` | `{ phone, code, deviceId, deviceName }` | `{ user, tokens }` | OTP (login) | Code from `/otp` with purpose `login` |
+| POST `/refresh` | `{ refreshToken }` | `{ tokens }` | API client | Single use; reuse ends the session |
+| POST `/logout` | `{ refreshToken? }` (Bearer) | `{ done }` | Settings | |
+| POST `/password/reset` | `{ verificationToken, password }` | `{ done }` | Reset password | `PASSWORD_REUSED` (last 3); signs out every device |
+| GET `/usernames` | `?check=&name=` | `{ available, suggestions[] }` | Register, Edit profile | No sign-in needed; `name` seeds suggestions before signup |
+
+Passwords: 8–64 characters with a letter and a number, not containing the phone number.
+
+## Profile & settings
+Your own profile and devices are real (`/v1/account`); the rest is mocked in `src/services/mock/profile.mocks.ts`.
+
+| Method + path | Request | Response | Status | Used by |
+|---|---|---|---|---|
+| GET `/v1/account/me` | – (Bearer) | `User`, mapped to `Profile` | real | Profile, Edit profile |
+| PATCH `/v1/account/me` | changed fields of name, username, email, bio, link, dob, gender, city (`null` clears) | `User` | real | Edit profile (photo waits for uploads) |
+| GET `/v1/account/sessions` | – | `Session[]` (`label`, `client`, `current`, `lastSeenAt`) | real | Sessions & devices |
+| DELETE `/v1/account/sessions/:id` | – | `{ done }` | real | Sessions & devices |
+| POST `/users/profile` | `{ userId }` | `Profile` or 404 | mocked | User profile |
+| GET / POST `/settings/notifications` | – / partial `NotificationPrefs` | `NotificationPrefs` | mocked | Notification preferences |
+| GET `/settings/blocked` | – | `BlockedUser[]` | mocked | Blocked users |
+| POST `/users/block` · `/users/unblock` | `{ userId, name, username }` · `{ userId }` | `{ message }` | mocked | Report sheet, Blocked users |
+| POST `/users/report` | `{ userId, reason }` (spam · fake · abuse · undelivered · other) | `{ message }` | mocked | Report sheet |
+| POST `/account/export` · `/account/pause` · `/account/delete` | – | `{ message }` | mocked | Account & data |
 
 Types: `src/types/profile.ts`. Service: `src/services/profile-service.ts`.
 
@@ -157,7 +160,7 @@ Every "create" below (order, ticket, enrolment, booking) takes `paymentRef` and 
 | `/delivery/advance` | `{ id, code? }` | `DeliveryJob` | accepted → picked_up; picked_up → delivered needs the customer's 4-digit `deliveryCode` (401 if wrong). Delivering completes the order. Proof-of-delivery photo/QR is a parked decision |
 | `/delivery/earnings` | – | `{ today, week, total, items[] }` | Paid from the delivery fee, never the vendor's money |
 
-`PodOrder.deliveryCode` is generated for delivery orders and shown to the customer only while the order is out for delivery. The partner area lives in `features/delivery` + route group `(partner)` and opens only for accounts with the delivery role; **it is meant to move into the separate delivery-only app** (scope review #3) — its host (monorepo vs separate repo) is an open decision.
+`PodOrder.deliveryCode` is generated for delivery orders and shown to the customer only while the order is out for delivery. The partner area lives in `features/delivery` + route group `(partner)` and opens only for accounts with the delivery role. It stays in this app; there is no separate delivery app (decided 29 Oct 2026).
 
 Types: `src/types/{commerce,pod,events,coaching,stays,money,delivery}.ts`. Services: `src/services/{commerce,pod,events,coaching,stays}-service.ts`.
 

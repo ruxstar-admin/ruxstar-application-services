@@ -1,33 +1,33 @@
 import { apiPost } from '@/lib/api-client';
-import type { Role } from '@/constants/roles';
-import type { LoginResponse, ResetVerifyOtpResponse, SendOtpResponse, SignupVerifyOtpResponse } from '@/types/auth';
+import { deviceInfo } from '@/lib/device';
+import type { OtpPurpose, OtpSent, SignedIn, SignupDetails, Verified } from '@/types/auth';
 
-/** Mirrors ruxstar-backend-services/routes/auth.routes.js exactly — no endpoints invented. */
+const ACCOUNT = '/v1/account';
+type Done = { done: true };
+
+/** `/v1/account` in ruxstar-backend-services (src/modules/account). Numbers are 10 digits, without +91. */
 export const AuthService = {
-  signupSendOtp: (mobile: string) => apiPost<SendOtpResponse>('/auth/signup/send-otp', { mobile }),
+  /** Signup needs a new number; login and reset need one with an account (404 otherwise). */
+  sendOtp: (mobile: string, purpose: OtpPurpose) => apiPost<OtpSent>(`${ACCOUNT}/otp`, { phone: mobile, purpose }),
 
-  signupVerifyOtp: (mobile: string, otp: string) =>
-    apiPost<SignupVerifyOtpResponse>('/auth/signup/verify-otp', { mobile, otp }),
+  /** For signup and reset. Code sign-in uses `loginWithCode` instead. */
+  verifyOtp: (mobile: string, purpose: Exclude<OtpPurpose, 'login'>, code: string) =>
+    apiPost<Verified>(`${ACCOUNT}/otp/verify`, { phone: mobile, purpose, code }),
 
-  signupComplete: (signupToken: string, name: string, password: string, role: Role) =>
-    apiPost<LoginResponse>('/auth/signup/complete', { signupToken, name, password, role }),
+  signup: async (details: SignupDetails) =>
+    apiPost<SignedIn>(`${ACCOUNT}/signup`, { ...details, acceptTerms: true, ...(await deviceInfo()) }),
 
-  loginSendOtp: (mobile: string) => apiPost<SendOtpResponse>('/auth/login/send-otp', { mobile }),
+  loginWithPassword: async (mobile: string, password: string) =>
+    apiPost<SignedIn>(`${ACCOUNT}/login`, { phone: mobile, password, ...(await deviceInfo()) }),
 
-  loginVerifyOtp: (mobile: string, otp: string) =>
-    apiPost<LoginResponse>('/auth/login/verify-otp', { mobile, otp }),
+  loginWithCode: async (mobile: string, code: string) =>
+    apiPost<SignedIn>(`${ACCOUNT}/login/code`, { phone: mobile, code, ...(await deviceInfo()) }),
 
-  loginWithPassword: (mobile: string, password: string) =>
-    apiPost<LoginResponse>('/auth/login', { mobile, password }),
+  /** Signs out every device. */
+  resetPassword: (verificationToken: string, password: string) =>
+    apiPost<Done>(`${ACCOUNT}/password/reset`, { verificationToken, password }),
 
-  /** Not in the backend yet — mocked (see docs/mobile/API_CONTRACTS.md). */
-  forgotSendOtp: (mobile: string) => apiPost<SendOtpResponse>('/auth/forgot-password/send-otp', { mobile }),
-
-  forgotVerifyOtp: (mobile: string, otp: string) =>
-    apiPost<ResetVerifyOtpResponse>('/auth/forgot-password/verify-otp', { mobile, otp }),
-
-  resetPassword: (resetToken: string, password: string) =>
-    apiPost<{ message: string }>('/auth/forgot-password/reset', { resetToken, password }),
-
-  logout: (token: string) => apiPost<{ message: string }>('/auth/logout', undefined, token),
+  /** The refresh token lets the API end the session even when the access token has expired. */
+  logout: (token: string, refreshToken: string | null) =>
+    apiPost<Done>(`${ACCOUNT}/logout`, refreshToken ? { refreshToken } : {}, token),
 };

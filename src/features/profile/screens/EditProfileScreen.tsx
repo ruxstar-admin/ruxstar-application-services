@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { Avatar } from '@/components/ui/Avatar';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -9,17 +8,17 @@ import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
-import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { UsernameField } from '@/features/auth/components/UsernameField';
 import { useUsernameCheck } from '@/features/auth/hooks/use-username-check';
-import { isValidEmail, isValidUsername } from '@/features/auth/lib/validators';
+import { isValidEmail, isValidName, isValidUsername, nameError } from '@/features/auth/lib/validators';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { ProfileService } from '@/services/profile-service';
 import { useAuthStore } from '@/stores/auth-store';
-import type { Gender, Profile } from '@/types/profile';
+import type { Gender, Profile, ProfileUpdate } from '@/types/profile';
 
 const GENDERS = [
   { key: 'male', label: 'Male' },
@@ -27,12 +26,21 @@ const GENDERS = [
   { key: 'other', label: 'Other' },
 ] as const;
 
+const SAVE_ERRORS: Record<string, string> = {
+  USERNAME_TAKEN: 'That username is taken. Try another.',
+  EMAIL_TAKEN: 'This email is on another account.',
+  VALIDATION_FAILED: 'Some details are not valid. Check them and try again.',
+};
+
+/** The API takes only http and https links. */
+const isValidLink = (link: string) => link.length === 0 || /^https?:\/\/\S+\.\S+$/.test(link);
+
 function EditProfileForm({ profile }: { profile: Profile }) {
   const router = useRouter();
   const token = useAuthToken();
   const phone = useAuthStore((s) => s.mobile) ?? '';
-  const savedName = useAuthStore((s) => s.name) ?? '';
   const setName = useAuthStore((s) => s.setName);
+  const savedName = profile.name;
 
   const [name, setNameInput] = useState(savedName);
   const [username, setUsername] = useState(profile.username);
@@ -40,38 +48,36 @@ function EditProfileForm({ profile }: { profile: Profile }) {
   const [link, setLink] = useState(profile.link);
   const [email, setEmail] = useState(profile.email);
   const [gender, setGender] = useState<Gender | undefined>(profile.gender);
-  const [avatarUrl, setAvatarUrl] = useState(profile.avatarUrl);
   const [saving, setSaving] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
 
   // Only a changed username needs an availability check; your current one is always yours.
   const usernameChanged = username !== profile.username;
   const usernameCheck = useUsernameCheck(usernameChanged ? username : '');
   const usernameOk = !usernameChanged || usernameCheck.status === 'available';
 
-  const dirty =
-    name !== savedName || usernameChanged || bio !== profile.bio || link !== profile.link || email !== profile.email || gender !== profile.gender || avatarUrl !== profile.avatarUrl;
-  const valid = name.trim().length > 0 && isValidUsername(username) && usernameOk && isValidEmail(email);
-
-  const pickPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 });
-    if (!result.canceled) {
-      Feedback.select();
-      setAvatarUrl(result.assets[0].uri);
-    }
+  const changes: ProfileUpdate = {
+    ...(name.trim() !== savedName ? { name: name.trim() } : {}),
+    ...(usernameChanged ? { username } : {}),
+    ...(bio.trim() !== profile.bio ? { bio: bio.trim() } : {}),
+    ...(link.trim() !== profile.link ? { link: link.trim() } : {}),
+    ...(email.trim() !== profile.email ? { email: email.trim() } : {}),
+    ...(gender !== profile.gender ? { gender } : {}),
   };
+  const dirty = Object.keys(changes).length > 0;
+  const valid = isValidName(name) && isValidUsername(username) && usernameOk && isValidEmail(email.trim()) && isValidLink(link.trim());
 
   const save = async () => {
     setSaving(true);
-    setFailed(false);
+    setFailure(null);
     try {
-      await ProfileService.update(token, { name: name.trim(), username, bio: bio.trim(), link: link.trim(), email: email.trim(), gender, avatarUrl });
+      await ProfileService.update(token, changes);
       setName(name.trim());
       Feedback.success();
       router.back();
-    } catch {
+    } catch (err) {
       Feedback.error();
-      setFailed(true);
+      setFailure((err instanceof ApiError && SAVE_ERRORS[err.code]) || 'Could not save your changes. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -80,14 +86,22 @@ function EditProfileForm({ profile }: { profile: Profile }) {
   return (
     <ScreenContainer title="Edit profile" footer={<PrimaryButton label="Save" onPress={save} disabled={!dirty || !valid} loading={saving} />}>
       <View style={styles.photo}>
-        <Avatar name={name || 'You'} uri={avatarUrl} size={88} />
-        <TextLink label="Change profile photo" onPress={pickPhoto} />
+        <Avatar name={name || 'You'} uri={profile.avatarUrl} size={88} />
+        <Text style={styles.note}>Profile photos are coming soon.</Text>
       </View>
 
-      <InputField label="Name" value={name} onChangeText={setNameInput} autoCapitalize="words" />
+      <InputField label="Name" value={name} onChangeText={setNameInput} autoCapitalize="words" error={nameError(name) ?? undefined} />
       <UsernameField value={username} onChange={setUsername} check={usernameCheck} />
       <InputField label="Bio" value={bio} onChangeText={setBio} multiline maxLength={160} style={styles.bio} />
-      <InputField label="Link" value={link} onChangeText={setLink} autoCapitalize="none" keyboardType="url" placeholder="https://" />
+      <InputField
+        label="Link"
+        value={link}
+        onChangeText={setLink}
+        autoCapitalize="none"
+        keyboardType="url"
+        placeholder="https://"
+        error={isValidLink(link.trim()) ? undefined : 'Start the link with https://'}
+      />
 
       <Text style={styles.section}>Private information</Text>
       <Text style={styles.note}>Your email, phone and gender are never shown on your profile.</Text>
@@ -103,7 +117,7 @@ function EditProfileForm({ profile }: { profile: Profile }) {
       <Text style={styles.fieldLabel}>Gender</Text>
       <SegmentedTabs options={GENDERS} value={gender} onChange={setGender} />
 
-      {failed ? <ErrorBanner message="Could not save your changes. Please try again." onRetry={save} /> : null}
+      {failure ? <ErrorBanner message={failure} onRetry={save} /> : null}
     </ScreenContainer>
   );
 }

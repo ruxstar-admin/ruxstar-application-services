@@ -18,11 +18,7 @@ import { Feedback } from '@/lib/haptics';
 
 type OtpMode = 'login' | 'signup' | 'reset';
 
-const RESEND = {
-  signup: { action: 'signup-otp-send', send: AuthService.signupSendOtp },
-  login: { action: 'login-otp-send', send: AuthService.loginSendOtp },
-  reset: { action: 'forgot-otp-send', send: AuthService.forgotSendOtp },
-} as const;
+const RESEND_ACTION = { signup: 'signup-otp-send', login: 'login-otp-send', reset: 'forgot-otp-send' } as const;
 
 export function OtpScreen() {
   const router = useRouter();
@@ -34,38 +30,28 @@ export function OtpScreen() {
   const [otp, setOtp] = useState('');
 
   const verify = async (code: string) => {
-    if (mode === 'signup') {
+    if (mode === 'signup' || mode === 'reset') {
       const result = await run(
         'otp-verify',
-        () => AuthService.signupVerifyOtp(mobile, code),
+        () => AuthService.verifyOtp(mobile, mode, code),
         () => setOtp(''),
       );
       if (!result) return;
       Feedback.success();
-      router.push({ pathname: '/(auth)/register', params: { signupToken: result.signupToken, mobile } });
-      return;
-    }
-
-    if (mode === 'reset') {
-      const result = await run(
-        'otp-verify',
-        () => AuthService.forgotVerifyOtp(mobile, code),
-        () => setOtp(''),
-      );
-      if (!result) return;
-      Feedback.success();
-      router.replace({ pathname: '/(auth)/reset-password', params: { resetToken: result.resetToken, mobile } });
+      const params = { verificationToken: result.verificationToken, mobile };
+      if (mode === 'signup') router.push({ pathname: '/(auth)/register', params });
+      else router.replace({ pathname: '/(auth)/reset-password', params });
       return;
     }
 
     const result = await run(
-      'otp-verify',
-      () => AuthService.loginVerifyOtp(mobile, code),
+      'login-code',
+      () => AuthService.loginWithCode(mobile, code),
       () => setOtp(''),
     );
     if (!result) return;
     Feedback.success();
-    setAuth(result.token, result.user);
+    setAuth(result.tokens, result.user);
   };
 
   const handleChange = (value: string) => {
@@ -77,7 +63,7 @@ export function OtpScreen() {
 
   const handleResend = async () => {
     if (!canResend) return;
-    const sent = await run(RESEND[mode].action, () => RESEND[mode].send(mobile));
+    const sent = await run(RESEND_ACTION[mode], () => AuthService.sendOtp(mobile, mode));
     if (sent) restart();
   };
 

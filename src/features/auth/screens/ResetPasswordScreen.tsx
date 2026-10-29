@@ -13,13 +13,13 @@ import { Feedback } from '@/lib/haptics';
 
 export function ResetPasswordScreen() {
   const router = useRouter();
-  const { resetToken, mobile } = useLocalSearchParams<{ resetToken: string; mobile: string }>();
+  const { verificationToken, mobile } = useLocalSearchParams<{ verificationToken: string; mobile: string }>();
   const { run, loading, error, errorFor, clearError } = useAuthRequest();
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
 
   const handleReset = async () => {
-    const done = await run('password-reset', () => AuthService.resetPassword(resetToken, password));
+    const done = await run('password-reset', () => AuthService.resetPassword(verificationToken, password));
     if (!done) return;
     Feedback.success();
     router.replace({ pathname: '/(auth)/login', params: { mobile, notice: 'password-reset' } });
@@ -35,16 +35,22 @@ export function ResetPasswordScreen() {
       title="Create new password"
       onBack={() => router.back()}
       actions={
-        <PrimaryButton label="Reset password" onPress={handleReset} disabled={!isPasswordPairValid(password, confirmation)} loading={loading} />
+        <PrimaryButton
+          label="Reset password"
+          onPress={handleReset}
+          disabled={!isPasswordPairValid(password, confirmation, mobile)}
+          loading={loading}
+        />
       }
     >
-      <Text style={styles.subtitle}>Choose a password you have not used recently.</Text>
+      <Text style={styles.subtitle}>Choose a password you have not used recently. This signs you out on every device.</Text>
       <PasswordFields
         password={password}
         confirmation={confirmation}
         onPasswordChange={onChange(setPassword)}
         onConfirmationChange={onChange(setConfirmation)}
         error={errorFor('password')}
+        mobile={mobile}
       />
       {error?.target === 'form' ? <ErrorBanner message={error.message} onRetry={error.retryable ? handleReset : undefined} /> : null}
     </AuthFormLayout>

@@ -33,7 +33,7 @@ export function SessionsScreen() {
             key={session.id}
             icon="phone-portrait-outline"
             title={session.device}
-            subtitle={`${session.location} · ${session.lastActive}`}
+            subtitle={session.lastActive}
             right={session.current ? <Badge label="This device" tone="success" /> : undefined}
             onPress={session.current ? undefined : () => endSession(session.id)}
           />

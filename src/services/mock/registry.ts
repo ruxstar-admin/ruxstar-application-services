@@ -1,11 +1,12 @@
 import { MOCK_MODE, type MockMode } from '@/constants/config';
 
-export type HttpMethod = 'GET' | 'POST';
+export type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 export interface MockRequest {
   path: string;
   body?: Record<string, unknown>;
   token?: string;
+  query?: Record<string, string | number | undefined>;
 }
 
 export interface MockRoute {
@@ -21,7 +22,7 @@ const routes = new Map<string, MockRoute>();
 
 const key = (method: HttpMethod, path: string) => `${method} ${path}`;
 
-/** Registers mock handlers keyed `'POST /auth/forgot-password'`. Called once per `*.mocks.ts` file. */
+/** Registers mock handlers keyed `'POST /kyc/submit'`. Called once per `*.mocks.ts` file. */
 export const defineMocks = (definitions: Record<string, MockRoute>) => {
   Object.entries(definitions).forEach(([route, definition]) => routes.set(route, definition));
 };

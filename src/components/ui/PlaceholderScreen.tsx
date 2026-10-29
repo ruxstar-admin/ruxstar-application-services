@@ -10,14 +10,15 @@ interface PlaceholderScreenProps {
 
 /** Temporary landing screen for a role group until its real dashboard is built. */
 export function PlaceholderScreen({ title }: PlaceholderScreenProps) {
-  const { name, role, clearAuth } = useAuthStore();
+  const { name, roles, clearAuth } = useAuthStore();
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>
-          Signed in as {name} · {role}
+          Signed in as {name}
+          {roles.length ? ` · ${roles.join(', ')}` : ''}
         </Text>
         <PrimaryButton variant="outline" label="Log out" onPress={clearAuth} />
       </View>

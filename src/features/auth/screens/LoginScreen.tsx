@@ -12,7 +12,7 @@ import { TextLink } from '@/components/ui/TextLink';
 import { AuthService } from '@/services/auth-service';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAuthRequest } from '@/features/auth/hooks/use-auth-request';
-import { MIN_PASSWORD_LENGTH, isValidMobile } from '@/features/auth/lib/validators';
+import { isValidMobile } from '@/features/auth/lib/validators';
 import { Feedback } from '@/lib/haptics';
 import { useDelayedFocus } from '@/hooks/use-delayed-focus';
 import { Motion } from '@/constants/motion';
@@ -47,8 +47,8 @@ export function LoginScreen() {
   const phoneRef = useDelayedFocus<TextInput>(Motion.duration.slow, focusPhone);
   const passwordRef = useDelayedFocus<TextInput>(Motion.duration.slow, !focusPhone);
 
-  const canSubmit =
-    mode === 'password' ? isValidMobile(mobile) && password.length >= MIN_PASSWORD_LENGTH : isValidMobile(mobile);
+  // Any length: older accounts may predate the current password rules.
+  const canSubmit = mode === 'password' ? isValidMobile(mobile) && password.length > 0 : isValidMobile(mobile);
 
   const handleSubmit = async () => {
     if (mode === 'password') {
@@ -67,12 +67,12 @@ export function LoginScreen() {
       );
       if (result) {
         Feedback.success();
-        setAuth(result.token, result.user);
+        setAuth(result.tokens, result.user);
       }
       return;
     }
 
-    const sent = await run('login-otp-send', () => AuthService.loginSendOtp(mobile));
+    const sent = await run('login-otp-send', () => AuthService.sendOtp(mobile, 'login'));
     if (sent) router.push({ pathname: '/(auth)/otp', params: { mode: 'login', mobile } });
   };
 

@@ -1,4 +1,3 @@
-import './auth.mocks';
 import './profile.mocks';
 import './kyc.mocks';
 import './social.mocks';

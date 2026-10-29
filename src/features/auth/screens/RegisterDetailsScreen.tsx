@@ -8,55 +8,81 @@ import { Checkbox } from '@/components/ui/Checkbox';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { TextLink } from '@/components/ui/TextLink';
-import { AccountService } from '@/services/account-service';
 import { AuthService } from '@/services/auth-service';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAuthRequest } from '@/features/auth/hooks/use-auth-request';
 import { useUsernameCheck } from '@/features/auth/hooks/use-username-check';
-import { CONSENT_VERSION } from '@/features/auth/lib/consent';
-import { isPasswordPairValid } from '@/features/auth/lib/validators';
-import { ROLES } from '@/constants/roles';
+import {
+  dobError,
+  dobToIso,
+  formatDobInput,
+  isOldEnough,
+  isPasswordPairValid,
+  isValidEmail,
+  isValidName,
+  nameError,
+} from '@/features/auth/lib/validators';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { Feedback } from '@/lib/haptics';
-import { createLogger } from '@/lib/logger';
+import { setPendingLoginRoute } from '@/lib/pending-login-route';
 import { useDelayedFocus } from '@/hooks/use-delayed-focus';
+import type { Gender } from '@/types/profile';
 
-const log = createLogger('signup');
+const GENDERS = [
+  { key: 'female', label: 'Female' },
+  { key: 'male', label: 'Male' },
+  { key: 'other', label: 'Other' },
+] as const;
 
+/** Signup details after the number is verified (Architecture decision 33). Photo waits for file uploads. */
 export function RegisterDetailsScreen() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const { signupToken } = useLocalSearchParams<{ signupToken: string; mobile: string }>();
+  const { verificationToken, mobile } = useLocalSearchParams<{ verificationToken: string; mobile: string }>();
   const nameRef = useDelayedFocus<TextInput>();
-  const { run, loading, error, clearError } = useAuthRequest();
+  const { run, loading, error, errorFor, clearError } = useAuthRequest();
 
   const [name, setName] = useState('');
+  const [dobText, setDobText] = useState('');
+  const [gender, setGender] = useState<Gender | undefined>();
+  const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [consent, setConsent] = useState(false);
-  const usernameCheck = useUsernameCheck(username);
+  const [nameTouched, setNameTouched] = useState(false);
+  const usernameCheck = useUsernameCheck(username, name);
 
+  const dob = dobToIso(dobText);
   const canSubmit =
-    name.trim().length > 0 && usernameCheck.status === 'available' && isPasswordPairValid(password, confirmation) && consent;
+    isValidName(name) &&
+    !!dob &&
+    isOldEnough(dob) &&
+    !!gender &&
+    isValidEmail(email.trim()) &&
+    usernameCheck.status === 'available' &&
+    isPasswordPairValid(password, confirmation, mobile) &&
+    consent;
 
   const handleSubmit = async () => {
-    // Role is chosen later via Profile → "Become a Vendor/Delivery Partner", not at signup.
+    if (!dob || !gender) return;
     const result = await run('signup-complete', () =>
-      AuthService.signupComplete(signupToken, name.trim(), password, ROLES.CUSTOMER),
+      AuthService.signup({
+        verificationToken,
+        name: name.trim(),
+        dob,
+        gender,
+        email: email.trim() || undefined,
+        username,
+        password,
+      }),
     );
     if (!result) return;
-
-    // Username and consent have no backend route yet (mocked). Failing to save them must not strand a created account.
-    const saved = await Promise.allSettled([
-      AccountService.setUsername(result.token, username),
-      AccountService.acceptConsent(result.token, CONSENT_VERSION),
-    ]);
-    saved.forEach((outcome) => outcome.status === 'rejected' && log.warn('post-signup profile save failed'));
-
     Feedback.success();
-    setAuth(result.token, result.user);
+    setPendingLoginRoute('/(customer)/welcome');
+    setAuth(result.tokens, result.user);
   };
 
   const onChange = (setter: (value: string) => void) => (value: string) => {
@@ -68,26 +94,63 @@ export function RegisterDetailsScreen() {
     <AuthFormLayout
       title="Tell us about yourself"
       onBack={() => router.back()}
-      actions={<PrimaryButton label="Complete setup" onPress={handleSubmit} disabled={!canSubmit} loading={loading} />}
+      actions={<PrimaryButton label="Create account" onPress={handleSubmit} disabled={!canSubmit} loading={loading} />}
     >
       <InputField
         ref={nameRef}
         label="Full name"
         value={name}
         onChangeText={onChange(setName)}
+        onBlur={() => setNameTouched(true)}
         placeholder="Enter your full name"
         autoComplete="name"
         textContentType="name"
         autoCapitalize="words"
         returnKeyType="next"
+        error={errorFor('name') ?? (nameTouched ? (nameError(name) ?? undefined) : undefined)}
       />
-      <UsernameField value={username} onChange={onChange(setUsername)} check={usernameCheck} />
+      <InputField
+        label="Date of birth"
+        value={dobText}
+        onChangeText={(text) => onChange(setDobText)(formatDobInput(text))}
+        placeholder="DD/MM/YYYY"
+        keyboardType="number-pad"
+        autoComplete="birthdate-full"
+        maxLength={10}
+        hint="You need to be 13 or older. Never shown on your profile."
+        error={errorFor('dob') ?? dobError(dobText) ?? undefined}
+      />
+      <View style={styles.group}>
+        <Text style={styles.label}>Gender</Text>
+        <SegmentedTabs
+          options={GENDERS}
+          value={gender}
+          onChange={(value) => {
+            setGender(value);
+            clearError();
+          }}
+        />
+      </View>
+      <InputField
+        label="Email (optional)"
+        value={email}
+        onChangeText={onChange(setEmail)}
+        placeholder="you@example.com"
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        textContentType="emailAddress"
+        error={errorFor('email') ?? (email.trim() && !isValidEmail(email.trim()) ? 'Enter a valid email address.' : undefined)}
+      />
       <PasswordFields
         password={password}
         confirmation={confirmation}
         onPasswordChange={onChange(setPassword)}
         onConfirmationChange={onChange(setConfirmation)}
+        error={errorFor('password')}
+        mobile={mobile}
       />
+      <UsernameField value={username} onChange={onChange(setUsername)} check={usernameCheck} error={errorFor('username')} />
       <Checkbox checked={consent} onChange={setConsent} accessibilityLabel="Agree to the Terms of Service and Privacy Policy">
         <Text style={styles.consent}>I agree to the </Text>
         <View style={styles.links}>
@@ -96,12 +159,14 @@ export function RegisterDetailsScreen() {
           <TextLink muted label="Privacy Policy" onPress={() => undefined} />
         </View>
       </Checkbox>
-      {error ? <ErrorBanner message={error.message} onRetry={error.retryable ? handleSubmit : undefined} /> : null}
+      {error?.target === 'form' ? <ErrorBanner message={error.message} onRetry={error.retryable ? handleSubmit : undefined} /> : null}
     </AuthFormLayout>
   );
 }
 
 const styles = StyleSheet.create({
+  group: { gap: Spacing.two },
+  label: { ...Typography.caption, color: Brand.textMuted },
   consent: { ...Typography.caption, color: Brand.textMuted },
   links: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: Spacing.half },
 });

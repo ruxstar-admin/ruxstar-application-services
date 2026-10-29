@@ -9,10 +9,12 @@ interface PasswordFieldsProps {
   onConfirmationChange: (value: string) => void;
   /** Server-side error for the password field (e.g. recently used). */
   error?: string;
+  /** 10-digit number, so a password containing it is flagged before submit. */
+  mobile?: string;
 }
 
 /** New-password + confirm pair with blur-time validation, shared by sign-up and password reset. */
-export function PasswordFields({ password, confirmation, onPasswordChange, onConfirmationChange, error }: PasswordFieldsProps) {
+export function PasswordFields({ password, confirmation, onPasswordChange, onConfirmationChange, error, mobile }: PasswordFieldsProps) {
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [confirmTouched, setConfirmTouched] = useState(false);
 
@@ -24,10 +26,10 @@ export function PasswordFields({ password, confirmation, onPasswordChange, onCon
         onChangeText={onPasswordChange}
         onBlur={() => setPasswordTouched(true)}
         secureTextEntry
-        placeholder={`Minimum ${MIN_PASSWORD_LENGTH} characters`}
+        placeholder={`${MIN_PASSWORD_LENGTH}+ characters, a letter and a number`}
         autoComplete="new-password"
         textContentType="newPassword"
-        error={error ?? (passwordTouched ? (passwordError(password) ?? undefined) : undefined)}
+        error={error ?? (passwordTouched ? (passwordError(password, mobile) ?? undefined) : undefined)}
       />
       <InputField
         label="Confirm password"

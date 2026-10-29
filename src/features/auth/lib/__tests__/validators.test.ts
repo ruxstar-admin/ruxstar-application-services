@@ -1,8 +1,11 @@
 import {
+  isOldEnough,
   isPasswordPairValid,
   isValidMobile,
+  isValidName,
   isValidUsername,
   mobileError,
+  nameError,
   normalizeUsername,
   passwordError,
   usernameError,
@@ -34,13 +37,38 @@ describe('mobileError', () => {
 });
 
 describe('passwordError', () => {
-  it('stays quiet while empty or long enough', () => {
+  it('stays quiet while empty or valid', () => {
     expect(passwordError('')).toBeNull();
-    expect(passwordError('secret1')).toBeNull();
+    expect(passwordError('secret12')).toBeNull();
   });
 
   it('flags a short password', () => {
-    expect(passwordError('abc')).toMatch(/at least 6/);
+    expect(passwordError('abc1')).toMatch(/at least 8/);
+  });
+
+  it('needs a letter and a number, like the API', () => {
+    expect(passwordError('abcdefgh')).toMatch(/letter and one number/);
+    expect(passwordError('12345678')).toMatch(/letter and one number/);
+  });
+
+  it('refuses the phone number inside the password', () => {
+    expect(passwordError('a9876543210', '9876543210')).toMatch(/phone number/);
+  });
+});
+
+describe('nameError and isOldEnough', () => {
+  it('refuses a number typed as a name', () => {
+    expect(nameError('9876543210')).toMatch(/not a number/);
+    expect(nameError('Priya Nair')).toBeNull();
+    expect(isValidName('P')).toBe(false);
+  });
+
+  it('needs 13 full years', () => {
+    const now = new Date('2026-10-29T12:00:00Z');
+    expect(isOldEnough('2013-10-29', now)).toBe(true);
+    expect(isOldEnough('2013-10-30', now)).toBe(false);
+    expect(isOldEnough('1899-12-31', now)).toBe(false);
+    expect(isOldEnough('not-a-date', now)).toBe(false);
   });
 });
 
@@ -58,9 +86,9 @@ describe('username and password pair', () => {
     expect(usernameError('')).toBeNull();
   });
 
-  it('requires matching passwords of minimum length', () => {
-    expect(isPasswordPairValid('secret1', 'secret1')).toBe(true);
-    expect(isPasswordPairValid('secret1', 'secret2')).toBe(false);
+  it('requires matching passwords that pass the rules', () => {
+    expect(isPasswordPairValid('secret12', 'secret12')).toBe(true);
+    expect(isPasswordPairValid('secret12', 'secret13')).toBe(false);
     expect(isPasswordPairValid('abc', 'abc')).toBe(false);
   });
 });

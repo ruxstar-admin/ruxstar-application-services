@@ -26,7 +26,7 @@ describe('kyc mocks', () => {
     });
   });
 
-  it('moves a submitted flow from pending to verified and grants the role badge once', async () => {
+  it('moves a submitted flow from pending to verified', async () => {
     const now = Date.now();
     const clock = jest.spyOn(Date, 'now').mockReturnValue(now);
 
@@ -36,8 +36,5 @@ describe('kyc mocks', () => {
 
     clock.mockReturnValue(now + 7000);
     await expect(call('GET', '/kyc/status')).resolves.toMatchObject({ vendor: { status: 'verified' } });
-
-    const profile = (await call('GET', '/profile/me')) as { badges: string[] };
-    expect(profile.badges.filter((b) => b === 'vendor')).toHaveLength(1);
   });
 });

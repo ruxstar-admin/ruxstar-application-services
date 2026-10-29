@@ -1,16 +1,12 @@
 import { ApiError } from '@/lib/api-error';
 import type { KycFlow, KycOverview, KycState } from '@/types/kyc';
-import { addProfileBadge } from './profile.mocks';
 import { defineMocks } from './registry';
 
 /** Demo: a submitted flow is approved this long after submission, so the pending → verified UX can be seen. */
 const AUTO_APPROVE_MS = 6000;
 const DEMO_OTP = '123456';
 const WRONG_OTP_DEMO = '000000';
-const BADGE_FOR_FLOW = { vendor: 'vendor', delivery: 'delivery' } as const;
-
 const submittedAt: Partial<Record<KycFlow, number>> = {};
-const granted = new Set<KycFlow>();
 
 const field = (body: Record<string, unknown> | undefined, key: string) => String(body?.[key] ?? '');
 
@@ -18,10 +14,6 @@ const stateOf = (flow: KycFlow): KycState => {
   const submitted = submittedAt[flow];
   if (submitted === undefined) return { status: 'not_started' };
   if (Date.now() - submitted < AUTO_APPROVE_MS) return { status: 'pending_review' };
-  if (flow !== 'base' && !granted.has(flow)) {
-    granted.add(flow);
-    addProfileBadge(BADGE_FOR_FLOW[flow]);
-  }
   return { status: 'verified' };
 };
 

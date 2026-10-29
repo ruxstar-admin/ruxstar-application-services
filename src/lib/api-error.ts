@@ -25,6 +25,7 @@ const kindFromStatus = (status: number): ApiErrorKind => {
       return 'not_found';
     case 409:
       return 'conflict';
+    case 423:
     case 429:
       return 'rate_limited';
     default:
@@ -32,15 +33,39 @@ const kindFromStatus = (status: number): ApiErrorKind => {
   }
 };
 
+/** One entry of the API's `error.details`. `path` is like `body/password`. */
+export interface ApiErrorDetail {
+  path?: string;
+  message: string;
+  retryAfterSeconds?: number;
+  attemptsLeft?: number;
+  [key: string]: unknown;
+}
+
 export class ApiError extends Error {
   status: number;
   kind: ApiErrorKind;
+  /** The API's stable `error.code`, for example `OTP_INVALID`. Empty for network failures and old mocks. */
+  code: string;
+  details: ApiErrorDetail[];
 
-  constructor(status: number, message: string, kind: ApiErrorKind = kindFromStatus(status)) {
+  constructor(status: number, message: string, kind: ApiErrorKind = kindFromStatus(status), code = '', details: ApiErrorDetail[] = []) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.kind = kind;
+    this.code = code;
+    this.details = details;
+  }
+
+  /** How long the API asked us to wait, from `details[].retryAfterSeconds`. */
+  get retryAfterSeconds(): number | undefined {
+    return this.details.find((d) => typeof d.retryAfterSeconds === 'number')?.retryAfterSeconds;
+  }
+
+  /** The first detail for a field, matched on the end of its path (`password` matches `body/password`). */
+  detailFor(field: string): ApiErrorDetail | undefined {
+    return this.details.find((d) => d.path === field || d.path?.endsWith(`/${field}`));
   }
 
   static network() {

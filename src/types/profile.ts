@@ -19,12 +19,12 @@ export interface Profile {
   gender?: Gender;
 }
 
-export type ProfileUpdate = Partial<Pick<Profile, 'name' | 'username' | 'bio' | 'link' | 'email' | 'gender' | 'avatarUrl'>>;
+/** Photo waits for file uploads (Architecture decision 33). */
+export type ProfileUpdate = Partial<Pick<Profile, 'name' | 'username' | 'bio' | 'link' | 'email' | 'gender'>>;
 
 export interface Session {
   id: string;
   device: string;
-  location: string;
   lastActive: string;
   current: boolean;
 }

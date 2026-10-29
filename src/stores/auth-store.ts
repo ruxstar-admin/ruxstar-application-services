@@ -1,22 +1,30 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { Role } from '@/constants/roles';
-import type { AuthUser } from '@/types/auth';
+import { rolesFrom, type Role } from '@/constants/roles';
+import { secureStorage } from '@/lib/secure-storage';
+import type { AuthTokens, AuthUser } from '@/types/auth';
+
+/** Where sessions lived before tokens moved to the secure store. Holds an old-API token, so it is wiped. */
+const LEGACY_KEY = 'ruxstar_auth';
+AsyncStorage.removeItem(LEGACY_KEY).catch(() => undefined);
 
 interface AuthState {
+  /** Access token, 15 minutes. The API client swaps it using `refreshToken` when it expires. */
   token: string | null;
+  refreshToken: string | null;
   userId: string | null;
-  /** Primary role from login (kept for display); `roles` is what authorises access. */
-  role: Role | null;
+  /** Roles on top of User. Authorises the vendor portal and the delivery area. */
   roles: Role[];
+  /** 10 digits, without +91. */
   mobile: string | null;
   name: string | null;
   isAuthenticated: boolean;
-  /** Non-persisted: flips true once AsyncStorage rehydration finishes (see AuthGuard). */
+  /** Non-persisted: flips true once secure-store rehydration finishes (see AuthGuard). */
   _hasHydrated: boolean;
 
-  setAuth: (token: string, user: AuthUser) => void;
+  setAuth: (tokens: AuthTokens, user: AuthUser) => void;
+  setTokens: (tokens: AuthTokens) => void;
   clearAuth: () => void;
   setName: (name: string) => void;
   /** Adds a role granted after login (e.g. vendor KYC approval) without a fresh sign-in. */
@@ -24,39 +32,35 @@ interface AuthState {
   setHasHydrated: (value: boolean) => void;
 }
 
+const identity = (user: AuthUser) => ({
+  userId: user.id,
+  roles: rolesFrom(user.roles),
+  mobile: user.phone.replace(/^\+91/, ''),
+  name: user.name,
+});
+
+const SIGNED_OUT = {
+  token: null,
+  refreshToken: null,
+  userId: null,
+  roles: [],
+  mobile: null,
+  name: null,
+  isAuthenticated: false,
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      token: null,
-      userId: null,
-      role: null,
-      roles: [],
-      mobile: null,
-      name: null,
-      isAuthenticated: false,
+      ...SIGNED_OUT,
       _hasHydrated: false,
 
-      setAuth: (token, user) =>
-        set({
-          token,
-          userId: user._id,
-          role: user.roles[0] ?? null,
-          roles: user.roles,
-          mobile: user.mobile,
-          name: user.name,
-          isAuthenticated: true,
-        }),
+      setAuth: (tokens, user) =>
+        set({ token: tokens.accessToken, refreshToken: tokens.refreshToken, ...identity(user), isAuthenticated: true }),
 
-      clearAuth: () =>
-        set({
-          token: null,
-          userId: null,
-          role: null,
-          roles: [],
-          mobile: null,
-          name: null,
-          isAuthenticated: false,
-        }),
+      setTokens: (tokens) => set({ token: tokens.accessToken, refreshToken: tokens.refreshToken }),
+
+      clearAuth: () => set(SIGNED_OUT),
 
       setName: (name) => set({ name }),
 
@@ -65,12 +69,12 @@ export const useAuthStore = create<AuthState>()(
       setHasHydrated: (value) => set({ _hasHydrated: value }),
     }),
     {
-      name: 'ruxstar_auth',
-      storage: createJSONStorage(() => AsyncStorage),
+      name: 'ruxstar_session',
+      storage: createJSONStorage(() => secureStorage),
       partialize: (state) => ({
         token: state.token,
+        refreshToken: state.refreshToken,
         userId: state.userId,
-        role: state.role,
         roles: state.roles,
         mobile: state.mobile,
         name: state.name,

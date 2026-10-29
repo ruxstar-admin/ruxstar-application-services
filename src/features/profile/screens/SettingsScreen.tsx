@@ -13,6 +13,7 @@ const log = createLogger('settings');
 export function SettingsScreen() {
   const router = useRouter();
   const token = useAuthToken();
+  const refreshToken = useAuthStore((s) => s.refreshToken);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const [confirming, setConfirming] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -20,7 +21,7 @@ export function SettingsScreen() {
   const logOut = async () => {
     setLoggingOut(true);
     // The server session is ended best-effort; the local session always ends.
-    await AuthService.logout(token).catch(() => log.warn('server logout failed'));
+    await AuthService.logout(token, refreshToken).catch(() => log.warn('server logout failed'));
     clearAuth();
   };
 
