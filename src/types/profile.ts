@@ -16,11 +16,27 @@ export interface Profile {
   memberSince: string;
   badges: ProfileBadge[];
   email: string;
+  emailVerified: boolean;
   gender?: Gender;
+  /** Empty when not set. Shown on the profile. */
+  city: string;
 }
 
-/** Photo waits for file uploads (Architecture decision 33). */
-export type ProfileUpdate = Partial<Pick<Profile, 'name' | 'username' | 'bio' | 'link' | 'email' | 'gender'>>;
+/** The API's `PublicProfile` (GET /v1/account/profiles/{ref}). Never phone, email, date of birth or gender. */
+export interface PublicProfileResponse {
+  id: string;
+  name: string;
+  username: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  link: string | null;
+  city: string | null;
+  badges: { vendor: boolean; delivery: boolean };
+  memberSince: string;
+}
+
+/** The photo has its own calls (ProfileService.setPhoto / removePhoto). */
+export type ProfileUpdate = Partial<Pick<Profile, 'name' | 'username' | 'bio' | 'link' | 'email' | 'gender' | 'city'>>;
 
 export interface Session {
   id: string;

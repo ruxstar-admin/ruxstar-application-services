@@ -26,6 +26,16 @@ export const passwordError = (password: string, mobile?: string): string | null 
   return null;
 };
 
+/** The password rules shown under the field, in the same terms `passwordError` checks. */
+export const passwordRules = (password: string, mobile?: string) => [
+  {
+    label: `${MIN_PASSWORD_LENGTH} to ${MAX_PASSWORD_LENGTH} characters`,
+    met: password.length >= MIN_PASSWORD_LENGTH && password.length <= MAX_PASSWORD_LENGTH,
+  },
+  { label: 'A letter and a number', met: /[A-Za-z]/.test(password) && /\d/.test(password) },
+  ...(mobile ? [{ label: 'Not your phone number', met: password.length > 0 && !password.includes(mobile) }] : []),
+];
+
 /** The API refuses names without a letter or with a long run of digits (a pasted phone number). */
 export const nameError = (name: string): string | null => {
   const trimmed = name.trim();
@@ -58,6 +68,28 @@ export const dobError = (display: string, now: Date = new Date()): string | null
   const iso = dobToIso(display);
   if (!iso) return 'Enter a real date as DD/MM/YYYY.';
   return isOldEnough(iso, now) ? null : `You need to be at least ${MIN_AGE_YEARS} years old.`;
+};
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** A picked calendar day (local time) as `YYYY-MM-DD`; never via UTC, which can shift the day. */
+export const isoFromDate = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+/** `YYYY-MM-DD` as a local-time Date at midnight. */
+export const dateFromIso = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+/** The latest date of birth that is old enough today. */
+export const latestDob = (now: Date = new Date()) => new Date(now.getFullYear() - MIN_AGE_YEARS, now.getMonth(), now.getDate());
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** `2001-08-14` as `14 Aug 2001`. */
+export const formatDob = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} ${MONTHS[m - 1]} ${y}`;
 };
 
 /** True when a `YYYY-MM-DD` date of birth is at least 13 years ago (and after 1900). */

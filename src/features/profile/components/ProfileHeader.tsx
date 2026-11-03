@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Brand, Spacing, Typography } from '@/constants/theme';
@@ -26,7 +27,9 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-/** Identity block shared by your profile and other people's: avatar, counts, handle, bio, role badges. */
+const linkLabel = (link: string) => link.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+
+/** Identity block shared by your profile and other people's: avatar, counts, handle, bio, city, link, role badges. */
 export function ProfileHeader({ profile, name }: ProfileHeaderProps) {
   return (
     <View style={styles.container}>
@@ -43,6 +46,29 @@ export function ProfileHeader({ profile, name }: ProfileHeaderProps) {
         <Text style={styles.name}>{name}</Text>
         <Text style={styles.username}>@{profile.username}</Text>
         {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+        {profile.city || profile.link ? (
+          <View style={styles.facts}>
+            {profile.city ? (
+              <View style={styles.fact}>
+                <Ionicons name="location-outline" size={14} color={Brand.textMuted} />
+                <Text style={styles.factText}>{profile.city}</Text>
+              </View>
+            ) : null}
+            {profile.link ? (
+              <View style={styles.fact}>
+                <Ionicons name="link-outline" size={14} color={Brand.textMuted} />
+                <Text
+                  style={styles.link}
+                  numberOfLines={1}
+                  accessibilityRole="link"
+                  onPress={() => Linking.openURL(profile.link).catch(() => undefined)}
+                >
+                  {linkLabel(profile.link)}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
         <Text style={styles.member}>Member since {profile.memberSince}</Text>
       </View>
 
@@ -66,6 +92,10 @@ const styles = StyleSheet.create({
   name: { ...Typography.heading, color: Brand.text },
   username: { ...Typography.caption, color: Brand.primarySoft },
   bio: { ...Typography.body, color: Brand.textMuted, marginTop: Spacing.one },
+  facts: { flexDirection: 'row', flexWrap: 'wrap', columnGap: Spacing.three, rowGap: Spacing.one, marginTop: Spacing.one },
+  fact: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, maxWidth: '100%' },
+  factText: { ...Typography.caption, color: Brand.textMuted },
+  link: { ...Typography.caption, color: Brand.primarySoft, flexShrink: 1 },
   member: { ...Typography.caption, color: Brand.textFaint, marginTop: Spacing.one },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
 });

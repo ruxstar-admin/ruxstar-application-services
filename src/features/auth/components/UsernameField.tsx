@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { forwardRef } from 'react';
+import { StyleSheet, Text, View, type TextInput } from 'react-native';
 import { InputField } from '@/components/ui/InputField';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import type { UsernameStatus } from '@/features/auth/hooks/use-username-check';
@@ -12,6 +13,10 @@ interface UsernameFieldProps {
   check: { status: UsernameStatus; suggestions: string[] };
   /** Server-side error, for example taken between the check and signup. */
   error?: string;
+  /** The keyboard's next key; the field stays focused until the handler moves on. */
+  onSubmitEditing?: () => void;
+  /** Tells the screen when the box is entered and left, so ideas are fetched only once it is. */
+  onFocusChange?: (focused: boolean) => void;
 }
 
 const HINTS: Partial<Record<UsernameStatus, { text: string; color: string }>> = {
@@ -21,7 +26,7 @@ const HINTS: Partial<Record<UsernameStatus, { text: string; color: string }>> = 
 };
 
 /** Username input with live availability, and one-tap ideas while empty or when the name is taken. */
-export function UsernameField({ value, onChange, check, error }: UsernameFieldProps) {
+export const UsernameField = forwardRef<TextInput, UsernameFieldProps>(({ value, onChange, check, error, onSubmitEditing, onFocusChange }, ref) => {
   const format = usernameError(value);
   const taken = check.status === 'taken';
   const hint = error ? undefined : HINTS[check.status];
@@ -30,6 +35,7 @@ export function UsernameField({ value, onChange, check, error }: UsernameFieldPr
   return (
     <View style={styles.wrap}>
       <InputField
+        ref={ref}
         label="Username"
         value={value}
         onChangeText={(text) => onChange(normalizeUsername(text))}
@@ -37,6 +43,10 @@ export function UsernameField({ value, onChange, check, error }: UsernameFieldPr
         autoCapitalize="none"
         autoCorrect={false}
         autoComplete="username-new"
+        returnKeyType={onSubmitEditing ? 'next' : 'default'}
+        onSubmitEditing={onSubmitEditing}
+        onFocus={() => onFocusChange?.(true)}
+        onBlur={() => onFocusChange?.(false)}
         error={format ?? error ?? (taken ? 'That username is taken.' : undefined)}
       />
       {hint && !format ? <Text style={[styles.hint, { color: hint.color }]}>{hint.text}</Text> : null}
@@ -56,7 +66,8 @@ export function UsernameField({ value, onChange, check, error }: UsernameFieldPr
       ) : null}
     </View>
   );
-}
+});
+UsernameField.displayName = 'UsernameField';
 
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.one },

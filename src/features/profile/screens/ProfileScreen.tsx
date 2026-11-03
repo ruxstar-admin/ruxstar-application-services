@@ -11,6 +11,7 @@ import { Brand, Spacing, Typography } from '@/constants/theme';
 import { ProfileHeader } from '@/features/profile/components/ProfileHeader';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { Feedback } from '@/lib/haptics';
 import { ProfileService } from '@/services/profile-service';
 import { ROLES } from '@/constants/roles';
@@ -28,6 +29,7 @@ export function ProfileScreen() {
   const isVendor = useAuthStore((s) => s.roles.includes(ROLES.VENDOR));
   const isPartner = useAuthStore((s) => s.roles.includes(ROLES.DELIVERY));
   const { data, loading, error, reload } = useAsyncResource(() => ProfileService.getMe(token));
+  useRefetchOnFocus(reload);
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('personal');
 
   return (

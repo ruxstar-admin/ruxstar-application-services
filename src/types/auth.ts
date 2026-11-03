@@ -9,6 +9,10 @@ export interface AuthUser {
   name: string;
   username: string;
   email: string | null;
+  /** False until the emailed code is entered. Only a verified email is unique to one account. */
+  emailVerified: boolean;
+  /** 512 x 512 WebP. Null until a photo is added. */
+  avatarUrl: string | null;
   bio: string | null;
   link: string | null;
   /** YYYY-MM-DD. */

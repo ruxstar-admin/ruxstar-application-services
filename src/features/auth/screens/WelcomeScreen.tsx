@@ -12,6 +12,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { TextLink } from '@/components/ui/TextLink';
 import { AuthService } from '@/services/auth-service';
 import { ApiError } from '@/lib/api-error';
+import { openLegal } from '@/lib/legal';
 import { useAuthRequest } from '@/features/auth/hooks/use-auth-request';
 import { isValidMobile } from '@/features/auth/lib/validators';
 import { useDelayedFocus } from '@/hooks/use-delayed-focus';
@@ -81,8 +82,8 @@ export function WelcomeScreen() {
           <View style={styles.footer}>
             <Text style={styles.terms}>By continuing, you agree to our</Text>
             <View style={styles.links}>
-              <TextLink muted label="Terms of Services" onPress={() => undefined} />
-              <TextLink muted label="Privacy Policy" onPress={() => undefined} />
+              <TextLink muted label="Terms of Service" onPress={() => openLegal('terms')} />
+              <TextLink muted label="Privacy Policy" onPress={() => openLegal('privacy')} />
             </View>
           </View>
         </Animated.View>

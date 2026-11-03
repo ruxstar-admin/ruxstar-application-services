@@ -38,7 +38,9 @@ Your own profile and devices are real (`/v1/account`); the rest is mocked in `sr
 | GET `/settings/blocked` | – | `BlockedUser[]` | mocked | Blocked users |
 | POST `/users/block` · `/users/unblock` | `{ userId, name, username }` · `{ userId }` | `{ message }` | mocked | Report sheet, Blocked users |
 | POST `/users/report` | `{ userId, reason }` (spam · fake · abuse · undelivered · other) | `{ message }` | mocked | Report sheet |
-| POST `/account/export` · `/account/pause` · `/account/delete` | – | `{ message }` | mocked | Account & data |
+| POST `/account/export` · `/account/pause` | – | `{ message }` | mocked | Account & data |
+| DELETE `/v1/account/me` | `{ password }` | `{ done: true }` | live | Account & data |
+| POST `/v1/account/email/code` · `/v1/account/email/verify` | – · `{ code }` | `{ sentTo, … }` · `User` | live | Edit profile |
 
 Types: `src/types/profile.ts`. Service: `src/services/profile-service.ts`.
 

@@ -7,7 +7,8 @@ import { Brand, Spacing, Typography } from '@/constants/theme';
 interface FieldFrameProps {
   label?: string;
   error?: string;
-  hint?: string;
+  /** Plain text, or a richer helper such as the password rules. Replaced by the error while one shows. */
+  hint?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -48,11 +49,13 @@ export function FieldFrame({ label, error, hint, children }: FieldFrameProps) {
               {error}
             </Text>
           </>
-        ) : hint ? (
+        ) : typeof hint === 'string' ? (
           <Text style={styles.helper} maxFontSizeMultiplier={1.3}>
             {hint}
           </Text>
-        ) : null}
+        ) : (
+          (hint ?? null)
+        )}
       </View>
     </View>
   );

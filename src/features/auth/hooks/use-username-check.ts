@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AccountService } from '@/services/account-service';
 import { isValidName, isValidUsername } from '@/features/auth/lib/validators';
 
@@ -14,20 +14,29 @@ interface UsernameCheck {
 }
 
 /**
- * Debounced availability check. Stale responses are dropped, so fast typing never shows an old answer.
- * While the field is empty, `name` (before signup) seeds suggestions to tap.
+ * Debounced availability check, run only for what is typed in the username box. Stale responses are
+ * dropped, and "checking" shows only while a request is out, not on every keystroke.
+ * `suggest` is true while the box is focused: only then does `name` (before signup) fetch ideas to tap,
+ * so typing the name itself never calls the server.
  */
-export function useUsernameCheck(username: string, name = '') {
+export function useUsernameCheck(username: string, name = '', suggest = false) {
   const [result, setResult] = useState<UsernameCheck | null>(null);
+  const [inFlight, setInFlight] = useState<string | null>(null);
   const [ideas, setIdeas] = useState<{ for: string; list: string[] } | null>(null);
   const seed = name.trim();
-  const wantIdeas = username.length === 0 && isValidName(seed);
+  const latestSeed = useRef(seed);
+  const fetchIdeas = suggest && username.length === 0 && isValidName(seed);
+
+  useEffect(() => {
+    latestSeed.current = seed;
+  }, [seed]);
 
   useEffect(() => {
     if (!isValidUsername(username)) return;
     let cancelled = false;
     const timer = setTimeout(() => {
-      AccountService.checkUsername(username, seed)
+      setInFlight(username);
+      AccountService.checkUsername(username, latestSeed.current)
         .then((res) => !cancelled && setResult({ for: username, status: res.available ? 'available' : 'taken', suggestions: res.suggestions }))
         .catch(() => !cancelled && setResult({ for: username, status: 'error', suggestions: [] }));
     }, DEBOUNCE_MS);
@@ -35,25 +44,22 @@ export function useUsernameCheck(username: string, name = '') {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [username, seed]);
+  }, [username]);
 
   useEffect(() => {
-    if (!wantIdeas) return;
+    if (!fetchIdeas || ideas?.for === seed) return;
     let cancelled = false;
-    const timer = setTimeout(() => {
-      AccountService.checkUsername('', seed)
-        .then((res) => !cancelled && setIdeas({ for: seed, list: res.suggestions }))
-        .catch(() => undefined);
-    }, DEBOUNCE_MS);
+    AccountService.checkUsername('', seed)
+      .then((res) => !cancelled && setIdeas({ for: seed, list: res.suggestions }))
+      .catch(() => undefined);
     return () => {
       cancelled = true;
-      clearTimeout(timer);
     };
-  }, [wantIdeas, seed]);
+  }, [fetchIdeas, seed, ideas?.for]);
 
   if (!isValidUsername(username)) {
-    return { status: 'idle' as UsernameStatus, suggestions: wantIdeas && ideas?.for === seed ? ideas.list : [] };
+    return { status: 'idle' as UsernameStatus, suggestions: username.length === 0 && ideas?.for === seed ? ideas.list : [] };
   }
-  if (result?.for !== username) return { status: 'checking' as UsernameStatus, suggestions: [] as string[] };
-  return { status: result.status as UsernameStatus, suggestions: result.suggestions };
+  if (result?.for === username) return { status: result.status as UsernameStatus, suggestions: result.suggestions };
+  return { status: (inFlight === username ? 'checking' : 'idle') as UsernameStatus, suggestions: [] as string[] };
 }

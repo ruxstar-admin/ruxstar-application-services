@@ -8,9 +8,9 @@ const call = (method: HttpMethod, path: string, body?: Record<string, unknown>) 
 };
 
 describe('profile mocks', () => {
-  it('returns another user, or 404 for an unknown one', async () => {
-    await expect(call('POST', '/users/profile', { userId: 'priya-nair' })).resolves.toMatchObject({ name: 'Priya Nair' });
-    await expect(call('POST', '/users/profile', { userId: 'nobody' })).rejects.toMatchObject({ kind: 'not_found' });
+  it('serves only the sample author; everyone else goes to the real API', async () => {
+    await expect(call('GET', '/v1/account/profiles/priya-nair')).resolves.toMatchObject({ name: 'Priya Nair', badges: { vendor: true } });
+    expect(findMock('GET', '/v1/account/profiles/asha.rao', 'auto')).toBeUndefined();
   });
 
   it('merges notification preference changes', async () => {

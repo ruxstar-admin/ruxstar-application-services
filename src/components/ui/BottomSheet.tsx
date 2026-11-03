@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { Motion } from '@/constants/motion';
 
@@ -32,9 +32,32 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
   const progress = useSharedValue(0);
   const drag = useSharedValue(0);
   const height = useSharedValue(FALLBACK_HEIGHT);
+  const keyboard = useSharedValue(0);
+  const insets = useSafeAreaInsets();
 
   // Mount as soon as it is asked to show; it unmounts itself when the close animation finishes.
   if (visible && !mounted) setMounted(true);
+
+  // A Modal is its own window, so the screen never resizes for the keyboard; lift the sheet above it instead.
+  useEffect(() => {
+    if (!mounted) return;
+    const ios = Platform.OS === 'ios';
+    const move = (to: number, duration?: number) => {
+      keyboard.value = withTiming(to, {
+        duration: duration || Motion.duration.base,
+        easing: Motion.easing.standard,
+      });
+    };
+    const shown = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (e) =>
+      move(Math.max(0, e.endCoordinates.height - insets.bottom), e.duration),
+    );
+    const hidden = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', (e) => move(0, e.duration));
+    return () => {
+      shown.remove();
+      hidden.remove();
+      keyboard.value = 0;
+    };
+  }, [mounted, keyboard, insets.bottom]);
 
   useEffect(() => {
     if (visible) {
@@ -58,7 +81,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.value, [0, 1], [0, 1]) }));
   const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: (1 - progress.value) * height.value + drag.value }],
+    transform: [{ translateY: (1 - progress.value) * height.value + drag.value - keyboard.value }],
   }));
 
   if (!mounted) return null;

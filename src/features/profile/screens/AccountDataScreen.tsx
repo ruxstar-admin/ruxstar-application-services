@@ -1,33 +1,25 @@
 import { useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
+import { InputField } from '@/components/ui/InputField';
 import { ListRow } from '@/components/ui/ListRow';
+import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { ProfileService } from '@/services/profile-service';
 import { useAuthStore } from '@/stores/auth-store';
 
-type Action = 'pause' | 'delete';
-
-const COPY: Record<Action, { title: string; message: string; confirm: string }> = {
-  pause: {
-    title: 'Pause your account?',
-    message: 'Your profile and posts are hidden until you log in again. Nothing is deleted.',
-    confirm: 'Pause account',
-  },
-  delete: {
-    title: 'Delete your account?',
-    message: 'This schedules permanent deletion of your profile and posts. Open orders and payouts must be settled first.',
-    confirm: 'Delete account',
-  },
-};
-
 export function AccountDataScreen() {
   const token = useAuthToken();
   const clearAuth = useAuthStore((s) => s.clearAuth);
-  const [pending, setPending] = useState<Action | null>(null);
+  const [pausing, setPausing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -43,17 +35,41 @@ export function AccountDataScreen() {
     }
   };
 
-  const confirm = async () => {
-    if (!pending) return;
+  const pause = async () => {
     setBusy(true);
     try {
-      await (pending === 'pause' ? ProfileService.pauseAccount(token) : ProfileService.deleteAccount(token));
+      await ProfileService.pauseAccount(token);
       Feedback.success();
       clearAuth();
     } catch {
       Feedback.error();
       setBusy(false);
-      setPending(null);
+      setPausing(false);
+      setNotice('That did not go through. Please try again.');
+    }
+  };
+
+  const closeDelete = () => {
+    setDeleting(false);
+    setPassword('');
+    setPasswordError(null);
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    setPasswordError(null);
+    try {
+      await ProfileService.deleteAccount(token, password);
+      Feedback.success();
+      clearAuth();
+    } catch (err) {
+      Feedback.error();
+      setBusy(false);
+      if (err instanceof ApiError && err.code === 'INVALID_CREDENTIALS') {
+        setPasswordError('That password is not right.');
+        return;
+      }
+      closeDelete();
       setNotice('That did not go through. Please try again.');
     }
   };
@@ -61,23 +77,46 @@ export function AccountDataScreen() {
   return (
     <ScreenContainer title="Account & data">
       <ListRow icon="download-outline" title="Export my data" subtitle="We email you a copy within 24 hours" onPress={exportData} />
-      <ListRow icon="pause-circle-outline" title="Pause account" subtitle="Hide your profile until you return" onPress={() => setPending('pause')} />
-      <ListRow icon="trash-outline" title="Delete account" destructive onPress={() => setPending('delete')} />
+      <ListRow icon="pause-circle-outline" title="Pause account" subtitle="Hide your profile until you return" onPress={() => setPausing(true)} />
+      <ListRow icon="trash-outline" title="Delete account" destructive onPress={() => setDeleting(true)} />
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
       <ConfirmSheet
-        visible={pending !== null}
-        title={pending ? COPY[pending].title : ''}
-        message={pending ? COPY[pending].message : ''}
-        confirmLabel={pending ? COPY[pending].confirm : ''}
+        visible={pausing}
+        title="Pause your account?"
+        message="Your profile and posts are hidden until you log in again. Nothing is deleted."
+        confirmLabel="Pause account"
         loading={busy}
-        onConfirm={confirm}
-        onCancel={() => setPending(null)}
+        onConfirm={pause}
+        onCancel={() => setPausing(false)}
       />
+
+      <BottomSheet visible={deleting} onClose={busy ? () => undefined : closeDelete} title="Delete your account?">
+        <Text style={styles.message}>
+          This schedules permanent deletion of your profile and posts. Open orders and payouts must be settled first.
+        </Text>
+        <InputField
+          label="Your password"
+          value={password}
+          onChangeText={(text) => {
+            setPassword(text);
+            setPasswordError(null);
+          }}
+          secureTextEntry
+          autoComplete="current-password"
+          textContentType="password"
+          returnKeyType="done"
+          onSubmitEditing={() => password && remove()}
+          error={passwordError ?? undefined}
+        />
+        <PrimaryButton label="Delete account" onPress={remove} disabled={!password} loading={busy} />
+        <PrimaryButton label="Cancel" variant="outline" onPress={closeDelete} disabled={busy} />
+      </BottomSheet>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  message: { ...Typography.body, color: Brand.textMuted },
   notice: { ...Typography.caption, color: Brand.textMuted, marginTop: Spacing.three },
 });

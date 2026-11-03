@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api-client';
+import { apiDelete, apiGet, apiPatch, apiPost, apiPutBytes } from '@/lib/api-client';
 import { timeAgo } from '@/lib/time';
 import type { AuthUser } from '@/types/auth';
 import type {
@@ -7,6 +7,7 @@ import type {
   Profile,
   ProfileBadge,
   ProfileUpdate,
+  PublicProfileResponse,
   ReportReason,
   Session,
 } from '@/types/profile';
@@ -22,28 +23,56 @@ interface ApiSession {
   createdAt: string;
 }
 
+const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+const badgesOf = ({ vendor, delivery }: { vendor: boolean; delivery: boolean }): ProfileBadge[] => [
+  'user',
+  ...(vendor ? ['vendor' as const] : []),
+  ...(delivery ? ['delivery' as const] : []),
+];
+
 /** Posts, engagements and rating arrive with the social module; until then they read as zero. */
 const toProfile = (user: AuthUser): Profile => ({
   id: user.id,
   name: user.name,
   username: user.username,
+  avatarUrl: user.avatarUrl ?? undefined,
   bio: user.bio ?? '',
   link: user.link ?? '',
   email: user.email ?? '',
+  emailVerified: user.emailVerified,
+  city: user.city ?? '',
   gender: user.gender ?? undefined,
   posts: 0,
   engagements: 0,
   rating: null,
-  memberSince: new Date(user.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }),
-  badges: ['user', ...(user.roles.vendor ? ['vendor' as ProfileBadge] : []), ...(user.roles.delivery ? ['delivery' as ProfileBadge] : [])],
+  memberSince: monthYear(user.createdAt),
+  badges: badgesOf(user.roles),
+});
+
+const fromPublic = (p: PublicProfileResponse): Profile => ({
+  id: p.id,
+  name: p.name,
+  username: p.username,
+  avatarUrl: p.avatarUrl ?? undefined,
+  bio: p.bio ?? '',
+  link: p.link ?? '',
+  email: '',
+  emailVerified: false,
+  city: p.city ?? '',
+  posts: 0,
+  engagements: 0,
+  rating: null,
+  memberSince: monthYear(p.memberSince),
+  badges: badgesOf(p.badges),
 });
 
 /** Empty strings clear a field, which the API takes as null. */
-const toPatch = ({ email, bio, link, ...rest }: ProfileUpdate) => ({
+const toPatch = ({ email, bio, link, city, ...rest }: ProfileUpdate) => ({
   ...rest,
   ...(email !== undefined ? { email: email || null } : {}),
   ...(bio !== undefined ? { bio: bio || null } : {}),
   ...(link !== undefined ? { link: link || null } : {}),
+  ...(city !== undefined ? { city: city || null } : {}),
 });
 
 const lastActive = (session: ApiSession) => {
@@ -54,13 +83,29 @@ const lastActive = (session: ApiSession) => {
 };
 
 /**
- * Your own profile and devices are `/v1/account`. Other people's profiles, settings and moderation
- * have no backend yet and are mocked (profile.mocks.ts).
+ * Profiles, photos and devices are `/v1/account`. Settings and moderation have no backend yet and
+ * are mocked (profile.mocks.ts).
  */
 export const ProfileService = {
   getMe: async (token: string) => toProfile(await apiGet<AuthUser>('/v1/account/me', token)),
   update: async (token: string, changes: ProfileUpdate) => toProfile(await apiPatch<AuthUser>('/v1/account/me', toPatch(changes), token)),
-  getUser: (token: string, userId: string) => apiPost<Profile>('/users/profile', { userId }, token),
+  /** Someone's public profile, by username or user id. */
+  getUser: async (token: string, ref: string) =>
+    fromPublic(await apiGet<PublicProfileResponse>(`/v1/account/profiles/${encodeURIComponent(ref)}`, token)),
+  /** A JPEG the app has already shrunk. The API crops it square and stores a WebP. */
+  setPhoto: async (token: string, jpeg: Uint8Array<ArrayBuffer>) =>
+    toProfile(await apiPutBytes<AuthUser>('/v1/account/me/photo', { data: jpeg, type: 'image/jpeg' }, token)),
+  removePhoto: async (token: string) => toProfile(await apiDelete<AuthUser>('/v1/account/me/photo', token)),
+
+  sendEmailCode: (token: string) =>
+    apiPost<{ sentTo: string; expiresInSeconds: number; resendInSeconds: number }>('/v1/account/email/code', undefined, token),
+  verifyEmail: async (token: string, code: string) => toProfile(await apiPost<AuthUser>('/v1/account/email/verify', { code }, token)),
+  /** `attribution` must be shown wherever a looked-up city is shown. */
+  cityAt: (token: string, lat: number, lng: number) =>
+    apiGet<{ city: string | null; attribution: string }>('/v1/account/city', token, { lat, lng }),
+  /** Signs out every other device. */
+  changePassword: (token: string, currentPassword: string, newPassword: string) =>
+    apiPost<{ done: true }>('/v1/account/password', { currentPassword, newPassword }, token),
 
   getSessions: async (token: string): Promise<Session[]> =>
     (await apiGet<ApiSession[]>('/v1/account/sessions', token)).map((s) => ({
@@ -84,5 +129,5 @@ export const ProfileService = {
 
   exportData: (token: string) => apiPost<Message>('/account/export', undefined, token),
   pauseAccount: (token: string) => apiPost<Message>('/account/pause', undefined, token),
-  deleteAccount: (token: string) => apiPost<Message>('/account/delete', undefined, token),
+  deleteAccount: (token: string, password: string) => apiDelete<{ done: true }>('/v1/account/me', token, { password }),
 };

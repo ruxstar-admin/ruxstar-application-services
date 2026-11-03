@@ -13,6 +13,14 @@ interface PhoneInputProps {
   label?: string;
 }
 
+/** Autofill and paste bring the number as "+91 98765 43210" or "098765 43210"; typing stops at 10 digits. */
+function toMobile(text: string) {
+  const digits = text.replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith('0')) return digits.slice(1);
+  return digits.slice(0, 10);
+}
+
 /**
  * Backend normalizes to the last 10 digits regardless of prefix — India-only, so the country chip is static.
  * Format problems show only after the field has been left (blur) so typing never flashes errors.
@@ -37,14 +45,13 @@ export const PhoneInput = forwardRef<TextInput, PhoneInputProps>(({ value, onCha
             ref={ref}
             style={styles.input}
             value={value}
-            onChangeText={(text) => onChangeText(text.replace(/\D/g, '').slice(0, 10))}
+            onChangeText={(text) => onChangeText(toMobile(text))}
             onFocus={() => setFocused(true)}
             onBlur={() => {
               setFocused(false);
               setTouched(true);
             }}
             keyboardType="number-pad"
-            maxLength={10}
             numberOfLines={1}
             maxFontSizeMultiplier={1.2}
             placeholder="Mobile number"

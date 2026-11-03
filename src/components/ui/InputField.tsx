@@ -8,12 +8,14 @@ import { Feedback } from '@/lib/haptics';
 interface InputFieldProps extends TextInputProps {
   label?: string;
   error?: string;
-  hint?: string;
+  hint?: React.ReactNode;
+  /** Sits inside the box on its right edge, for a small action or status such as "Verify". */
+  accessory?: React.ReactNode;
 }
 
 /** Labelled text field. `secureTextEntry` automatically gets a show/hide toggle. */
 export const InputField = forwardRef<TextInput, InputFieldProps>(
-  ({ label, error, hint, style, secureTextEntry, onFocus, onBlur, ...rest }, ref) => {
+  ({ label, error, hint, accessory, style, secureTextEntry, onFocus, onBlur, ...rest }, ref) => {
     const [focused, setFocused] = useState(false);
     const [revealed, setRevealed] = useState(false);
 
@@ -36,6 +38,7 @@ export const InputField = forwardRef<TextInput, InputFieldProps>(
             }}
             {...rest}
           />
+          {accessory}
           {secureTextEntry ? (
             <Pressable
               accessibilityRole="button"

@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { fetch as expoFetch } from 'expo/fetch';
 import { API_BASE_URL } from '@/constants/config';
 import { createLogger } from '@/lib/logger';
 import { findMock, runMock, type HttpMethod } from '@/services/mock';
@@ -19,6 +20,8 @@ interface RequestOptions {
   method: HttpMethod;
   path: string;
   body?: Json;
+  /** A file sent as the whole body, such as a photo. */
+  bytes?: { data: Uint8Array<ArrayBuffer>; type: string };
   token?: string;
   query?: Query;
 }
@@ -38,23 +41,23 @@ const toApiError = (status: number, parsed: unknown): ApiError => {
   return new ApiError(status, message, undefined, code, details);
 };
 
-const realRequest = async <T>({ method, path, body, token, query }: RequestOptions): Promise<T> => {
+const realRequest = async <T>({ method, path, body, bytes, token, query }: RequestOptions): Promise<T> => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const url = `${API_BASE_URL}${withQuery(path, query)}`;
+  const headers = {
+    ...CLIENT_HEADERS,
+    // An empty body with a JSON content type is a 400 on the API, so the header goes only with a body.
+    ...(bytes ? { 'Content-Type': bytes.type } : body ? { 'Content-Type': 'application/json' } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
 
-  let res: Response;
+  let res: Pick<Response, 'ok' | 'status' | 'json'>;
   try {
-    res = await fetch(`${API_BASE_URL}${withQuery(path, query)}`, {
-      method,
-      body: body ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-      headers: {
-        ...CLIENT_HEADERS,
-        // An empty body with a JSON content type is a 400 on the API, so the header goes only with a body.
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
+    // React Native's fetch cannot send binary bodies; expo/fetch can.
+    res = bytes
+      ? await expoFetch(url, { method, body: bytes.data, signal: controller.signal, headers })
+      : await fetch(url, { method, body: body ? JSON.stringify(body) : undefined, signal: controller.signal, headers });
   } catch (err) {
     throw err instanceof Error && err.name === 'AbortError' ? ApiError.timeout() : ApiError.network();
   } finally {
@@ -132,4 +135,7 @@ export const apiGet = <T>(path: string, token?: string, query?: Query): Promise<
 
 export const apiPatch = <T>(path: string, body: Json, token: string): Promise<T> => request<T>({ method: 'PATCH', path, body, token });
 
-export const apiDelete = <T>(path: string, token: string): Promise<T> => request<T>({ method: 'DELETE', path, token });
+export const apiDelete = <T>(path: string, token: string, body?: Json): Promise<T> => request<T>({ method: 'DELETE', path, body, token });
+
+export const apiPutBytes = <T>(path: string, bytes: NonNullable<RequestOptions['bytes']>, token: string): Promise<T> =>
+  request<T>({ method: 'PUT', path, bytes, token });

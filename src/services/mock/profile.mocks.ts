@@ -1,21 +1,17 @@
-import { ApiError } from '@/lib/api-error';
-import type { BlockedUser, NotificationPrefs, Profile } from '@/types/profile';
+import type { BlockedUser, NotificationPrefs, PublicProfileResponse } from '@/types/profile';
 import { defineMocks } from './registry';
 
-const others: Record<string, Profile> = {
-  'priya-nair': {
-    id: 'priya-nair',
-    name: 'Priya Nair',
-    username: 'priya.star',
-    bio: 'Teaching pottery since 2019. Batch 4 is running now.',
-    link: '',
-    posts: 38,
-    engagements: 112,
-    rating: 4.8,
-    memberSince: 'Mar 2025',
-    badges: ['user', 'vendor', 'trainer'],
-    email: '',
-  },
+/** The sample author in the mocked feed. Real usernames and ids go to the API. */
+const priya: PublicProfileResponse = {
+  id: 'priya-nair',
+  name: 'Priya Nair',
+  username: 'priya.star',
+  avatarUrl: null,
+  bio: 'Teaching pottery since 2019. Batch 4 is running now.',
+  link: null,
+  city: 'Kochi',
+  badges: { vendor: true, delivery: false },
+  memberSince: '2025-03-01T00:00:00.000Z',
 };
 
 let prefs: NotificationPrefs = { orders: true, messages: true, social: false, work: true, digest: false };
@@ -28,14 +24,7 @@ let blocked: BlockedUser[] = [
 const field = (body: Record<string, unknown> | undefined, key: string) => String(body?.[key] ?? '');
 
 defineMocks({
-  'POST /users/profile': {
-    mocked: true,
-    handle: ({ body }) => {
-      const found = others[field(body, 'userId')];
-      if (!found) throw new ApiError(404, 'User not found');
-      return { ...found };
-    },
-  },
+  'GET /v1/account/profiles/priya-nair': { mocked: true, handle: () => ({ ...priya }) },
 
   'GET /settings/notifications': { mocked: true, handle: () => ({ ...prefs }) },
 
@@ -74,6 +63,4 @@ defineMocks({
   'POST /account/export': { mocked: true, latencyMs: 600, handle: () => ({ message: 'We will email your data within 24 hours.' }) },
 
   'POST /account/pause': { mocked: true, handle: () => ({ message: 'Account paused' }) },
-
-  'POST /account/delete': { mocked: true, latencyMs: 600, handle: () => ({ message: 'Deletion scheduled' }) },
 });

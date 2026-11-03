@@ -1,4 +1,7 @@
 import {
+  dateFromIso,
+  formatDob,
+  isoFromDate,
   isOldEnough,
   isPasswordPairValid,
   isValidMobile,
@@ -7,7 +10,9 @@ import {
   mobileError,
   nameError,
   normalizeUsername,
+  latestDob,
   passwordError,
+  passwordRules,
   usernameError,
 } from '../validators';
 
@@ -53,6 +58,45 @@ describe('passwordError', () => {
 
   it('refuses the phone number inside the password', () => {
     expect(passwordError('a9876543210', '9876543210')).toMatch(/phone number/);
+  });
+});
+
+describe('passwordRules', () => {
+  const met = (password: string, mobile?: string) => passwordRules(password, mobile).map((rule) => rule.met);
+
+  it('ticks each rule on its own', () => {
+    expect(met('')).toEqual([false, false]);
+    expect(met('abcdefgh')).toEqual([true, false]);
+    expect(met('secret12')).toEqual([true, true]);
+    expect(met('s'.repeat(64) + '1')).toEqual([false, true]);
+  });
+
+  it('adds the phone rule only when the number is known', () => {
+    expect(met('secret12', '9876543210')).toEqual([true, true, true]);
+    expect(met('a9876543210', '9876543210')).toEqual([true, true, false]);
+  });
+
+  it('agrees with passwordError on what is valid', () => {
+    for (const password of ['secret12', 'abc1', 'abcdefgh', 'a9876543210']) {
+      expect(met(password, '9876543210').every(Boolean)).toBe(passwordError(password, '9876543210') === null);
+    }
+  });
+});
+
+describe('date of birth helpers', () => {
+  it('keeps the picked local day, whatever the time zone', () => {
+    expect(isoFromDate(new Date(2001, 7, 14, 23, 30))).toBe('2001-08-14');
+    expect(isoFromDate(dateFromIso('2001-01-05'))).toBe('2001-01-05');
+  });
+
+  it('formats a date of birth for the field', () => {
+    expect(formatDob('2001-08-14')).toBe('14 Aug 2001');
+  });
+
+  it('makes the 13th birthday the latest day to pick', () => {
+    const latest = latestDob(new Date(2026, 9, 31));
+    expect(isoFromDate(latest)).toBe('2013-10-31');
+    expect(isOldEnough(isoFromDate(latest), new Date('2026-10-31T12:00:00Z'))).toBe(true);
   });
 });
 
