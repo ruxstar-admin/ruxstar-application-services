@@ -12,10 +12,10 @@ export async function pickSquarePhoto(): Promise<ImagePicker.ImagePickerAsset | 
 }
 
 /** Shrinks the photo and re-saves it as JPEG, which also turns iPhone HEIC photos into something the API reads. */
-export async function toUploadJpeg(asset: ImagePicker.ImagePickerAsset): Promise<Uint8Array<ArrayBuffer>> {
+export async function toUploadJpeg(asset: ImagePicker.ImagePickerAsset, maxSide = MAX_SIDE): Promise<Uint8Array<ArrayBuffer>> {
   const context = ImageManipulator.manipulate(asset.uri);
-  if (Math.max(asset.width, asset.height) > MAX_SIDE) {
-    context.resize(asset.width >= asset.height ? { width: MAX_SIDE, height: null } : { width: null, height: MAX_SIDE });
+  if (Math.max(asset.width, asset.height) > maxSide) {
+    context.resize(asset.width >= asset.height ? { width: maxSide, height: null } : { width: null, height: maxSide });
   }
   const image = await context.renderAsync();
   const saved = await image.saveAsync({ compress: 0.85, format: SaveFormat.JPEG });

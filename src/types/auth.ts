@@ -14,13 +14,14 @@ export interface AuthUser {
   /** 512 x 512 WebP. Null until a photo is added. */
   avatarUrl: string | null;
   bio: string | null;
-  link: string | null;
   /** YYYY-MM-DD. */
   dob: string | null;
   gender: Gender | null;
   city: string | null;
   roles: RoleFlags;
   kyc: { base: string };
+  /** Posts that are up, and likes plus comments they have received. */
+  stats: { posts: number; engagements: number };
   createdAt: string;
 }
 

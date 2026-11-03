@@ -1,14 +1,19 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { WEBSITE_URL } from '@/constants/config';
 import { Brand, Spacing, Typography } from '@/constants/theme';
+import { ProfileChecklist, type ProfileStep } from '@/features/profile/components/ProfileChecklist';
 import { ProfileHeader } from '@/features/profile/components/ProfileHeader';
+import { ProfilePhotoSheet } from '@/features/profile/components/ProfilePhotoSheet';
+import { ProfilePosts } from '@/features/social/components/ProfilePosts';
+import { useFeedStore } from '@/features/social/stores/feed-store';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
@@ -22,6 +27,8 @@ const TABS = [
   { key: 'business', label: 'Business' },
 ] as const;
 
+const rise = (step: number) => FadeInDown.duration(360).delay(70 * step).springify().damping(18);
+
 export function ProfileScreen() {
   const router = useRouter();
   const token = useAuthToken();
@@ -31,44 +38,145 @@ export function ProfileScreen() {
   const { data, loading, error, reload } = useAsyncResource(() => ProfileService.getMe(token));
   useRefetchOnFocus(reload);
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('personal');
+  const [viewingPhoto, setViewingPhoto] = useState(false);
+  // Only a pull shows the spinner; focus refetches stay silent.
+  const [pulled, setPulled] = useState(false);
+  if (pulled && !loading) setPulled(false);
+  const [refreshes, setRefreshes] = useState(0);
+  const postsVersion = useFeedStore((s) => s.version);
+
+  const refresh = () => {
+    Feedback.tap();
+    setPulled(true);
+    setRefreshes((n) => n + 1);
+    reload();
+  };
+
+  const share = async () => {
+    if (!data) return;
+    Feedback.tap();
+    const url = `${WEBSITE_URL}/u/${data.username}`;
+    await Share.share({ message: `${name} on Ruxstar: ${url}`, title: name }).catch(() => undefined);
+  };
+
+  const openStep = (step: ProfileStep) => {
+    if (step === 'photo') setViewingPhoto(true);
+    else router.push({ pathname: '/(customer)/edit-profile', params: { focus: step } });
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.topBar}>
         <Text style={styles.title}>Profile</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Settings"
-          hitSlop={12}
-          onPress={() => {
-            Feedback.tap();
-            router.push('/(customer)/settings');
-          }}
-        >
-          <Ionicons name="settings-outline" size={24} color={Brand.text} />
-        </Pressable>
+        <View style={styles.topActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Saved posts"
+            hitSlop={12}
+            onPress={() => {
+              Feedback.tap();
+              router.push('/(customer)/saved');
+            }}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Ionicons name="bookmark-outline" size={23} color={Brand.text} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+            hitSlop={12}
+            onPress={() => {
+              Feedback.tap();
+              router.push('/(customer)/settings');
+            }}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Ionicons name="settings-outline" size={24} color={Brand.text} />
+          </Pressable>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={pulled && loading}
+            onRefresh={refresh}
+            tintColor={Brand.primarySoft}
+            colors={[Brand.primary]}
+            progressBackgroundColor={Brand.surface}
+          />
+        }
+      >
         <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={3}>
           {data ? (
             <>
-              <ProfileHeader profile={data} name={name} />
-              <PrimaryButton label="Edit profile" variant="outline" onPress={() => router.push('/(customer)/edit-profile')} />
-              {isVendor ? <PrimaryButton label="Open vendor portal" onPress={() => router.push('/(vendor)/dashboard')} /> : null}
-              {isPartner ? <PrimaryButton label="Open Ruxstar Partner app" onPress={() => router.push('/(partner)')} /> : null}
-              <SegmentedTabs options={TABS} value={tab} onChange={setTab} />
-              {tab === 'personal' ? (
-                <EmptyState icon="images-outline" title="No posts yet" message="Photos and posts you share will appear here." />
+              <ProfileHeader profile={data} name={name} editable onPressAvatar={() => setViewingPhoto(true)} />
+
+              <Animated.View entering={rise(3)} style={styles.actions}>
+                <View style={styles.grow}>
+                  <PrimaryButton label="Edit profile" variant="outline" onPress={() => router.push('/(customer)/edit-profile')} />
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Share profile"
+                  onPress={share}
+                  style={({ pressed }) => [styles.share, pressed && styles.sharePressed]}
+                >
+                  <Ionicons name="share-social-outline" size={22} color={Brand.text} />
+                </Pressable>
+              </Animated.View>
+
+              <Animated.View entering={rise(4)}>
+                <ProfileChecklist profile={data} onStep={openStep} />
+              </Animated.View>
+
+              {isVendor ? (
+                <PrimaryButton label="Open vendor portal" onPress={() => router.push('/(vendor)/dashboard')} />
               ) : (
-                <EmptyState
-                  icon="storefront-outline"
-                  title="No business yet"
-                  message="Businesses you run on Ruxstar will appear here."
-                  actionLabel={isVendor ? 'Open vendor portal' : 'Become a vendor'}
-                  onAction={() => router.push(isVendor ? '/(vendor)/dashboard' : '/(customer)/settings/verification')}
-                />
+                <PrimaryButton label="Become a vendor" variant="outline" onPress={() => router.push('/(customer)/settings/verification')} />
               )}
+              {isPartner ? <PrimaryButton label="Open Ruxstar Partner app" onPress={() => router.push('/(partner)')} /> : null}
+
+              <Animated.View entering={rise(5)} style={styles.tabs}>
+                {isVendor ? <SegmentedTabs options={TABS} value={tab} onChange={setTab} /> : null}
+                {!isVendor || tab === 'personal' ? (
+                  <ProfilePosts
+                    key={`personal-${postsVersion}-${refreshes}`}
+                    owner={data.id}
+                    kind="personal"
+                    empty={{
+                      icon: 'images-outline',
+                      title: 'No posts yet',
+                      message: 'Photos and posts you share will appear here.',
+                      actionLabel: 'Create a post',
+                      onAction: () => router.push('/(customer)/create-post'),
+                    }}
+                  />
+                ) : (
+                  <ProfilePosts
+                    key={`business-${postsVersion}-${refreshes}`}
+                    owner={data.id}
+                    kind="business"
+                    empty={{
+                      icon: 'storefront-outline',
+                      title: 'No business posts yet',
+                      message: 'Post offers and updates from the vendor portal.',
+                      actionLabel: 'Open vendor portal',
+                      onAction: () => router.push('/(vendor)/dashboard'),
+                    }}
+                  />
+                )}
+              </Animated.View>
+
+              <ProfilePhotoSheet
+                visible={viewingPhoto}
+                onClose={() => setViewingPhoto(false)}
+                name={name}
+                avatarUrl={data.avatarUrl}
+                onChanged={reload}
+              />
             </>
           ) : null}
         </AsyncBoundary>
@@ -81,5 +189,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Brand.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.three, paddingVertical: Spacing.three },
   title: { ...Typography.title, color: Brand.text },
+  topActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.four },
+  pressed: { opacity: 0.6 },
   content: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three },
+  actions: { flexDirection: 'row', gap: Spacing.two },
+  grow: { flex: 1 },
+  share: { width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: Brand.border, alignItems: 'center', justifyContent: 'center' },
+  sharePressed: { backgroundColor: Brand.surfaceAlt, transform: [{ scale: 0.94 }] },
+  tabs: { gap: Spacing.three },
 });

@@ -16,6 +16,7 @@ export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>)
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<unknown>(undefined);
+  const [hasMore, setHasMore] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>)
   const settle = useCallback((page: Page<T> | null, failure?: unknown, append = false) => {
     if (page) {
       cursorRef.current = page.nextCursor;
+      setHasMore(page.nextCursor !== null);
       setItems((prev) => (append ? [...prev, ...page.items] : page.items));
     }
     setError(failure);
@@ -71,5 +73,5 @@ export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>)
     setAttempt((n) => n + 1);
   }, []);
 
-  return { items, setItems, loading, refreshing, loadingMore, error, refresh, loadMore, retry };
+  return { items, setItems, loading, refreshing, loadingMore, hasMore, error, refresh, loadMore, retry };
 }

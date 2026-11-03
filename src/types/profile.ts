@@ -7,7 +7,6 @@ export interface Profile {
   name: string;
   username: string;
   bio: string;
-  link: string;
   avatarUrl?: string;
   posts: number;
   engagements: number;
@@ -29,14 +28,14 @@ export interface PublicProfileResponse {
   username: string;
   avatarUrl: string | null;
   bio: string | null;
-  link: string | null;
   city: string | null;
   badges: { vendor: boolean; delivery: boolean };
+  stats: { posts: number; engagements: number };
   memberSince: string;
 }
 
 /** The photo has its own calls (ProfileService.setPhoto / removePhoto). */
-export type ProfileUpdate = Partial<Pick<Profile, 'name' | 'username' | 'bio' | 'link' | 'email' | 'gender' | 'city'>>;
+export type ProfileUpdate = Partial<Pick<Profile, 'name' | 'username' | 'bio' | 'email' | 'gender' | 'city'>>;
 
 export interface Session {
   id: string;

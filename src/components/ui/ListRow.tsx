@@ -7,6 +7,8 @@ interface ListRowProps {
   title: string;
   subtitle?: string;
   icon?: keyof typeof Ionicons.glyphMap;
+  /** Replaces the icon, for example an avatar. */
+  leading?: React.ReactNode;
   /** Replaces the default chevron (e.g. a Switch or a value). */
   right?: React.ReactNode;
   onPress?: () => void;
@@ -14,11 +16,11 @@ interface ListRowProps {
 }
 
 /** Settings / menu row: optional icon, title + subtitle, trailing slot or chevron. Pressable only when `onPress` is given. */
-export function ListRow({ title, subtitle, icon, right, onPress, destructive }: ListRowProps) {
+export function ListRow({ title, subtitle, icon, leading, right, onPress, destructive }: ListRowProps) {
   const tint = destructive ? Brand.error : Brand.text;
   const content = (
     <>
-      {icon ? <Ionicons name={icon} size={22} color={tint} style={styles.icon} /> : null}
+      {leading ? <View style={styles.icon}>{leading}</View> : icon ? <Ionicons name={icon} size={22} color={tint} style={styles.icon} /> : null}
       <View style={styles.text}>
         <Text style={[styles.title, { color: tint }]}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}

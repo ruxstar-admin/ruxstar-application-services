@@ -65,6 +65,12 @@ function Dashboard({ summary, onToggleStore }: { summary: VendorSummary; onToggl
         <Stat label="Students" value={String(summary.students)} />
       </View>
 
+      <ListRow
+        icon="megaphone-outline"
+        title="Post as business"
+        subtitle="Offers and updates on your Business tab"
+        onPress={() => router.push({ pathname: '/(customer)/create-post', params: { kind: 'business' } })}
+      />
       <ListRow icon="wallet-outline" title="Earnings" subtitle="Ledger, payouts and withdrawals" onPress={() => router.push('/(vendor)/earnings')} />
       <ListRow icon="pricetags-outline" title="Coupons" subtitle="Discount codes you fund" onPress={() => router.push('/(vendor)/coupons')} />
       <ListRow icon="print-outline" title="Print orders" subtitle="Move orders through printing and delivery" onPress={() => router.push('/(vendor)/orders')} />

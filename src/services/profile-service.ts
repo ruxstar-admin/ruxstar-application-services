@@ -30,20 +30,19 @@ const badgesOf = ({ vendor, delivery }: { vendor: boolean; delivery: boolean }):
   ...(delivery ? ['delivery' as const] : []),
 ];
 
-/** Posts, engagements and rating arrive with the social module; until then they read as zero. */
+/** Rating arrives with reviews; until then it is null. */
 const toProfile = (user: AuthUser): Profile => ({
   id: user.id,
   name: user.name,
   username: user.username,
   avatarUrl: user.avatarUrl ?? undefined,
   bio: user.bio ?? '',
-  link: user.link ?? '',
   email: user.email ?? '',
   emailVerified: user.emailVerified,
   city: user.city ?? '',
   gender: user.gender ?? undefined,
-  posts: 0,
-  engagements: 0,
+  posts: user.stats?.posts ?? 0,
+  engagements: user.stats?.engagements ?? 0,
   rating: null,
   memberSince: monthYear(user.createdAt),
   badges: badgesOf(user.roles),
@@ -55,23 +54,21 @@ const fromPublic = (p: PublicProfileResponse): Profile => ({
   username: p.username,
   avatarUrl: p.avatarUrl ?? undefined,
   bio: p.bio ?? '',
-  link: p.link ?? '',
   email: '',
   emailVerified: false,
   city: p.city ?? '',
-  posts: 0,
-  engagements: 0,
+  posts: p.stats?.posts ?? 0,
+  engagements: p.stats?.engagements ?? 0,
   rating: null,
   memberSince: monthYear(p.memberSince),
   badges: badgesOf(p.badges),
 });
 
 /** Empty strings clear a field, which the API takes as null. */
-const toPatch = ({ email, bio, link, city, ...rest }: ProfileUpdate) => ({
+const toPatch = ({ email, bio, city, ...rest }: ProfileUpdate) => ({
   ...rest,
   ...(email !== undefined ? { email: email || null } : {}),
   ...(bio !== undefined ? { bio: bio || null } : {}),
-  ...(link !== undefined ? { link: link || null } : {}),
   ...(city !== undefined ? { city: city || null } : {}),
 });
 
@@ -92,6 +89,9 @@ export const ProfileService = {
   /** Someone's public profile, by username or user id. */
   getUser: async (token: string, ref: string) =>
     fromPublic(await apiGet<PublicProfileResponse>(`/v1/account/profiles/${encodeURIComponent(ref)}`, token)),
+  /** People whose username, or a word of whose name, starts with `q`; the newest members without `q`. Never includes you. */
+  search: async (token: string, q?: string) =>
+    (await apiGet<PublicProfileResponse[]>('/v1/account/profiles', token, { q })).map(fromPublic),
   /** A JPEG the app has already shrunk. The API crops it square and stores a WebP. */
   setPhoto: async (token: string, jpeg: Uint8Array<ArrayBuffer>) =>
     toProfile(await apiPutBytes<AuthUser>('/v1/account/me/photo', { data: jpeg, type: 'image/jpeg' }, token)),

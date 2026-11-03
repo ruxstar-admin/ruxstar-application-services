@@ -13,12 +13,24 @@ export interface Author {
   isVendor: boolean;
 }
 
+/** Business posts come from the vendor portal and show on the Business tab. */
+export type PostKind = 'personal' | 'business';
+
+/** Width and height let the card keep the photo's space before it loads. */
+export interface PostPhoto {
+  url: string;
+  width: number;
+  height: number;
+}
+
 export interface Post {
   id: string;
   author: Author;
+  kind: PostKind;
   text: string;
-  images: string[];
+  photos: PostPhoto[];
   createdAt: string;
+  editedAt: string | null;
   likes: number;
   comments: number;
   likedByMe: boolean;
@@ -31,6 +43,7 @@ export interface Comment {
   author: Author;
   text: string;
   createdAt: string;
+  mine: boolean;
 }
 
 export type NotificationKind = 'employment' | 'order' | 'class' | 'social';
@@ -44,6 +57,8 @@ export interface AppNotification {
   read: boolean;
   /** True for offers that still need Accept / Decline. */
   actionable: boolean;
+  /** Where tapping it goes. */
+  postId?: string;
 }
 
 export const SEARCH_SCOPES = [
@@ -61,4 +76,6 @@ export interface SearchResult {
   scope: SearchScope;
   title: string;
   subtitle: string;
+  /** People only: shown in place of the scope icon. */
+  avatarUrl?: string;
 }

@@ -8,9 +8,9 @@ const priya: PublicProfileResponse = {
   username: 'priya.star',
   avatarUrl: null,
   bio: 'Teaching pottery since 2019. Batch 4 is running now.',
-  link: null,
   city: 'Kochi',
   badges: { vendor: true, delivery: false },
+  stats: { posts: 0, engagements: 0 },
   memberSince: '2025-03-01T00:00:00.000Z',
 };
 

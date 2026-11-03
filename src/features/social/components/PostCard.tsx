@@ -3,6 +3,7 @@ import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
+import { WEBSITE_URL } from '@/constants/config';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { PostImages } from '@/features/social/components/PostImages';
 import { Feedback } from '@/lib/haptics';
@@ -46,7 +47,11 @@ function Action({ icon, label, color = Brand.textMuted, accessibilityLabel, onPr
 
 /** One feed post: author row, text, photos, and like / comment / share / save actions. Memoised for long lists. */
 export const PostCard = memo(function PostCard({ post, onLike, onSave, onOpenComments, onOpenMenu, onOpenAuthor }: PostCardProps) {
-  const share = () => Share.share({ message: `${post.author.name} on Ruxstar: ${post.text}` }).catch(() => undefined);
+  const share = () => {
+    const url = `${WEBSITE_URL}/p/${post.id}`;
+    const excerpt = post.text.length > 80 ? `${post.text.slice(0, 79)}…` : post.text;
+    Share.share({ message: excerpt ? `${post.author.name} on Ruxstar: ${excerpt}\n${url}` : `${post.author.name} on Ruxstar: ${url}` }).catch(() => undefined);
+  };
 
   return (
     <View style={styles.card}>
@@ -60,8 +65,9 @@ export const PostCard = memo(function PostCard({ post, onLike, onSave, onOpenCom
               </Text>
               {post.author.isVendor ? <Badge label="Store" tone="accent" /> : null}
             </View>
-            <Text style={styles.meta}>
+            <Text style={styles.meta} numberOfLines={1}>
               @{post.author.username} · {timeAgo(post.createdAt)}
+              {post.editedAt ? ' · Edited' : ''}
             </Text>
           </View>
         </Pressable>
@@ -71,7 +77,7 @@ export const PostCard = memo(function PostCard({ post, onLike, onSave, onOpenCom
       </View>
 
       {post.text ? <Text style={styles.text}>{post.text}</Text> : null}
-      <PostImages images={post.images} />
+      <PostImages photos={post.photos} />
 
       <View style={styles.actions}>
         <Action

@@ -30,10 +30,11 @@ async function position(): Promise<Location.LocationObjectCoords> {
 interface CityFieldProps {
   value: string;
   onChange: (city: string) => void;
+  autoFocus?: boolean;
 }
 
 /** Typed, or filled from the phone's location through the API (which names the map source). */
-export function CityField({ value, onChange }: CityFieldProps) {
+export function CityField({ value, onChange, autoFocus }: CityFieldProps) {
   const token = useAuthToken();
   const [locating, setLocating] = useState(false);
   const [found, setFound] = useState<string | null>(null);
@@ -70,6 +71,7 @@ export function CityField({ value, onChange }: CityFieldProps) {
         setFound(null);
         setProblem(null);
       }}
+      autoFocus={autoFocus}
       autoCapitalize="words"
       autoComplete="postal-address-locality"
       textContentType="addressCity"

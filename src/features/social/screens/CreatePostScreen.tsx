@@ -1,111 +1,173 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Badge } from '@/components/ui/Badge';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
 import { useFeedStore } from '@/features/social/stores/feed-store';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useDelayedFocus } from '@/hooks/use-delayed-focus';
+import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { SocialService } from '@/services/social-service';
+import type { PostKind } from '@/types/social';
 
 const MAX_LENGTH = 500;
 const MAX_IMAGES = 4;
+/** The API keeps the long side at 1440 px, so sending more is wasted upload time. */
+const UPLOAD_SIDE = 1440;
 
-/** Create a post (text + up to four photos), or edit the text of your own post when opened with an `id`. */
+/** A photo starts uploading as soon as it is picked, so Post is quick. */
+interface Draft {
+  uri: string;
+  status: 'uploading' | 'ready' | 'failed';
+  id?: string;
+  asset: ImagePicker.ImagePickerAsset;
+}
+
+/**
+ * Create a post (text and up to four photos), or edit the text of your own post when opened with an `id`.
+ * `kind=business` posts to the Business tab; the vendor portal opens it that way.
+ */
 export function CreatePostScreen() {
   const router = useRouter();
   const token = useAuthToken();
   const markFeedDirty = useFeedStore((s) => s.markDirty);
-  const { id, text: initialText } = useLocalSearchParams<{ id?: string; text?: string }>();
+  const { id, text: initialText, kind: kindParam } = useLocalSearchParams<{ id?: string; text?: string; kind?: PostKind }>();
   const editing = !!id;
+  const kind: PostKind = kindParam === 'business' ? 'business' : 'personal';
   const inputRef = useDelayedFocus<TextInput>();
 
   const [text, setText] = useState(initialText ?? '');
-  const [images, setImages] = useState<string[]>([]);
+  const [drafts, setDrafts] = useState<Draft[]>([]);
   const [saving, setSaving] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
 
-  const canSubmit = text.trim().length > 0 || images.length > 0;
+  const uploading = drafts.some((d) => d.status === 'uploading');
+  const broken = drafts.some((d) => d.status === 'failed');
+  const canSubmit = (text.trim().length > 0 || drafts.length > 0) && !uploading && !broken;
+
+  const update = (uri: string, changes: Partial<Draft>) => setDrafts((prev) => prev.map((d) => (d.uri === uri ? { ...d, ...changes } : d)));
+
+  const upload = async (draft: Draft) => {
+    update(draft.uri, { status: 'uploading' });
+    try {
+      const photo = await SocialService.uploadPhoto(token, await toUploadJpeg(draft.asset, UPLOAD_SIDE));
+      update(draft.uri, { status: 'ready', id: photo.id });
+    } catch {
+      update(draft.uri, { status: 'failed' });
+    }
+  };
 
   const addPhotos = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
-      selectionLimit: MAX_IMAGES - images.length,
-      quality: 0.7,
+      selectionLimit: MAX_IMAGES - drafts.length,
+      quality: 1,
     });
     if (result.canceled) return;
     Feedback.select();
-    setImages((prev) => [...prev, ...result.assets.map((asset) => asset.uri)].slice(0, MAX_IMAGES));
+    const known = new Set(drafts.map((d) => d.uri));
+    const added = result.assets
+      .filter((asset) => !known.has(asset.uri))
+      .slice(0, MAX_IMAGES - drafts.length)
+      .map((asset): Draft => ({ uri: asset.uri, asset, status: 'uploading' }));
+    setDrafts((prev) => [...prev, ...added]);
+    added.forEach(upload);
   };
 
   const submit = async () => {
     setSaving(true);
-    setFailed(false);
+    setFailure(null);
     try {
       if (editing) await SocialService.updatePost(token, id, text.trim());
-      else await SocialService.createPost(token, text.trim(), images);
+      else await SocialService.createPost(token, { text: text.trim(), mediaIds: drafts.map((d) => d.id!), kind });
       Feedback.success();
       markFeedDirty();
       router.back();
-    } catch {
+    } catch (err) {
       Feedback.error();
-      setFailed(true);
+      setFailure(err instanceof ApiError && err.status === 403 ? 'Only vendors can post to a business page.' : 'Could not post. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
+  const title = editing ? 'Edit post' : kind === 'business' ? 'New business post' : 'New post';
+
   return (
     <ScreenContainer
-      title={editing ? 'Edit post' : 'New post'}
-      footer={<PrimaryButton label={editing ? 'Save' : 'Post'} onPress={submit} disabled={!canSubmit} loading={saving} />}
+      title={title}
+      footer={
+        <PrimaryButton label={editing ? 'Save' : uploading ? 'Uploading photos…' : 'Post'} onPress={submit} disabled={!canSubmit} loading={saving} />
+      }
     >
+      {kind === 'business' && !editing ? <Badge label="Shows on your Business tab" tone="accent" /> : null}
       <TextInput
         ref={inputRef}
         style={styles.input}
         value={text}
         onChangeText={(value) => {
           setText(value);
-          setFailed(false);
+          setFailure(null);
         }}
-        placeholder="What is happening?"
+        placeholder={kind === 'business' ? 'Share an offer, new stock or an update' : 'What is happening?'}
         placeholderTextColor={Brand.textFaint}
         multiline
         maxLength={MAX_LENGTH}
         accessibilityLabel="Post text"
       />
-      <Text style={styles.count}>{`${text.length}/${MAX_LENGTH}`}</Text>
+      <Text style={[styles.count, text.length > MAX_LENGTH - 50 && styles.countNear]}>{`${text.length}/${MAX_LENGTH}`}</Text>
 
       {!editing ? (
         <>
-          <View style={styles.thumbs}>
-            {images.map((uri) => (
-              <View key={uri} style={styles.thumbWrap}>
-                <Image source={{ uri }} style={styles.thumb} contentFit="cover" />
+          <Animated.View layout={LinearTransition.springify().damping(18)} style={styles.thumbs}>
+            {drafts.map((draft) => (
+              <Animated.View key={draft.uri} entering={FadeIn.duration(180)} exiting={FadeOut.duration(140)} style={styles.thumbWrap}>
+                <Image source={{ uri: draft.uri }} style={styles.thumb} contentFit="cover" />
+                {draft.status !== 'ready' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={draft.status === 'failed' ? 'Upload failed. Tap to retry.' : 'Uploading'}
+                    disabled={draft.status === 'uploading'}
+                    onPress={() => upload(draft)}
+                    style={styles.overlay}
+                  >
+                    {draft.status === 'uploading' ? <ActivityIndicator color={Brand.text} /> : <Ionicons name="refresh" size={22} color={Brand.text} />}
+                  </Pressable>
+                ) : null}
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Remove photo"
+                  hitSlop={6}
                   style={styles.remove}
-                  onPress={() => setImages((prev) => prev.filter((u) => u !== uri))}
+                  onPress={() => {
+                    Feedback.tap();
+                    setDrafts((prev) => prev.filter((d) => d.uri !== draft.uri));
+                  }}
                 >
                   <Ionicons name="close" size={14} color={Brand.text} />
                 </Pressable>
-              </View>
+              </Animated.View>
             ))}
-          </View>
-          {images.length < MAX_IMAGES ? <TextLink label={images.length === 0 ? 'Add photos' : 'Add more photos'} onPress={addPhotos} /> : null}
+          </Animated.View>
+          {broken ? <Text style={styles.hint}>A photo did not upload. Tap it to try again, or remove it.</Text> : null}
+          {drafts.length < MAX_IMAGES ? (
+            <TextLink label={drafts.length === 0 ? 'Add photos' : `Add more photos (${MAX_IMAGES - drafts.length} left)`} onPress={addPhotos} />
+          ) : null}
         </>
       ) : null}
 
-      {failed ? <ErrorBanner message="Could not post. Please try again." onRetry={submit} /> : null}
+      {failure ? <ErrorBanner message={failure} onRetry={submit} /> : null}
     </ScreenContainer>
   );
 }
@@ -121,10 +183,18 @@ const styles = StyleSheet.create({
     borderColor: Brand.border,
     textAlignVertical: 'top',
   },
-  count: { ...Typography.caption, color: Brand.textFaint, alignSelf: 'flex-end' },
+  count: { ...Typography.caption, color: Brand.textFaint, alignSelf: 'flex-end', fontVariant: ['tabular-nums'] },
+  countNear: { color: Brand.warning },
   thumbs: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   thumbWrap: { width: 84, height: 84 },
   thumb: { width: 84, height: 84, borderRadius: Radius.sm },
+  overlay: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: Radius.sm,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   remove: {
     position: 'absolute',
     top: 4,
@@ -136,4 +206,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  hint: { ...Typography.caption, color: Brand.error },
 });

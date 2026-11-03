@@ -27,7 +27,7 @@ export function SignupSuccessScreen() {
           {firstName ? `You're in, ${firstName}` : "You're in"}
         </Animated.Text>
         <Animated.Text entering={rise(1)} style={styles.message}>
-          Your Ruxstar account is ready. Add a bio and link any time from your profile.
+          Your Ruxstar account is ready. Add a bio and your city any time from your profile.
         </Animated.Text>
       </View>
       <Animated.View entering={rise(2)} style={styles.actions}>

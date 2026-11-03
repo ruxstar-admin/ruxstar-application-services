@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Avatar } from '@/components/ui/Avatar';
+import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
@@ -21,10 +22,16 @@ import type { Comment, Post } from '@/types/social';
 
 const MAX_COMMENT = 300;
 
-function CommentRow({ comment }: { comment: Comment }) {
+/** Long-press deletes, when it is your comment or your post. */
+function CommentRow({ comment, onDelete }: { comment: Comment; onDelete?: (comment: Comment) => void }) {
   return (
-    <View style={styles.comment}>
-      <Avatar name={comment.author.name} size={32} />
+    <Pressable
+      onLongPress={onDelete ? () => onDelete(comment) : undefined}
+      delayLongPress={350}
+      accessibilityHint={onDelete ? 'Long press to delete' : undefined}
+      style={({ pressed }) => [styles.comment, pressed && onDelete && styles.commentPressed]}
+    >
+      <Avatar name={comment.author.name} uri={comment.author.avatarUrl} size={32} />
       <View style={styles.commentBody}>
         <Text style={styles.commentMeta}>
           <Text style={styles.commentName}>{comment.author.name}</Text>
@@ -32,7 +39,7 @@ function CommentRow({ comment }: { comment: Comment }) {
         </Text>
         <Text style={styles.commentText}>{comment.text}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -72,6 +79,25 @@ export function PostDetailScreen() {
     }
   };
 
+  const [removing, setRemoving] = useState<Comment | null>(null);
+  const [removingBusy, setRemovingBusy] = useState(false);
+  const removeComment = async () => {
+    if (!removing || !post.data) return;
+    setRemovingBusy(true);
+    try {
+      await SocialService.deleteComment(token, removing.id);
+      comments.setItems((prev) => prev.filter((c) => c.id !== removing.id));
+      setData({ ...post.data, comments: Math.max(0, post.data.comments - 1) });
+      Feedback.success();
+      setRemoving(null);
+    } catch {
+      Feedback.error();
+    } finally {
+      setRemovingBusy(false);
+    }
+  };
+  const canDelete = (comment: Comment) => comment.mine || !!post.data?.mine;
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={styles.flex} behavior="padding">
@@ -84,7 +110,19 @@ export function PostDetailScreen() {
             <FlatList
               data={comments.items}
               keyExtractor={(comment) => comment.id}
-              renderItem={({ item }) => <CommentRow comment={item} />}
+              renderItem={({ item }) => (
+                <CommentRow
+                  comment={item}
+                  onDelete={
+                    canDelete(item)
+                      ? (c) => {
+                          Feedback.press();
+                          setRemoving(c);
+                        }
+                      : undefined
+                  }
+                />
+              )}
               contentContainerStyle={styles.list}
               keyboardShouldPersistTaps="handled"
               onEndReached={comments.loadMore}
@@ -129,6 +167,15 @@ export function PostDetailScreen() {
         </View>
       </KeyboardAvoidingView>
       {sheets}
+      <ConfirmSheet
+        visible={!!removing}
+        title="Delete this comment?"
+        message="It will be removed for everyone."
+        confirmLabel="Delete"
+        loading={removingBusy}
+        onConfirm={removeComment}
+        onCancel={() => setRemoving(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -139,7 +186,8 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.three },
   list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.four },
   footer: { paddingVertical: Spacing.three },
-  comment: { flexDirection: 'row', gap: Spacing.two + 2, paddingVertical: Spacing.two },
+  comment: { flexDirection: 'row', gap: Spacing.two + 2, paddingVertical: Spacing.two, borderRadius: Radius.sm },
+  commentPressed: { backgroundColor: Brand.surfaceAlt },
   commentBody: { flex: 1, gap: 2 },
   commentMeta: { ...Typography.caption, color: Brand.textMuted },
   commentName: { ...Typography.caption, fontFamily: Typography.bodyStrong.fontFamily, color: Brand.text },

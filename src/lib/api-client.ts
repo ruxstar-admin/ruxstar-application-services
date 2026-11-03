@@ -24,6 +24,8 @@ interface RequestOptions {
   bytes?: { data: Uint8Array<ArrayBuffer>; type: string };
   token?: string;
   query?: Query;
+  /** Resolve to the whole `{ data, meta }` envelope instead of just `data`. */
+  envelope?: boolean;
 }
 
 const withQuery = (path: string, query?: Query) => {
@@ -41,7 +43,7 @@ const toApiError = (status: number, parsed: unknown): ApiError => {
   return new ApiError(status, message, undefined, code, details);
 };
 
-const realRequest = async <T>({ method, path, body, bytes, token, query }: RequestOptions): Promise<T> => {
+const realRequest = async <T>({ method, path, body, bytes, token, query, envelope }: RequestOptions): Promise<T> => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const url = `${API_BASE_URL}${withQuery(path, query)}`;
@@ -66,6 +68,7 @@ const realRequest = async <T>({ method, path, body, bytes, token, query }: Reque
 
   const parsed = await res.json().catch(() => ({}));
   if (!res.ok) throw toApiError(res.status, parsed);
+  if (envelope) return parsed as T;
   return (parsed && typeof parsed === 'object' && 'data' in parsed ? parsed.data : parsed) as T;
 };
 
@@ -132,6 +135,17 @@ export const apiPost = <T>(path: string, body?: Json, token?: string): Promise<T
   request<T>({ method: 'POST', path, body, token });
 
 export const apiGet = <T>(path: string, token?: string, query?: Query): Promise<T> => request<T>({ method: 'GET', path, token, query });
+
+/** A list endpoint: its items and the cursor for the next page (null on the last one). */
+export const apiGetPage = async <T>(path: string, token?: string, query?: Query): Promise<{ items: T[]; nextCursor: string | null }> => {
+  const { data, meta } = await request<{ data: T[]; meta?: { nextCursor?: string | null } }>({ method: 'GET', path, token, query, envelope: true });
+  return { items: data, nextCursor: meta?.nextCursor ?? null };
+};
+
+export const apiPut = <T>(path: string, token: string): Promise<T> => request<T>({ method: 'PUT', path, token });
+
+export const apiPostBytes = <T>(path: string, bytes: NonNullable<RequestOptions['bytes']>, token: string): Promise<T> =>
+  request<T>({ method: 'POST', path, bytes, token });
 
 export const apiPatch = <T>(path: string, body: Json, token: string): Promise<T> => request<T>({ method: 'PATCH', path, body, token });
 

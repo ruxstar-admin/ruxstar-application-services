@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -55,11 +55,19 @@ export function NotificationsScreen() {
         <FlatList
           data={list.items}
           keyExtractor={(n) => n.id}
-          renderItem={({ item }) => <NotificationRow notification={item} busy={busyId === item.id} onRespond={(n, accept) => respond(n.id, accept)} />}
+          renderItem={({ item }) => (
+            <NotificationRow
+              notification={item}
+              busy={busyId === item.id}
+              onRespond={(n, accept) => respond(n.id, accept)}
+              onOpen={item.postId ? (n) => router.push({ pathname: '/(customer)/post/[id]', params: { id: n.postId! } }) : undefined}
+            />
+          )}
+          refreshControl={<RefreshControl refreshing={list.refreshing} onRefresh={list.refresh} tintColor={Brand.primarySoft} />}
           contentContainerStyle={styles.list}
           onEndReached={list.loadMore}
           onEndReachedThreshold={0.5}
-          ListEmptyComponent={<EmptyState icon="notifications-off-outline" title="You are all caught up" message="Offers, orders and reminders show up here." />}
+          ListEmptyComponent={<EmptyState icon="notifications-off-outline" title="You are all caught up" message="Likes and comments on your posts show up here." />}
           ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={styles.footer} /> : null}
         />
       )}

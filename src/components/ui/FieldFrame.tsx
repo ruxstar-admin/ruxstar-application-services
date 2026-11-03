@@ -9,6 +9,8 @@ interface FieldFrameProps {
   error?: string;
   /** Plain text, or a richer helper such as the password rules. Replaced by the error while one shows. */
   hint?: React.ReactNode;
+  /** Right-aligned on the helper line, for example "42/160". */
+  count?: string;
   children: React.ReactNode;
 }
 
@@ -18,7 +20,7 @@ const SHAKE_STEP_MS = 45;
  * Label above the control, a reserved helper/error line below it (so showing an error never
  * pushes the layout), and a shake whenever an error newly appears. Shared by every text control.
  */
-export function FieldFrame({ label, error, hint, children }: FieldFrameProps) {
+export function FieldFrame({ label, error, hint, count, children }: FieldFrameProps) {
   const shake = useSharedValue(0);
 
   useEffect(() => {
@@ -54,8 +56,13 @@ export function FieldFrame({ label, error, hint, children }: FieldFrameProps) {
             {hint}
           </Text>
         ) : (
-          (hint ?? null)
+          (hint ?? <View style={styles.spacer} />)
         )}
+        {count ? (
+          <Text style={styles.count} maxFontSizeMultiplier={1.3} accessibilityLabel={`${count.replace('/', ' of ')} characters`}>
+            {count}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -67,4 +74,6 @@ const styles = StyleSheet.create({
   helperIcon: { marginRight: Spacing.one, marginTop: 1 },
   helper: { ...Typography.caption, flex: 1, color: Brand.textMuted },
   errorText: { color: Brand.error },
+  spacer: { flex: 1 },
+  count: { ...Typography.caption, color: Brand.textFaint, marginLeft: Spacing.two, fontVariant: ['tabular-nums'] },
 });

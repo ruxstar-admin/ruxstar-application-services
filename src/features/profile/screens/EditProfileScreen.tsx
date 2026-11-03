@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -16,6 +16,7 @@ import { CityField } from '@/features/profile/components/CityField';
 import { EmailVerifySheet } from '@/features/profile/components/EmailVerifySheet';
 import { ProfilePhotoPicker } from '@/features/profile/components/ProfilePhotoPicker';
 import { useProfilePhoto } from '@/features/profile/hooks/use-profile-photo';
+import { BIO_LINES, BIO_MAX, limitBio } from '@/features/profile/lib/bio';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { ApiError } from '@/lib/api-error';
@@ -35,10 +36,10 @@ const SAVE_ERRORS: Record<string, string> = {
   VALIDATION_FAILED: 'Some details are not valid. Check them and try again.',
 };
 
-/** The API takes only http and https links. */
-const isValidLink = (link: string) => link.length === 0 || /^https?:\/\/\S+\.\S+$/.test(link);
+/** `focus` opens the screen with that field active, for the Profile tab's "Add a bio" and "Add your city". */
+export type EditProfileFocus = 'bio' | 'city';
 
-function EditProfileForm({ profile }: { profile: Profile }) {
+function EditProfileForm({ profile, focus }: { profile: Profile; focus?: EditProfileFocus }) {
   const router = useRouter();
   const token = useAuthToken();
   const phone = useAuthStore((s) => s.mobile) ?? '';
@@ -48,7 +49,6 @@ function EditProfileForm({ profile }: { profile: Profile }) {
   const [name, setNameInput] = useState(savedName);
   const [username, setUsername] = useState(profile.username);
   const [bio, setBio] = useState(profile.bio);
-  const [link, setLink] = useState(profile.link);
   const [email, setEmail] = useState(profile.email);
   const [city, setCity] = useState(profile.city);
   const [gender, setGender] = useState<Gender | undefined>(profile.gender);
@@ -67,7 +67,6 @@ function EditProfileForm({ profile }: { profile: Profile }) {
     ...(name.trim() !== savedName ? { name: name.trim() } : {}),
     ...(usernameChanged ? { username } : {}),
     ...(bio.trim() !== profile.bio ? { bio: bio.trim() } : {}),
-    ...(link.trim() !== profile.link ? { link: link.trim() } : {}),
     ...(email.trim() !== profile.email ? { email: email.trim() } : {}),
     ...(city.trim() !== profile.city ? { city: city.trim() } : {}),
     ...(gender !== profile.gender ? { gender } : {}),
@@ -97,7 +96,7 @@ function EditProfileForm({ profile }: { profile: Profile }) {
       <Text style={styles.verifyText}>Verify</Text>
     </Pressable>
   );
-  const valid = isValidName(name) && isValidUsername(username) && usernameOk && isValidEmail(email.trim()) && isValidLink(link.trim()) && city.trim().length !== 1;
+  const valid = isValidName(name) && isValidUsername(username) && usernameOk && isValidEmail(email.trim()) && city.trim().length !== 1;
 
   const save = async () => {
     setSaving(true);
@@ -123,17 +122,18 @@ function EditProfileForm({ profile }: { profile: Profile }) {
 
       <InputField label="Name" value={name} onChangeText={setNameInput} autoCapitalize="words" error={nameError(name) ?? undefined} />
       <UsernameField value={username} onChange={setUsername} check={usernameCheck} />
-      <InputField label="Bio" value={bio} onChangeText={setBio} multiline maxLength={160} style={styles.bio} />
       <InputField
-        label="Link"
-        value={link}
-        onChangeText={setLink}
-        autoCapitalize="none"
-        keyboardType="url"
-        placeholder="https://"
-        error={isValidLink(link.trim()) ? undefined : 'Start the link with https://'}
+        label="Bio"
+        value={bio}
+        onChangeText={(text) => setBio(limitBio(text))}
+        multiline
+        maxLength={BIO_MAX}
+        showCount
+        hint={`Up to ${BIO_LINES} lines.`}
+        placeholder="What you do, teach or sell"
+        autoFocus={focus === 'bio'}
       />
-      <CityField value={city} onChange={setCity} />
+      <CityField value={city} onChange={setCity} autoFocus={focus === 'city'} />
 
       <Text style={styles.section}>Private information</Text>
       <Text style={styles.note}>Your email, phone and gender are never shown on your profile.</Text>
@@ -167,10 +167,11 @@ function EditProfileForm({ profile }: { profile: Profile }) {
 
 export function EditProfileScreen() {
   const token = useAuthToken();
+  const { focus } = useLocalSearchParams<{ focus?: EditProfileFocus }>();
   const { data, loading, error, reload } = useAsyncResource(() => ProfileService.getMe(token));
 
   return data ? (
-    <EditProfileForm profile={data} />
+    <EditProfileForm profile={data} focus={focus} />
   ) : (
     <ScreenContainer title="Edit profile">
       <AsyncBoundary loading={loading} error={error} hasData={false} onRetry={reload} skeletonRows={5}>
@@ -182,7 +183,6 @@ export function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   photo: { alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.two },
-  bio: { height: 96, paddingTop: Spacing.three, textAlignVertical: 'top' },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.three },
   note: { ...Typography.caption, color: Brand.textFaint },
   fieldLabel: { ...Typography.caption, color: Brand.textMuted },
