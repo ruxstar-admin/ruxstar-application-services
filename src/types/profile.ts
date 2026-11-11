@@ -14,6 +14,8 @@ export interface Profile {
   rating: number | null;
   memberSince: string;
   badges: ProfileBadge[];
+  /** Identity verified by Ruxstar: the tick next to the name. */
+  verified: boolean;
   email: string;
   emailVerified: boolean;
   gender?: Gender;
@@ -29,7 +31,7 @@ export interface PublicProfileResponse {
   avatarUrl: string | null;
   bio: string | null;
   city: string | null;
-  badges: { vendor: boolean; delivery: boolean };
+  badges: { verified: boolean; vendor: boolean; delivery: boolean };
   stats: { posts: number; engagements: number };
   memberSince: string;
 }

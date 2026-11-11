@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Brand, Spacing, Typography } from '@/constants/theme';
+import { VerifiedTick } from '@/features/kyc/components/VerifiedTick';
 import { Feedback } from '@/lib/haptics';
 import type { Profile, ProfileBadge } from '@/types/profile';
 
@@ -83,7 +84,10 @@ export function ProfileHeader({ profile, name, onPressAvatar, editable }: Profil
       </Animated.View>
 
       <Animated.View entering={rise(1)} style={styles.identity}>
-        <Text style={styles.name}>{name}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>{name}</Text>
+          {profile.verified ? <VerifiedTick size={20} /> : null}
+        </View>
         <Text style={styles.username}>@{profile.username}</Text>
         {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
         {profile.city ? (
@@ -125,6 +129,7 @@ const styles = StyleSheet.create({
   statValue: { ...Typography.title, color: Brand.text },
   statLabel: { ...Typography.caption, color: Brand.textMuted },
   identity: { gap: Spacing.one },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   name: { ...Typography.heading, color: Brand.text },
   username: { ...Typography.caption, color: Brand.primarySoft },
   bio: { ...Typography.body, color: Brand.textMuted, marginTop: Spacing.one },

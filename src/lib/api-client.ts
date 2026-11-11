@@ -142,7 +142,7 @@ export const apiGetPage = async <T>(path: string, token?: string, query?: Query)
   return { items: data, nextCursor: meta?.nextCursor ?? null };
 };
 
-export const apiPut = <T>(path: string, token: string): Promise<T> => request<T>({ method: 'PUT', path, token });
+export const apiPut = <T>(path: string, token: string, body?: Json): Promise<T> => request<T>({ method: 'PUT', path, body, token });
 
 export const apiPostBytes = <T>(path: string, bytes: NonNullable<RequestOptions['bytes']>, token: string): Promise<T> =>
   request<T>({ method: 'POST', path, bytes, token });

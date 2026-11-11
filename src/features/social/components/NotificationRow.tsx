@@ -10,6 +10,7 @@ const ICONS: Record<NotificationKind, keyof typeof Ionicons.glyphMap> = {
   order: 'cube-outline',
   class: 'alarm-outline',
   social: 'heart-outline',
+  account: 'shield-checkmark-outline',
 };
 
 interface NotificationRowProps {

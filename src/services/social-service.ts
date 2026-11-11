@@ -8,6 +8,7 @@ interface ApiAuthor {
   username: string;
   avatarUrl: string | null;
   vendor: boolean;
+  verified: boolean;
 }
 
 interface ApiPost {
@@ -34,10 +35,11 @@ interface ApiComment {
 
 interface ApiNotification {
   id: string;
-  kind: 'social';
+  kind: 'social' | 'account';
   title: string;
   body: string;
-  link: { screen: 'post'; id: string };
+  /** `verification` carries the track (base or vendor) as its id. */
+  link: { screen: 'post' | 'verification'; id: string };
   read: boolean;
   createdAt: string;
 }
@@ -50,6 +52,7 @@ const toAuthor = (a: ApiAuthor): Author => ({
   username: a.username,
   avatarUrl: a.avatarUrl ?? undefined,
   isVendor: a.vendor,
+  verified: a.verified,
 });
 
 const toPost = ({ author, media, counts, ...rest }: ApiPost): Post => ({
@@ -70,7 +73,7 @@ const toNotification = (n: ApiNotification): AppNotification => ({
   createdAt: n.createdAt,
   read: n.read,
   actionable: false,
-  postId: n.link.id,
+  ...(n.link.screen === 'post' ? { postId: n.link.id } : { verification: true }),
 });
 
 const mapPage = async <A, B>(page: Promise<Page<A>>, map: (a: A) => B): Promise<Page<B>> => {

@@ -1,22 +1,22 @@
-import { apiGet, apiPost } from '@/lib/api-client';
-import type { KycFlow, KycOverview, KycUploadKind } from '@/types/kyc';
+import { apiGet, apiPost, apiPostBytes, apiPut } from '@/lib/api-client';
+import type { KycOverview, RuxstarCard, VendorDetails } from '@/types/kyc';
 
-type Ok = { ok: boolean };
-
-/** Identity verification endpoints. None exist in the backend yet — all mocked (kyc.mocks.ts). */
+/** `/v1/kyc`. Every step answers with the whole overview, so the screen just replaces what it shows. */
 export const KycService = {
-  getStatus: (token: string) => apiGet<KycOverview>('/kyc/status', token),
+  getOverview: (token: string) => apiGet<KycOverview>('/v1/kyc', token),
 
-  aadhaarSendOtp: (token: string, aadhaar: string) =>
-    apiPost<{ message: string; otp?: string }>('/kyc/aadhaar/send-otp', { aadhaar }, token),
-  aadhaarVerifyOtp: (token: string, aadhaar: string, otp: string) => apiPost<Ok>('/kyc/aadhaar/verify-otp', { aadhaar, otp }, token),
+  /** A DigiLocker link to open in the browser. Starting again clears the PAN and selfie steps. */
+  startAadhaar: (token: string) => apiPost<{ url: string }>('/v1/kyc/base/aadhaar', undefined, token),
+  /** Safe to call repeatedly; the step stays `pending` until DigiLocker has the Aadhaar. */
+  checkAadhaar: (token: string) => apiPost<KycOverview>('/v1/kyc/base/aadhaar/check', undefined, token),
+  checkPan: (token: string, pan: string) => apiPost<KycOverview>('/v1/kyc/base/pan', { pan }, token),
+  /** A JPEG taken just now with the front camera. Checked for liveness, matched, never stored. */
+  sendSelfie: (token: string, jpeg: Uint8Array<ArrayBuffer>) =>
+    apiPostBytes<KycOverview>('/v1/kyc/base/face', { data: jpeg, type: 'image/jpeg' }, token),
+  submitIdentity: (token: string) => apiPost<KycOverview>('/v1/kyc/base/submit', undefined, token),
 
-  upload: (token: string, kind: KycUploadKind, uri: string) => apiPost<{ fileId: string }>('/kyc/upload', { kind, uri }, token),
+  saveVendor: (token: string, details: VendorDetails) => apiPut<KycOverview>('/v1/kyc/vendor', token, { ...details }),
+  submitVendor: (token: string) => apiPost<KycOverview>('/v1/kyc/vendor/submit', undefined, token),
 
-  saveBank: (token: string, accountNumber: string, ifsc: string) =>
-    apiPost<{ ok: boolean; last4: string }>('/kyc/bank', { accountNumber, ifsc }, token),
-  saveBusinessId: (token: string, businessId: string) => apiPost<Ok>('/kyc/vendor/business-id', { businessId }, token),
-  saveLicence: (token: string, licenceNumber: string) => apiPost<Ok>('/kyc/delivery/licence', { licenceNumber }, token),
-
-  submit: (token: string, flow: KycFlow) => apiPost<{ status: string }>('/kyc/submit', { flow }, token),
+  getCard: (token: string) => apiGet<RuxstarCard>('/v1/kyc/card', token),
 };

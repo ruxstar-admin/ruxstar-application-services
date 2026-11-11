@@ -11,6 +11,8 @@ export interface Author {
   avatarUrl?: string;
   /** Shows the "Store" tag next to the name. */
   isVendor: boolean;
+  /** Identity verified by Ruxstar: the tick next to the name. */
+  verified: boolean;
 }
 
 /** Business posts come from the vendor portal and show on the Business tab. */
@@ -46,7 +48,7 @@ export interface Comment {
   mine: boolean;
 }
 
-export type NotificationKind = 'employment' | 'order' | 'class' | 'social';
+export type NotificationKind = 'employment' | 'order' | 'class' | 'social' | 'account';
 
 export interface AppNotification {
   id: string;
@@ -59,6 +61,8 @@ export interface AppNotification {
   actionable: boolean;
   /** Where tapping it goes. */
   postId?: string;
+  /** A verification decision: tapping opens the Verification screen. */
+  verification?: boolean;
 }
 
 export const SEARCH_SCOPES = [

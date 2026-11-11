@@ -19,7 +19,10 @@ export interface AuthUser {
   gender: Gender | null;
   city: string | null;
   roles: RoleFlags;
-  kyc: { base: string };
+  /** none, pending, approved or rejected. Details at GET /v1/kyc. */
+  kyc: { base: string; vendor: string };
+  /** Issued when identity is approved. The full card is at GET /v1/kyc/card. */
+  card: { id: string } | null;
   /** Posts that are up, and likes plus comments they have received. */
   stats: { posts: number; engagements: number };
   createdAt: string;

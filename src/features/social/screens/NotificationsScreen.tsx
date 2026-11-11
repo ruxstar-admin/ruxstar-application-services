@@ -60,7 +60,13 @@ export function NotificationsScreen() {
               notification={item}
               busy={busyId === item.id}
               onRespond={(n, accept) => respond(n.id, accept)}
-              onOpen={item.postId ? (n) => router.push({ pathname: '/(customer)/post/[id]', params: { id: n.postId! } }) : undefined}
+              onOpen={
+                item.postId
+                  ? (n) => router.push({ pathname: '/(customer)/post/[id]', params: { id: n.postId! } })
+                  : item.verification
+                    ? () => router.push('/(customer)/settings/verification')
+                    : undefined
+              }
             />
           )}
           refreshControl={<RefreshControl refreshing={list.refreshing} onRefresh={list.refresh} tintColor={Brand.primarySoft} />}

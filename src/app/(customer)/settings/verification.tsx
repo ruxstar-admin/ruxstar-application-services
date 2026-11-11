@@ -1,3 +1,3 @@
-import { VerificationHubScreen } from '@/features/kyc/screens/VerificationHubScreen';
+import { VerificationScreen } from '@/features/kyc/screens/VerificationScreen';
 
-export default VerificationHubScreen;
+export default VerificationScreen;

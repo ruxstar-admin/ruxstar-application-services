@@ -1,5 +1,4 @@
 import './profile.mocks';
-import './kyc.mocks';
 import './social.mocks';
 import './chat.mocks';
 import './vendor.mocks';

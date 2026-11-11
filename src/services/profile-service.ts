@@ -46,6 +46,7 @@ const toProfile = (user: AuthUser): Profile => ({
   rating: null,
   memberSince: monthYear(user.createdAt),
   badges: badgesOf(user.roles),
+  verified: user.kyc.base === 'approved',
 });
 
 const fromPublic = (p: PublicProfileResponse): Profile => ({
@@ -62,6 +63,7 @@ const fromPublic = (p: PublicProfileResponse): Profile => ({
   rating: null,
   memberSince: monthYear(p.memberSince),
   badges: badgesOf(p.badges),
+  verified: p.badges.verified,
 });
 
 /** Empty strings clear a field, which the API takes as null. */

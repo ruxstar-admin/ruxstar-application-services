@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { WEBSITE_URL } from '@/constants/config';
 import { Brand, Spacing, Typography } from '@/constants/theme';
+import { VerifiedTick } from '@/features/kyc/components/VerifiedTick';
 import { PostImages } from '@/features/social/components/PostImages';
 import { Feedback } from '@/lib/haptics';
 import { compactCount, timeAgo } from '@/lib/time';
@@ -62,6 +63,7 @@ export const PostCard = memo(function PostCard({ post, onLike, onSave, onOpenCom
               <Text style={styles.name} numberOfLines={1}>
                 {post.author.name}
               </Text>
+              {post.author.verified ? <VerifiedTick /> : null}
               {post.author.isVendor ? <Badge label="Store" tone="accent" /> : null}
             </View>
             <Text style={styles.meta} numberOfLines={1}>
