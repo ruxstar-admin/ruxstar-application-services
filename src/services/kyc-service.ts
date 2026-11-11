@@ -1,5 +1,5 @@
-import { apiGet, apiPost, apiPostBytes, apiPut } from '@/lib/api-client';
-import type { KycOverview, RuxstarCard, VendorDetails } from '@/types/kyc';
+import { apiGet, apiPost, apiPostBytes } from '@/lib/api-client';
+import type { KycOverview, RuxstarCard } from '@/types/kyc';
 
 /** `/v1/kyc`. Every step answers with the whole overview, so the screen just replaces what it shows. */
 export const KycService = {
@@ -14,9 +14,6 @@ export const KycService = {
   sendSelfie: (token: string, jpeg: Uint8Array<ArrayBuffer>) =>
     apiPostBytes<KycOverview>('/v1/kyc/base/face', { data: jpeg, type: 'image/jpeg' }, token),
   submitIdentity: (token: string) => apiPost<KycOverview>('/v1/kyc/base/submit', undefined, token),
-
-  saveVendor: (token: string, details: VendorDetails) => apiPut<KycOverview>('/v1/kyc/vendor', token, { ...details }),
-  submitVendor: (token: string) => apiPost<KycOverview>('/v1/kyc/vendor/submit', undefined, token),
 
   getCard: (token: string) => apiGet<RuxstarCard>('/v1/kyc/card', token),
 };

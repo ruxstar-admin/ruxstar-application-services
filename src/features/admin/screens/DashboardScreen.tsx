@@ -53,8 +53,17 @@ export function DashboardScreen() {
                   icon="shield-checkmark-outline"
                   label="Verification to review"
                   value={data.kyc.waiting}
-                  caption={data.kyc.waiting === 0 ? 'Nothing waiting.' : `${data.kyc.identity} identity, ${data.kyc.vendor} vendor`}
+                  caption={data.kyc.waiting === 0 ? 'Nothing waiting.' : 'Identity checks waiting for a decision'}
                   href="/(admin)/(tabs)/kyc"
+                />
+              ) : null}
+              {data.businesses ? (
+                <Tile
+                  icon="storefront-outline"
+                  label="Businesses"
+                  value={data.businesses.total}
+                  caption={`${data.businesses.live} live${data.businesses.suspended > 0 ? `, ${data.businesses.suspended} on hold` : ''}`}
+                  href="/(admin)/businesses"
                 />
               ) : null}
               {data.reports ? (

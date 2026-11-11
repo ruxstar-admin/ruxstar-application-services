@@ -44,6 +44,16 @@ export const ACTION_LABEL: Record<string, string> = {
   'staff.update': 'Changed staff access',
   'staff.revoke': 'Removed from staff',
   'module_settings.update': 'Changed module settings',
+  'business.publish': 'Published a business',
+  'business.suspend': 'Put a business on hold',
+  'business.restore': 'Lifted a hold on a business',
+  'payout_method.set': 'Set where they get paid',
+};
+
+export const BUSINESS_STATE_LABEL: Record<'draft' | 'live' | 'suspended', string> = {
+  draft: 'Draft',
+  live: 'Live',
+  suspended: 'On hold',
 };
 
 export const AREA_LABEL: Record<string, string> = {
@@ -60,6 +70,7 @@ export const PERMISSION_AREA: Record<string, string> = {
   reports: 'Reported posts',
   users: 'People',
   modules: 'Modules',
+  businesses: 'Businesses',
   audit: 'Audit log',
 };
 

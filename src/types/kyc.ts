@@ -16,20 +16,6 @@ interface Decision {
   decidedAt: string | null;
 }
 
-export interface KycAddress {
-  line1: string;
-  line2: string | null;
-  city: string;
-  state: string;
-  pincode: string;
-}
-
-export interface KycBusiness {
-  name: string;
-  address: KycAddress;
-  gstin: { number: string; legalName: string | null; status: string | null } | null;
-}
-
 /** Identity: Aadhaar through DigiLocker, PAN matched to its name, then a live selfie matched to its photo. */
 export interface BaseCase extends Decision {
   steps: {
@@ -39,23 +25,12 @@ export interface BaseCase extends Decision {
   };
 }
 
-export interface VendorCase extends Decision {
-  business: KycBusiness | null;
-}
-
 /** GET /v1/kyc */
 export interface KycOverview {
   base: BaseCase;
-  vendor: VendorCase;
 }
 
-export interface VendorDetails {
-  businessName: string;
-  address: KycAddress;
-  gstin: string | null;
-}
-
-/** Issued when identity is approved. The masked numbers are for the owner only. */
+/** Issued when identity is approved, which also makes the person a vendor. The masked numbers are for the owner only. */
 export interface RuxstarCard {
   id: string;
   name: string;

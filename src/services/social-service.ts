@@ -38,8 +38,7 @@ interface ApiNotification {
   kind: 'social' | 'account';
   title: string;
   body: string;
-  /** `verification` carries the track (base or vendor) as its id. */
-  link: { screen: 'post' | 'verification'; id: string };
+  link: { screen: 'post' | 'verification' | 'business'; id: string };
   read: boolean;
   createdAt: string;
 }
@@ -73,7 +72,7 @@ const toNotification = (n: ApiNotification): AppNotification => ({
   createdAt: n.createdAt,
   read: n.read,
   actionable: false,
-  ...(n.link.screen === 'post' ? { postId: n.link.id } : { verification: true }),
+  ...(n.link.screen === 'post' ? { postId: n.link.id } : n.link.screen === 'business' ? { businessId: n.link.id } : { verification: true }),
 });
 
 const mapPage = async <A, B>(page: Promise<Page<A>>, map: (a: A) => B): Promise<Page<B>> => {

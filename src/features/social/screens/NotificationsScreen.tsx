@@ -63,9 +63,11 @@ export function NotificationsScreen() {
               onOpen={
                 item.postId
                   ? (n) => router.push({ pathname: '/(customer)/post/[id]', params: { id: n.postId! } })
-                  : item.verification
-                    ? () => router.push('/(customer)/settings/verification')
-                    : undefined
+                  : item.businessId
+                    ? (n) => router.push({ pathname: '/(vendor)/businesses/[id]', params: { id: n.businessId! } })
+                    : item.verification
+                      ? () => router.push('/(customer)/settings/verification')
+                      : undefined
               }
             />
           )}

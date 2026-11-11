@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +27,9 @@ const TABS = [
   { key: 'business', label: 'Business' },
 ] as const;
 
+/** The Ruxstar Card's champagne; the theme is frozen, so it lives here. */
+const VENDOR_GOLD = '#D6B36A';
+
 const rise = (step: number) => FadeInDown.duration(360).delay(70 * step).springify().damping(18);
 
 export function ProfileScreen() {
@@ -35,8 +38,14 @@ export function ProfileScreen() {
   const name = useAuthStore((s) => s.name) ?? '';
   const isVendor = useAuthStore((s) => s.roles.includes(ROLES.VENDOR));
   const isPartner = useAuthStore((s) => s.roles.includes(ROLES.DELIVERY));
+  const addRole = useAuthStore((s) => s.addRole);
   const { data, loading, error, reload } = useAsyncResource(() => ProfileService.getMe(token));
   useRefetchOnFocus(reload);
+  // Approval happens on the server, so the stored roles catch up from the profile without a fresh sign-in.
+  const verifiedVendor = !!data?.badges.includes('vendor');
+  useEffect(() => {
+    if (verifiedVendor) addRole(ROLES.VENDOR);
+  }, [verifiedVendor, addRole]);
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('personal');
   const [viewingPhoto, setViewingPhoto] = useState(false);
   // Only a pull shows the spinner; focus refetches stay silent.
@@ -118,19 +127,17 @@ export function ProfileScreen() {
                 <View style={styles.grow}>
                   <PrimaryButton label="Edit profile" variant="outline" onPress={() => router.push('/(customer)/edit-profile')} />
                 </View>
-                {isVendor ? null : (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Become a vendor"
-                    onPress={() => {
-                      Feedback.tap();
-                      router.push('/(customer)/settings/verification');
-                    }}
-                    style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
-                  >
-                    <Ionicons name="storefront-outline" size={22} color={Brand.text} />
-                  </Pressable>
-                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={isVendor ? 'Open vendor portal' : 'Get verified to open the vendor portal'}
+                  onPress={() => {
+                    Feedback.tap();
+                    router.push(isVendor ? '/(vendor)/dashboard' : '/(customer)/settings/verification');
+                  }}
+                  style={({ pressed }) => [styles.iconButton, isVendor && styles.vendorButton, pressed && styles.iconButtonPressed]}
+                >
+                  <Ionicons name={isVendor ? 'storefront' : 'storefront-outline'} size={22} color={isVendor ? VENDOR_GOLD : Brand.textFaint} />
+                </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Share profile"
@@ -204,6 +211,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: Spacing.two },
   grow: { flex: 1 },
   iconButton: { width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: Brand.border, alignItems: 'center', justifyContent: 'center' },
+  vendorButton: { borderColor: 'rgba(214,179,106,0.55)', backgroundColor: 'rgba(214,179,106,0.08)' },
   iconButtonPressed: { backgroundColor: Brand.surfaceAlt, transform: [{ scale: 0.94 }] },
   tabs: { gap: Spacing.three },
 });

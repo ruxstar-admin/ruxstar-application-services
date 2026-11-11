@@ -1,3 +1,3 @@
-import { VendorDashboardScreen } from '@/features/vendor/screens/VendorDashboardScreen';
+import { VendorHomeScreen } from '@/features/vendor/screens/VendorHomeScreen';
 
-export default VendorDashboardScreen;
+export default VendorHomeScreen;

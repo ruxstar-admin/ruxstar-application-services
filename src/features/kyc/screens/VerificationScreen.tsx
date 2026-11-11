@@ -23,7 +23,7 @@ import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { KycService } from '@/services/kyc-service';
 import { useAuthStore } from '@/stores/auth-store';
-import type { BaseCase, KycCaseStatus, KycOverview, KycStepStatus, RuxstarCard as Card, VendorCase } from '@/types/kyc';
+import type { BaseCase, KycCaseStatus, KycOverview, KycStepStatus, RuxstarCard as Card } from '@/types/kyc';
 
 const PAN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const EDITABLE: KycCaseStatus[] = ['not_started', 'in_progress', 'rejected'];
@@ -65,7 +65,7 @@ function Step({ n, title, status, active, children }: { n: number; title: string
   );
 }
 
-function CaseNote({ c, what }: { c: BaseCase | VendorCase; what: string }) {
+function CaseNote({ c, what }: { c: BaseCase; what: string }) {
   if (c.status === 'submitted') {
     return (
       <View style={styles.note}>
@@ -98,8 +98,9 @@ function CaseNote({ c, what }: { c: BaseCase | VendorCase; what: string }) {
 }
 
 /**
- * Identity then vendor verification on one screen. DigiLocker opens in the browser; coming back to
- * the app checks it. The selfie comes from the front camera only, since it is checked for liveness.
+ * Identity verification. DigiLocker opens in the browser; coming back to the app checks it. The
+ * selfie comes from the front camera only, since it is checked for liveness. Approval also opens
+ * the vendor portal.
  */
 export function VerificationScreen() {
   const router = useRouter();
@@ -116,17 +117,16 @@ export function VerificationScreen() {
   const [cameraDenied, setCameraDenied] = useState(false);
 
   const approved = data?.base.status === 'approved';
-  const vendorApproved = data?.vendor.status === 'approved';
   const aadhaarPending = data?.base.steps.aadhaar.status === 'pending';
 
   useEffect(() => {
     if (!approved) return;
     KycService.getCard(token).then(setCard, () => undefined);
-  }, [approved, vendorApproved, token]);
+  }, [approved, token]);
 
   useEffect(() => {
-    if (vendorApproved) addRole(ROLES.VENDOR);
-  }, [vendorApproved, addRole]);
+    if (approved) addRole(ROLES.VENDOR);
+  }, [approved, addRole]);
 
   /** Runs one step. A failed check still changed the case (tries, reason), so reload it either way. */
   const run = useCallback(
@@ -195,7 +195,7 @@ export function VerificationScreen() {
 
   return (
     <ScreenContainer title="Verification">
-      <Text style={styles.intro}>Verify once to get your Ruxstar Card and the Verified tick. Vendors verify their business next.</Text>
+      <Text style={styles.intro}>Verify once to get your Ruxstar Card, the Verified tick and the vendor portal.</Text>
       <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={4}>
         {data ? (
           <>
@@ -210,7 +210,6 @@ export function VerificationScreen() {
                 card ? (
                   <View style={styles.cardWrap}>
                     <RuxstarCard card={card} />
-                    <Text style={styles.muted}>Only you can see your masked Aadhaar and PAN. Others see the Verified tick on your profile and posts.</Text>
                   </View>
                 ) : (
                   <Skeleton height={220} radius={24} />
@@ -236,47 +235,9 @@ export function VerificationScreen() {
               )}
             </View>
 
-            <View style={styles.section}>
-              <View style={styles.sectionHead}>
-                <Ionicons name="storefront-outline" size={22} color={Brand.text} />
-                <Text style={styles.sectionTitle}>Vendor</Text>
-                {vendorApproved ? <Badge label="Verified vendor" tone="success" /> : null}
-              </View>
-              {!approved ? (
-                <Text style={styles.muted}>Selling on Ruxstar? Verify your identity first, then add your business here.</Text>
-              ) : vendorApproved ? (
-                <>
-                  <Text style={styles.muted}>
-                    {data.vendor.business?.name} is verified. You can post as your business and switch between Personal and Business on your profile.
-                  </Text>
-                  <PrimaryButton label="Open vendor portal" variant="outline" onPress={() => router.push('/(vendor)/dashboard')} />
-                </>
-              ) : (
-                <>
-                  <CaseNote c={data.vendor} what="vendor verification" />
-                  {data.vendor.business ? (
-                    <Text style={styles.muted}>
-                      {data.vendor.business.name} · {data.vendor.business.address.city}
-                      {data.vendor.business.gstin ? ` · GSTIN ${data.vendor.business.gstin.number}` : ''}
-                    </Text>
-                  ) : (
-                    <Text style={styles.muted}>Add your business name and address. GSTIN is optional; if you add it we check it with the GST network.</Text>
-                  )}
-                  {EDITABLE.includes(data.vendor.status) ? (
-                    <>
-                      <PrimaryButton
-                        label={data.vendor.business ? 'Edit business details' : 'Add business details'}
-                        variant={data.vendor.business ? 'outline' : 'primary'}
-                        onPress={() => router.push('/(customer)/kyc/vendor')}
-                      />
-                      {data.vendor.business ? (
-                        <PrimaryButton label="Send for review" loading={busy === 'vendor'} onPress={() => run('vendor', () => KycService.submitVendor(token))} />
-                      ) : null}
-                    </>
-                  ) : null}
-                </>
-              )}
-            </View>
+            {approved ? (
+              <PrimaryButton label="Open vendor portal" variant="outline" onPress={() => router.push('/(vendor)/dashboard')} />
+            ) : null}
 
             {failure ? <ErrorBanner message={failure} /> : null}
           </>

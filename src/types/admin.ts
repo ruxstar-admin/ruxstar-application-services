@@ -1,4 +1,6 @@
-/** The Ruxstar console, `/v1/ruxstar` (Architecture decisions 41 and 42). */
+/** The Ruxstar console, `/v1/ruxstar` (Architecture decisions 41 to 43). */
+
+import type { Business, BusinessModule, PayoutMethod } from './business';
 
 export type Permission =
   | 'kyc.view'
@@ -9,6 +11,8 @@ export type Permission =
   | 'users.manage'
   | 'modules.view'
   | 'modules.manage'
+  | 'businesses.view'
+  | 'businesses.manage'
   | 'audit.view';
 
 export interface Access {
@@ -22,9 +26,10 @@ export interface Access {
 
 /** A section is null when this person may not see it. */
 export interface Overview {
-  kyc: { waiting: number; identity: number; vendor: number } | null;
+  kyc: { waiting: number } | null;
   reports: { posts: number; reports: number } | null;
   users: { total: number; newThisWeek: number; suspended: number } | null;
+  businesses: { total: number; live: number; suspended: number } | null;
   modules: { module: ModuleName; live: boolean }[] | null;
   staff: { active: number } | null;
 }
@@ -36,7 +41,6 @@ export type CaseStatus = 'not_started' | 'in_progress' | ReviewStatus;
 
 export interface ReviewCase {
   id: string;
-  track: 'base' | 'vendor';
   status: CaseStatus;
   rejections: number;
   user: { id: string; name: string; username: string; phone: string; avatarUrl: string | null; memberSince: string };
@@ -48,12 +52,7 @@ export interface ReviewCase {
     nameMatch: string | null;
     livenessScore: number | null;
     faceMatchScore: number | null;
-  } | null;
-  business: {
-    name: string;
-    address: { line1: string; line2?: string | null; city: string; state: string; pincode: string };
-    gstin: { number: string; status?: string | null; legalName?: string | null } | null;
-  } | null;
+  };
   submittedAt: string | null;
   review: { decision: 'approved' | 'rejected'; reason: string | null; at: string } | null;
 }
@@ -102,7 +101,7 @@ export interface AccountRow {
   avatarUrl: string | null;
   status: AccountStatus;
   roles: AccountRoles;
-  kyc: { base: string; vendor: string };
+  kyc: { base: string };
   createdAt: string;
 }
 
@@ -130,6 +129,35 @@ export interface StaffMember {
   status: 'active' | 'revoked';
   grantedAt: string;
   updatedAt: string;
+}
+
+// Vendors' businesses.
+
+export type BusinessState = 'draft' | 'live' | 'suspended';
+
+export interface BusinessOwner {
+  id: string;
+  name: string;
+  username: string;
+  phone: string;
+  avatarUrl: string | null;
+  status: AccountStatus;
+}
+
+export interface BusinessRow {
+  business: Business;
+  owner: BusinessOwner | null;
+}
+
+export interface BusinessCase extends BusinessRow {
+  payoutMethod: PayoutMethod | null;
+  suspendedBy: { id: string; name: string } | null;
+}
+
+export interface BusinessFilter {
+  q?: string;
+  module?: BusinessModule;
+  state?: BusinessState;
 }
 
 // Modules.

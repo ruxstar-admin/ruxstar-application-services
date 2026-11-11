@@ -51,7 +51,7 @@ function CaseDetail({ c, onDecided }: { c: ReviewCase; onDecided: (done: ReviewC
   const [busy, setBusy] = useState<'approve' | 'reject' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const keys = useRef({ approve: newIdempotencyKey(), reject: newIdempotencyKey() });
-  const { identity: id, business } = c;
+  const { identity: id } = c;
 
   const decide = async (kind: 'approve' | 'reject', reason = '') => {
     setBusy(kind);
@@ -75,27 +75,13 @@ function CaseDetail({ c, onDecided }: { c: ReviewCase; onDecided: (done: ReviewC
       <Facts>
         <Fact label="Phone" value={c.user.phone} />
         <Fact label="Member since" value={shortDate(c.user.memberSince)} />
-        {id ? (
-          <>
-            <Fact label="Name on Aadhaar" value={id.aadhaarName ?? '—'} warn={!!id.aadhaarName && id.aadhaarName.toLowerCase() !== c.user.name.toLowerCase()} />
-            <Fact label="Aadhaar" value={id.aadhaarLast4 ? `XXXX ${id.aadhaarLast4}` : '—'} />
-            <Fact label="PAN" value={id.panMasked ?? '—'} />
-            <Fact label="Name on PAN" value={id.panName ?? '—'} />
-            <Fact label="Name match" value={id.nameMatch ? (MATCH[id.nameMatch] ?? id.nameMatch) : '—'} warn={id.nameMatch !== 'DIRECT_MATCH'} />
-            <Fact label="Liveness" value={percent(id.livenessScore)} warn={(id.livenessScore ?? 0) < 0.8} />
-            <Fact label="Face match" value={percent(id.faceMatchScore)} warn={(id.faceMatchScore ?? 0) < 0.8} />
-          </>
-        ) : null}
-        {business ? (
-          <>
-            <Fact label="Business" value={business.name} />
-            <Fact label="GSTIN" value={business.gstin ? `${business.gstin.number}${business.gstin.status ? ` (${business.gstin.status})` : ''}` : 'Not given'} />
-            <Fact
-              label="Address"
-              value={[business.address.line1, business.address.line2, business.address.city, business.address.state, business.address.pincode].filter(Boolean).join(', ')}
-            />
-          </>
-        ) : null}
+        <Fact label="Name on Aadhaar" value={id.aadhaarName ?? '—'} warn={!!id.aadhaarName && id.aadhaarName.toLowerCase() !== c.user.name.toLowerCase()} />
+        <Fact label="Aadhaar" value={id.aadhaarLast4 ? `XXXX ${id.aadhaarLast4}` : '—'} />
+        <Fact label="PAN" value={id.panMasked ?? '—'} />
+        <Fact label="Name on PAN" value={id.panName ?? '—'} />
+        <Fact label="Name match" value={id.nameMatch ? (MATCH[id.nameMatch] ?? id.nameMatch) : '—'} warn={id.nameMatch !== 'DIRECT_MATCH'} />
+        <Fact label="Liveness" value={percent(id.livenessScore)} warn={(id.livenessScore ?? 0) < 0.8} />
+        <Fact label="Face match" value={percent(id.faceMatchScore)} warn={(id.faceMatchScore ?? 0) < 0.8} />
       </Facts>
 
       {c.review ? (
@@ -167,7 +153,7 @@ function Queue({ status }: { status: ReviewStatus }) {
               name={c.user.name}
               avatarUrl={c.user.avatarUrl}
               title={c.user.name || 'No name'}
-              subtitle={`@${c.user.username} · ${c.track === 'base' ? 'Identity' : 'Vendor'}${c.submittedAt ? ` · ${timeAgo(c.submittedAt)}` : ''}`}
+              subtitle={`@${c.user.username}${c.submittedAt ? ` · ${timeAgo(c.submittedAt)}` : ''}`}
               right={<Badge label={label} tone={tone} />}
               onPress={() => setOpen(expanded ? null : c.id)}
             />

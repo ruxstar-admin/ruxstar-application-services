@@ -36,6 +36,9 @@ export function MoreScreen() {
         {allows(access, 'modules.view') ? (
           <ListRow icon="apps-outline" title="Modules" subtitle="Live, new vendors, delivery and commission" onPress={() => router.push('/(admin)/modules')} />
         ) : null}
+        {allows(access, 'businesses.view') ? (
+          <ListRow icon="storefront-outline" title="Businesses" subtitle="Every vendor's businesses, and holds" onPress={() => router.push('/(admin)/businesses')} />
+        ) : null}
         {allows(access, 'audit.view') ? <ListRow icon="time-outline" title="Audit log" subtitle="Every change, newest first" onPress={() => router.push('/(admin)/audit')} /> : null}
 
         <Section>Your account</Section>

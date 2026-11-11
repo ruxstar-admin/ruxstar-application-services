@@ -16,10 +16,13 @@ Dev component gallery: open the deep link `<scheme>://gallery` (dev builds only)
 |---|---|
 | Signup (phone → OTP → name/password), login (password / OTP), logout | **Real** backend endpoints |
 | Forgot password, username, consent, profile, settings, sessions, notification prefs, blocked users, report | **Mocked** |
-| Identity / vendor / delivery verification (KYC) | **Mocked** |
+| Identity verification (KYC), Ruxstar Card | **Real** (Cashfree sandbox); identity approval also makes you a vendor |
+| Delivery verification | **Mocked** |
 | Feed, posts, comments, search, notifications | **Mocked** |
 | Messages, groups, communities | **Mocked** (polling transport) |
-| Vendor portal, employment, audit log | **Mocked** |
+| Vendor portal home, businesses, payout method and payments | **Real** (DECISIONS 30) |
+| Vendor module screens (orders, events, coaching, stays), employment | **Mocked** |
+| Ruxstar console, including its audit log | **Real** |
 | Print-on-demand, Events, Coaching, PG/hostel | **Mocked** |
 | Payments (Cashfree), ledger, payouts, coupons, cancel/refund | **Mocked** |
 | Delivery partner | **Mocked** |

@@ -6,6 +6,9 @@ import type {
   AccountStatus,
   AuditEntry,
   AuditFilter,
+  BusinessCase,
+  BusinessFilter,
+  BusinessRow,
   ModuleName,
   ModulePatch,
   ModuleSettings,
@@ -57,6 +60,14 @@ export const AdminService = {
   modules: (token: string) => apiGet<ModuleSettings[]>('/v1/ruxstar/modules', token),
   updateModule: (token: string, module: ModuleName, patch: ModulePatch, key: string) =>
     apiPatch<ModuleSettings>(`/v1/ruxstar/modules/${module}`, { ...patch }, token, keyed(key)),
+
+  businesses: (token: string, filter: BusinessFilter, cursor?: string) =>
+    apiGetPage<BusinessRow>('/v1/ruxstar/businesses', token, { ...filter, q: filter.q?.trim() || undefined, cursor }),
+  getBusiness: (token: string, id: string) => apiGet<BusinessCase>(`/v1/ruxstar/businesses/${id}`, token),
+  /** The vendor is told the reason. */
+  holdBusiness: (token: string, id: string, reason: string, key: string) =>
+    apiPost<BusinessCase>(`/v1/ruxstar/businesses/${id}/suspend`, { reason }, token, keyed(key)),
+  restoreBusiness: (token: string, id: string, key: string) => apiPost<BusinessCase>(`/v1/ruxstar/businesses/${id}/restore`, undefined, token, keyed(key)),
 
   audit: (token: string, filter: AuditFilter, cursor?: string) => apiGetPage<AuditEntry>('/v1/ruxstar/audit', token, { ...filter, cursor }),
 };

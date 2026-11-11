@@ -149,7 +149,6 @@ export function AccountScreen({ id }: { id: string }) {
                 <Fact label="Member since" value={shortDate(user.createdAt)} />
                 <Fact label="Ruxstar Card" value={user.card ?? '—'} />
                 <Fact label="Identity check" value={KYC_LABEL[user.kyc.base] ?? user.kyc.base} />
-                <Fact label="Vendor check" value={KYC_LABEL[user.kyc.vendor] ?? user.kyc.vendor} />
                 <Fact label="Posts" value={String(user.stats.posts)} />
                 <Fact label="Signed in on" value={user.sessions === 1 ? '1 device' : `${user.sessions} devices`} />
                 <Fact label="Open reports on posts" value={String(user.openReports)} warn={user.openReports > 0} />
