@@ -26,6 +26,13 @@ interface RequestOptions {
   query?: Query;
   /** Resolve to the whole `{ data, meta }` envelope instead of just `data`. */
   envelope?: boolean;
+  /** Sent as `Idempotency-Key`. Reuse the same key when retrying the same action, so it is applied once. */
+  idempotencyKey?: string;
+}
+
+/** Extra options for writes. */
+export interface WriteOptions {
+  idempotencyKey?: string;
 }
 
 const withQuery = (path: string, query?: Query) => {
@@ -43,7 +50,7 @@ const toApiError = (status: number, parsed: unknown): ApiError => {
   return new ApiError(status, message, undefined, code, details);
 };
 
-const realRequest = async <T>({ method, path, body, bytes, token, query, envelope }: RequestOptions): Promise<T> => {
+const realRequest = async <T>({ method, path, body, bytes, token, query, envelope, idempotencyKey }: RequestOptions): Promise<T> => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const url = `${API_BASE_URL}${withQuery(path, query)}`;
@@ -52,6 +59,7 @@ const realRequest = async <T>({ method, path, body, bytes, token, query, envelop
     // An empty body with a JSON content type is a 400 on the API, so the header goes only with a body.
     ...(bytes ? { 'Content-Type': bytes.type } : body ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
   };
 
   let res: Pick<Response, 'ok' | 'status' | 'json'>;
@@ -131,8 +139,8 @@ const request = async <T>(options: RequestOptions): Promise<T> => {
   }
 };
 
-export const apiPost = <T>(path: string, body?: Json, token?: string): Promise<T> =>
-  request<T>({ method: 'POST', path, body, token });
+export const apiPost = <T>(path: string, body?: Json, token?: string, options?: WriteOptions): Promise<T> =>
+  request<T>({ method: 'POST', path, body, token, ...options });
 
 export const apiGet = <T>(path: string, token?: string, query?: Query): Promise<T> => request<T>({ method: 'GET', path, token, query });
 
@@ -142,14 +150,20 @@ export const apiGetPage = async <T>(path: string, token?: string, query?: Query)
   return { items: data, nextCursor: meta?.nextCursor ?? null };
 };
 
-export const apiPut = <T>(path: string, token: string, body?: Json): Promise<T> => request<T>({ method: 'PUT', path, body, token });
+export const apiPut = <T>(path: string, token: string, body?: Json, options?: WriteOptions): Promise<T> =>
+  request<T>({ method: 'PUT', path, body, token, ...options });
 
 export const apiPostBytes = <T>(path: string, bytes: NonNullable<RequestOptions['bytes']>, token: string): Promise<T> =>
   request<T>({ method: 'POST', path, bytes, token });
 
-export const apiPatch = <T>(path: string, body: Json, token: string): Promise<T> => request<T>({ method: 'PATCH', path, body, token });
+export const apiPatch = <T>(path: string, body: Json, token: string, options?: WriteOptions): Promise<T> =>
+  request<T>({ method: 'PATCH', path, body, token, ...options });
 
-export const apiDelete = <T>(path: string, token: string, body?: Json): Promise<T> => request<T>({ method: 'DELETE', path, body, token });
+export const apiDelete = <T>(path: string, token: string, body?: Json, options?: WriteOptions): Promise<T> =>
+  request<T>({ method: 'DELETE', path, body, token, ...options });
+
+/** A fresh `Idempotency-Key`: one per user action, kept for that action's retries. */
+export const newIdempotencyKey = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}-${Math.random().toString(36).slice(2, 12)}`;
 
 export const apiPutBytes = <T>(path: string, bytes: NonNullable<RequestOptions['bytes']>, token: string): Promise<T> =>
   request<T>({ method: 'PUT', path, bytes, token });

@@ -59,7 +59,7 @@ Release checklist: gates green → `npx expo-doctor` → bump version → `eas b
 - **Backend-owned, not in the app:** login lockout, session/device registration, event waitlist 24 h claim, whole-batch cancel refunds, admin force-refund, weekly settlement run, Shadowfax / vendor-staff delivery sources, commission rates (mock values: POD 8 %, Events 10 %, Coaching 12 %, PG 6 %).
 - **Parked by the scope review:** delivery radius, offer timer, proof of delivery.
 - **Not verified on a device:** every screen was built and checked with typecheck, lint and 150+ unit/mock tests, but has not been run on a phone by the author. Start QA with the flows in section 4.
-- **Out of scope by decision:** creator routes, general commerce, restaurants, admin and staff in the app.
+- **Out of scope by decision:** creator routes, general commerce, restaurants. (Admin and staff were out until 11 Nov 2026; they now get the console only, DECISIONS 29.)
 
 ## 7. Handover checklist (from the 17 Oct notes)
 Source ownership and documentation (this folder) · deployment instructions (section 5) · architecture (ARCHITECTURE.md) · API contract status (section 2 + API_CONTRACTS.md) · decisions (DECISIONS.md) · work history (LOG.md). Warranty, support SLAs and the maintenance proposal are commercial terms tracked in DELIVERABLES.md.

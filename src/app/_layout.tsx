@@ -26,8 +26,10 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-/** Every signed-in user lands in the user app; vendors enter their portal from Profile (roles stack on one account). */
+/** Signed-in users land in the user app; vendors enter their portal from Profile (roles stack on one account). */
 const HOME = '/(customer)/(tabs)';
+/** Admins and Ruxstar staff get only the console (decision 42). */
+const CONSOLE = '/(admin)/(tabs)';
 
 /** Renderless — controls all navigation after app start. See CLAUDE.md §6. */
 function AuthGuard() {
@@ -53,10 +55,25 @@ function AuthGuard() {
     const inCustomerGroup = segments[0] === '(customer)';
     const inVendorGroup = segments[0] === '(vendor)';
     const inPartnerGroup = segments[0] === '(partner)';
-    const inNamedGroup = inAuthGroup || inCustomerGroup || inVendorGroup || inPartnerGroup;
+    const inAdminGroup = segments[0] === '(admin)';
+    const inNamedGroup = inAuthGroup || inCustomerGroup || inVendorGroup || inPartnerGroup || inAdminGroup;
+    const team = roles.includes(ROLES.ADMIN) || roles.includes(ROLES.RUXSTAR_STAFF);
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/welcome');
+      return;
+    }
+
+    if (isAuthenticated && team) {
+      if (!inAdminGroup) {
+        consumePendingLoginRoute();
+        router.replace(CONSOLE as never);
+      }
+      return;
+    }
+
+    if (isAuthenticated && inAdminGroup) {
+      router.replace(HOME as never);
       return;
     }
 
