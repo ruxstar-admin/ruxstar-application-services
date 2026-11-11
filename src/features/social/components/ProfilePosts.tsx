@@ -13,6 +13,9 @@ import { usePaginated } from '@/hooks/use-paginated';
 import { SocialService } from '@/services/social-service';
 import type { Post, PostKind } from '@/types/social';
 
+/** The author is the profile already on screen. */
+const stayHere = () => undefined;
+
 interface ProfilePostsProps {
   /** Username or user id. */
   owner: string;
@@ -37,6 +40,7 @@ export function ProfilePosts({ owner, kind, empty }: ProfilePostsProps) {
   );
   const { toggleLike, toggleSave } = usePostActions(patch);
   const { openMenu, sheets } = usePostMenu({ onRemoved: (post) => setItems((prev) => prev.filter((p) => p.id !== post.id)) });
+  const openComments = useCallback((p: Post) => router.push({ pathname: '/(customer)/post/[id]', params: { id: p.id } }), [router]);
 
   if (list.loading) {
     return (
@@ -66,9 +70,9 @@ export function ProfilePosts({ owner, kind, empty }: ProfilePostsProps) {
           post={post}
           onLike={toggleLike}
           onSave={toggleSave}
-          onOpenComments={(p) => router.push({ pathname: '/(customer)/post/[id]', params: { id: p.id } })}
+          onOpenComments={openComments}
           onOpenMenu={openMenu}
-          onOpenAuthor={() => undefined}
+          onOpenAuthor={stayHere}
         />
       ))}
       {list.hasMore ? (

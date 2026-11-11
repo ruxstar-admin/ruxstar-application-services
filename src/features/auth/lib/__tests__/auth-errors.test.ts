@@ -59,6 +59,11 @@ describe('toAuthError', () => {
     expect(toAuthError(api(403, 'FORBIDDEN'), 'login-password').retryable).toBe(false);
   });
 
+  it('says how long to wait when rate limited', () => {
+    expect(toAuthError(api(429, 'RATE_LIMITED', [{ message: 'x', retryAfterSeconds: 45 }]), 'login-password').message).toMatch(/45 seconds/);
+    expect(toAuthError(api(429, 'RATE_LIMITED'), 'login-password').message).toMatch(/a few minutes/);
+  });
+
   it('falls back to a generic message for non-API errors', () => {
     expect(toAuthError(new TypeError('boom'), 'login-password').target).toBe('form');
   });

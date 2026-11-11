@@ -16,7 +16,7 @@ import { AuthService } from '@/services/auth-service';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAuthRequest } from '@/features/auth/hooks/use-auth-request';
 import { useUsernameCheck } from '@/features/auth/hooks/use-username-check';
-import { MIN_AGE_YEARS, isOldEnough, isValidEmail, nameError, passwordError, usernameError } from '@/features/auth/lib/validators';
+import { MAX_NAME_LENGTH, MIN_AGE_YEARS, isOldEnough, isValidEmail, nameError, passwordError, usernameError } from '@/features/auth/lib/validators';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { Feedback } from '@/lib/haptics';
 import { openLegal } from '@/lib/legal';
@@ -150,6 +150,7 @@ export function RegisterDetailsScreen() {
           onChangeText={onChange(setName)}
           onBlur={() => setNameTouched(true)}
           placeholder="Enter your full name"
+          maxLength={MAX_NAME_LENGTH}
           autoComplete="name"
           textContentType="name"
           autoCapitalize="words"

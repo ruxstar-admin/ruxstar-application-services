@@ -47,7 +47,6 @@ export function AuthFormLayout({ title, onBack, actions, scrollRef, children }: 
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
-          automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
         >
           <Animated.View entering={FadeInUp.duration(350)} style={styles.body}>

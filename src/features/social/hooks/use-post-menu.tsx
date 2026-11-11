@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
@@ -7,12 +7,11 @@ import { ReportSheet } from '@/features/moderation/components/ReportSheet';
 import { useFeedStore } from '@/features/social/stores/feed-store';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { Feedback } from '@/lib/haptics';
-import { ProfileService } from '@/services/profile-service';
 import { SocialService } from '@/services/social-service';
 import type { Post } from '@/types/social';
 
 /**
- * The "…" menu for a post and everything it can lead to: edit, delete (confirmed), report, block.
+ * The "…" menu for a post and everything it can lead to: edit, delete (confirmed), report.
  * Returns `openMenu` for the card and `sheets` to render once on the screen.
  */
 export function usePostMenu({ onRemoved }: { onRemoved: (post: Post) => void }) {
@@ -26,10 +25,11 @@ export function usePostMenu({ onRemoved }: { onRemoved: (post: Post) => void }) 
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const openMenu = (post: Post) => {
+  // Stable, so memoised post cards do not re-render when the screen does.
+  const openMenu = useCallback((post: Post) => {
     setTarget(post);
     setMenuOpen(true);
-  };
+  }, []);
 
   const chooseFromMenu = (next: () => void) => {
     setMenuOpen(false);
@@ -50,12 +50,6 @@ export function usePostMenu({ onRemoved }: { onRemoved: (post: Post) => void }) 
     } finally {
       setBusy(false);
     }
-  };
-
-  const blockAuthor = async () => {
-    if (!target) return;
-    await ProfileService.block(token, { userId: target.author.id, name: target.author.name, username: target.author.username });
-    onRemoved(target);
   };
 
   const sheets = (
@@ -83,7 +77,6 @@ export function usePostMenu({ onRemoved }: { onRemoved: (post: Post) => void }) 
         title="Report post"
         subject={target?.author.name ?? ''}
         onReport={(reason) => (target ? SocialService.reportPost(token, target.id, reason) : Promise.resolve())}
-        onBlock={blockAuthor}
       />
 
       <ConfirmSheet

@@ -23,9 +23,9 @@ const RESEND_ACTION = { signup: 'signup-otp-send', login: 'login-otp-send', rese
 export function OtpScreen() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const { mode, mobile } = useLocalSearchParams<{ mode: OtpMode; mobile: string }>();
+  const { mode, mobile, resendIn } = useLocalSearchParams<{ mode: OtpMode; mobile: string; resendIn?: string }>();
   const { run, loading, error, errorFor, clearError } = useAuthRequest();
-  const { secondsLeft, canResend, restart } = useOtpTimer();
+  const { secondsLeft, canResend, restart } = useOtpTimer(Number(resendIn));
 
   const [otp, setOtp] = useState('');
 
@@ -64,10 +64,10 @@ export function OtpScreen() {
   const handleResend = async () => {
     if (!canResend) return;
     const sent = await run(RESEND_ACTION[mode], () => AuthService.sendOtp(mobile, mode));
-    if (sent) restart();
+    if (sent) restart(sent.resendInSeconds);
   };
 
-  const countdown = `0:${secondsLeft.toString().padStart(2, '0')}`;
+  const countdown = `${Math.floor(secondsLeft / 60)}:${(secondsLeft % 60).toString().padStart(2, '0')}`;
   const otpError = errorFor('otp');
 
   return (
@@ -111,7 +111,7 @@ export function OtpScreen() {
       <View style={styles.resend}>
         <Text style={styles.resendLabel} maxFontSizeMultiplier={1.3}>
           {'Didn’t get the OTP?'}
-          {!canResend ? <Text style={styles.countdown}>{`  (Request again in ${countdown}s)`}</Text> : null}
+          {!canResend ? <Text style={styles.countdown}>{`  (Request again in ${countdown})`}</Text> : null}
         </Text>
         <Chip
           label="SMS"

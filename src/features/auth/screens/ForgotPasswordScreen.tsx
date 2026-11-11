@@ -20,7 +20,7 @@ export function ForgotPasswordScreen() {
 
   const handleSend = async () => {
     const sent = await run('forgot-otp-send', () => AuthService.sendOtp(mobile, 'reset'));
-    if (sent) router.push({ pathname: '/(auth)/otp', params: { mode: 'reset', mobile } });
+    if (sent) router.push({ pathname: '/(auth)/otp', params: { mode: 'reset', mobile, resendIn: String(sent.resendInSeconds) } });
   };
 
   return (

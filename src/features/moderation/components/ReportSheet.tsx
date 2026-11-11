@@ -65,7 +65,7 @@ function ReportFlow({ subject, onReport, onBlock, onClose }: Omit<ReportSheetPro
           <Ionicons name="checkmark" size={24} color={Brand.text} />
         </View>
         <Text style={styles.doneTitle}>Thanks for telling us</Text>
-        <Text style={styles.note}>We are reviewing this. You will hear back in Notifications within 24 hours.</Text>
+        <Text style={styles.note}>The Ruxstar team will take a look.</Text>
         {onBlock ? <PrimaryButton label={`Also block ${subject}`} variant="outline" onPress={blockToo} loading={busy} /> : null}
         <PrimaryButton label="Done" onPress={onClose} disabled={busy} />
       </>

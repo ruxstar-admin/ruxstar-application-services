@@ -1,18 +1,5 @@
-import type { BlockedUser, NotificationPrefs, PublicProfileResponse } from '@/types/profile';
+import type { BlockedUser, NotificationPrefs } from '@/types/profile';
 import { defineMocks } from './registry';
-
-/** The sample author in the mocked feed. Real usernames and ids go to the API. */
-const priya: PublicProfileResponse = {
-  id: 'priya-nair',
-  name: 'Priya Nair',
-  username: 'priya.star',
-  avatarUrl: null,
-  bio: 'Teaching pottery since 2019. Batch 4 is running now.',
-  city: 'Kochi',
-  badges: { vendor: true, delivery: false },
-  stats: { posts: 0, engagements: 0 },
-  memberSince: '2025-03-01T00:00:00.000Z',
-};
 
 let prefs: NotificationPrefs = { orders: true, messages: true, social: false, work: true, digest: false };
 
@@ -24,8 +11,6 @@ let blocked: BlockedUser[] = [
 const field = (body: Record<string, unknown> | undefined, key: string) => String(body?.[key] ?? '');
 
 defineMocks({
-  'GET /v1/account/profiles/priya-nair': { mocked: true, handle: () => ({ ...priya }) },
-
   'GET /settings/notifications': { mocked: true, handle: () => ({ ...prefs }) },
 
   'POST /settings/notifications': {

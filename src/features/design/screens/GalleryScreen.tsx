@@ -69,7 +69,6 @@ export function GalleryScreen() {
           <ToggleRow title="Orders & deliveries" subtitle="Status changes on what you buy or sell" value={orders} onValueChange={setOrders} />
           <ToggleRow title="Weekly digest" value={digest} onValueChange={setDigest} />
           <ListRow icon="log-out-outline" title="Log out" destructive onPress={() => undefined} />
-          <ListRow icon="person-circle-outline" title="Open sample profile (needs login)" onPress={() => router.push('/(customer)/user/priya-nair')} />
         </Section>
 
         <Section title="Loading & empty">

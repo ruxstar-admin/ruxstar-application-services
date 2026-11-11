@@ -5,6 +5,8 @@ export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_LENGTH = 64;
 export const OTP_LENGTH = 6;
 export const MIN_AGE_YEARS = 13;
+/** The API's limit for `name`. */
+export const MAX_NAME_LENGTH = 60;
 
 export const isValidMobile = (mobile: string) => MOBILE_PATTERN.test(mobile);
 

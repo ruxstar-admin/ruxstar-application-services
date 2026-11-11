@@ -59,19 +59,18 @@ export function FeedScreen() {
   );
   const { toggleLike, toggleSave } = usePostActions(patch);
   const { openMenu, sheets } = usePostMenu({ onRemoved: (post) => setItems((prev) => prev.filter((p) => p.id !== post.id)) });
+  const openComments = useCallback((post: Post) => router.push({ pathname: '/(customer)/post/[id]', params: { id: post.id } }), [router]);
+  const openAuthor = useCallback(
+    (post: Post) => !post.mine && router.push({ pathname: '/(customer)/user/[id]', params: { id: post.author.id } }),
+    [router],
+  );
 
+  // Every handler is stable, so a like re-renders only the card it changed.
   const renderItem = useCallback(
     ({ item }: { item: Post }) => (
-      <PostCard
-        post={item}
-        onLike={toggleLike}
-        onSave={toggleSave}
-        onOpenComments={(post) => router.push({ pathname: '/(customer)/post/[id]', params: { id: post.id } })}
-        onOpenMenu={openMenu}
-        onOpenAuthor={(post) => !post.mine && router.push({ pathname: '/(customer)/user/[id]', params: { id: post.author.id } })}
-      />
+      <PostCard post={item} onLike={toggleLike} onSave={toggleSave} onOpenComments={openComments} onOpenMenu={openMenu} onOpenAuthor={openAuthor} />
     ),
-    [router, toggleLike, toggleSave, openMenu],
+    [toggleLike, toggleSave, openComments, openMenu, openAuthor],
   );
 
   return (

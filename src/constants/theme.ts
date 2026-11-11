@@ -12,7 +12,7 @@ export const Brand = {
   border: '#2C2A39',
   text: '#FFFFFF',
   textMuted: '#9E9CB0',
-  textFaint: '#5E5C70',
+  textFaint: '#8A889C', // 4.5:1 on bg, so placeholders and captions stay readable
   success: '#34C759',
   warning: '#FFB020',
   error: '#FF453A',

@@ -29,8 +29,7 @@ export function WelcomeScreen() {
   const handleContinue = async () => {
     const sent = await run('signup-otp-send', async () => {
       try {
-        await AuthService.sendOtp(mobile, 'signup');
-        return true;
+        return await AuthService.sendOtp(mobile, 'signup');
       } catch (err) {
         // Number already registered: not an error, send them to log in instead.
         if (err instanceof ApiError && err.code === 'PHONE_TAKEN') return false;
@@ -39,7 +38,7 @@ export function WelcomeScreen() {
     });
 
     if (sent === undefined) return;
-    if (sent) router.push({ pathname: '/(auth)/otp', params: { mode: 'signup', mobile } });
+    if (sent) router.push({ pathname: '/(auth)/otp', params: { mode: 'signup', mobile, resendIn: String(sent.resendInSeconds) } });
     else router.push({ pathname: '/(auth)/login', params: { mobile } });
   };
 

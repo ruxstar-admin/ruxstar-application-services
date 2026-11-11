@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Brand, Spacing } from '@/constants/theme';
@@ -11,24 +11,36 @@ interface ScreenContainerProps {
   children: React.ReactNode;
 }
 
-/** Standard pushed screen: back header, scrolling body, optional pinned footer. Back is `router.back()`. */
+/**
+ * Standard pushed screen: back header, scrolling body, optional pinned footer. Back is `router.back()`.
+ * The keyboard pushes the footer up instead of covering it and the field being typed in.
+ */
 export function ScreenContainer({ title, footer, children }: ScreenContainerProps) {
   const router = useRouter();
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <ScreenHeader title={title} onBack={() => router.back()} />
-      </View>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {children}
-      </ScrollView>
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
+        <View style={styles.header}>
+          <ScreenHeader title={title} onBack={() => router.back()} />
+        </View>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+        >
+          {children}
+        </ScrollView>
+        {footer ? <View style={styles.footer}>{footer}</View> : null}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: { flex: 1, backgroundColor: Brand.bg },
   header: { paddingHorizontal: Spacing.three },
   content: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.four, gap: Spacing.two },

@@ -131,7 +131,7 @@ export const toAuthError = (err: unknown, action: AuthAction): AuthError => {
   }
 
   if (err.kind === 'rate_limited') {
-    return { message: 'Too many attempts. Please wait a minute and try again.', target: 'form', retryable: false };
+    return { message: `Too many attempts. Try again in ${waitCopy(err.retryAfterSeconds)}.`, target: 'form', retryable: false };
   }
   return GENERIC;
 };

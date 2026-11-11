@@ -148,7 +148,7 @@ export function CreatePostScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Remove photo"
-                  hitSlop={6}
+                  hitSlop={11}
                   style={styles.remove}
                   onPress={() => {
                     Feedback.tap();

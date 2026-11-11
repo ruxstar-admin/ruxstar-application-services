@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const RESEND_COOLDOWN_SECONDS = 30;
+/** Used only when the API did not say (`resendInSeconds` on the send-code response). */
+const FALLBACK_SECONDS = 30;
 
-export function useOtpTimer() {
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_COOLDOWN_SECONDS);
+const cooldownOf = (seconds?: number) => (seconds && seconds > 0 ? Math.ceil(seconds) : FALLBACK_SECONDS);
+
+export function useOtpTimer(initialSeconds?: number) {
+  const [secondsLeft, setSecondsLeft] = useState(() => cooldownOf(initialSeconds));
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const runCountdown = useCallback(() => {
@@ -19,10 +22,13 @@ export function useOtpTimer() {
     }, 1000);
   }, []);
 
-  const restart = useCallback(() => {
-    setSecondsLeft(RESEND_COOLDOWN_SECONDS);
-    runCountdown();
-  }, [runCountdown]);
+  const restart = useCallback(
+    (seconds?: number) => {
+      setSecondsLeft(cooldownOf(seconds));
+      runCountdown();
+    },
+    [runCountdown],
+  );
 
   useEffect(() => {
     runCountdown();

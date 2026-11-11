@@ -8,8 +8,8 @@ const call = (method: HttpMethod, path: string, body?: Record<string, unknown>) 
 };
 
 describe('profile mocks', () => {
-  it('serves only the sample author; everyone else goes to the real API', async () => {
-    await expect(call('GET', '/v1/account/profiles/priya-nair')).resolves.toMatchObject({ name: 'Priya Nair', badges: { vendor: true } });
+  it('never answers for real profiles', () => {
+    expect(findMock('GET', '/v1/account/profiles/priya-nair', 'auto')).toBeUndefined();
     expect(findMock('GET', '/v1/account/profiles/asha.rao', 'auto')).toBeUndefined();
   });
 

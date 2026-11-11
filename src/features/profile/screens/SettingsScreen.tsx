@@ -31,9 +31,9 @@ export function SettingsScreen() {
       <ListRow icon="shield-outline" title="Verification" subtitle="Identity, vendor and delivery" onPress={() => router.push('/(customer)/settings/verification')} />
       <ListRow icon="key-outline" title="Change password" subtitle="Signs out your other devices" onPress={() => router.push('/(customer)/settings/password')} />
       <ListRow icon="phone-portrait-outline" title="Sessions & devices" subtitle="Where you are logged in" onPress={() => router.push('/(customer)/settings/sessions')} />
-      <ListRow icon="notifications-outline" title="Notification preferences" subtitle="Choose what reaches your phone" onPress={() => router.push('/(customer)/settings/notifications')} />
-      <ListRow icon="ban-outline" title="Blocked users" onPress={() => router.push('/(customer)/settings/blocked')} />
-      <ListRow icon="shield-checkmark-outline" title="Account & data" subtitle="Export, pause or delete" onPress={() => router.push('/(customer)/settings/account')} />
+      <ListRow icon="notifications-outline" title="Notification preferences" subtitle="Choose what reaches your phone" soon />
+      <ListRow icon="ban-outline" title="Blocked users" soon />
+      <ListRow icon="shield-checkmark-outline" title="Account & data" subtitle="Delete your account" onPress={() => router.push('/(customer)/settings/account')} />
       <ListRow icon="log-out-outline" title="Log out" destructive onPress={() => setConfirming(true)} />
 
       <ConfirmSheet

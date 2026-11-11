@@ -21,14 +21,15 @@ import { SocialService } from '@/services/social-service';
 import type { Comment, Post } from '@/types/social';
 
 const MAX_COMMENT = 300;
+/** The comments are already on this screen. */
+const stayHere = () => undefined;
 
-/** Long-press deletes, when it is your comment or your post. */
+/** Your comments, and any on your post, have a delete button; long-press also works. */
 function CommentRow({ comment, onDelete }: { comment: Comment; onDelete?: (comment: Comment) => void }) {
   return (
     <Pressable
       onLongPress={onDelete ? () => onDelete(comment) : undefined}
       delayLongPress={350}
-      accessibilityHint={onDelete ? 'Long press to delete' : undefined}
       style={({ pressed }) => [styles.comment, pressed && onDelete && styles.commentPressed]}
     >
       <Avatar name={comment.author.name} uri={comment.author.avatarUrl} size={32} />
@@ -39,6 +40,11 @@ function CommentRow({ comment, onDelete }: { comment: Comment; onDelete?: (comme
         </Text>
         <Text style={styles.commentText}>{comment.text}</Text>
       </View>
+      {onDelete ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Delete comment" style={styles.iconButton} onPress={() => onDelete(comment)}>
+          <Ionicons name="trash-outline" size={18} color={Brand.textFaint} />
+        </Pressable>
+      ) : null}
     </Pressable>
   );
 }
@@ -132,7 +138,7 @@ export function PostDetailScreen() {
                   post={post.data}
                   onLike={toggleLike}
                   onSave={toggleSave}
-                  onOpenComments={() => undefined}
+                  onOpenComments={stayHere}
                   onOpenMenu={openMenu}
                   onOpenAuthor={(p) => !p.mine && router.push({ pathname: '/(customer)/user/[id]', params: { id: p.author.id } })}
                 />
@@ -159,7 +165,7 @@ export function PostDetailScreen() {
             accessibilityRole="button"
             accessibilityLabel="Send comment"
             disabled={!draft.trim() || sending}
-            hitSlop={8}
+            style={styles.iconButton}
             onPress={send}
           >
             <Ionicons name="send" size={22} color={draft.trim() ? Brand.primarySoft : Brand.textFaint} />
@@ -192,10 +198,11 @@ const styles = StyleSheet.create({
   commentMeta: { ...Typography.caption, color: Brand.textMuted },
   commentName: { ...Typography.caption, fontFamily: Typography.bodyStrong.fontFamily, color: Brand.text },
   commentText: { ...Typography.body, color: Brand.text },
+  iconButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginVertical: -Spacing.one },
   composer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,

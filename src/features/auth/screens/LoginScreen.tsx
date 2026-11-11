@@ -73,7 +73,7 @@ export function LoginScreen() {
     }
 
     const sent = await run('login-otp-send', () => AuthService.sendOtp(mobile, 'login'));
-    if (sent) router.push({ pathname: '/(auth)/otp', params: { mode: 'login', mobile } });
+    if (sent) router.push({ pathname: '/(auth)/otp', params: { mode: 'login', mobile, resendIn: String(sent.resendInSeconds) } });
   };
 
   const switchMode = (next: LoginMode) => {

@@ -32,7 +32,6 @@ function Action({ icon, label, color = Brand.textMuted, accessibilityLabel, onPr
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      hitSlop={8}
       onPress={() => {
         Feedback.select();
         onPress();
@@ -71,7 +70,7 @@ export const PostCard = memo(function PostCard({ post, onLike, onSave, onOpenCom
             </Text>
           </View>
         </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Post options" hitSlop={12} onPress={() => onOpenMenu(post)}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Post options" style={styles.menu} onPress={() => onOpenMenu(post)}>
           <Ionicons name="ellipsis-horizontal" size={20} color={Brand.textMuted} />
         </Pressable>
       </View>
@@ -110,8 +109,17 @@ const styles = StyleSheet.create({
   name: { ...Typography.bodyStrong, color: Brand.text, flexShrink: 1 },
   meta: { ...Typography.caption, color: Brand.textMuted },
   text: { ...Typography.body, color: Brand.text },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.four },
-  action: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + 2 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, marginHorizontal: -Spacing.two },
+  action: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.one + 2,
+    minWidth: 44,
+    minHeight: 44,
+    paddingHorizontal: Spacing.two,
+  },
   actionLabel: { ...Typography.caption },
   spacer: { flex: 1 },
+  menu: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: -Spacing.two },
 });

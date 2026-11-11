@@ -11,7 +11,7 @@ import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Brand, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { UsernameField } from '@/features/auth/components/UsernameField';
 import { useUsernameCheck } from '@/features/auth/hooks/use-username-check';
-import { isValidEmail, isValidName, isValidUsername, nameError } from '@/features/auth/lib/validators';
+import { MAX_NAME_LENGTH, isValidEmail, isValidName, isValidUsername, nameError } from '@/features/auth/lib/validators';
 import { CityField } from '@/features/profile/components/CityField';
 import { EmailVerifySheet } from '@/features/profile/components/EmailVerifySheet';
 import { ProfilePhotoPicker } from '@/features/profile/components/ProfilePhotoPicker';
@@ -120,7 +120,14 @@ function EditProfileForm({ profile, focus }: { profile: Profile; focus?: EditPro
         <ProfilePhotoPicker name={name || 'You'} photo={photo} />
       </View>
 
-      <InputField label="Name" value={name} onChangeText={setNameInput} autoCapitalize="words" error={nameError(name) ?? undefined} />
+      <InputField
+        label="Name"
+        value={name}
+        onChangeText={setNameInput}
+        autoCapitalize="words"
+        maxLength={MAX_NAME_LENGTH}
+        error={nameError(name) ?? undefined}
+      />
       <UsernameField value={username} onChange={setUsername} check={usernameCheck} />
       <InputField
         label="Bio"
