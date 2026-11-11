@@ -118,11 +118,24 @@ export function ProfileScreen() {
                 <View style={styles.grow}>
                   <PrimaryButton label="Edit profile" variant="outline" onPress={() => router.push('/(customer)/edit-profile')} />
                 </View>
+                {isVendor ? null : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Become a vendor"
+                    onPress={() => {
+                      Feedback.tap();
+                      router.push('/(customer)/settings/verification');
+                    }}
+                    style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
+                  >
+                    <Ionicons name="storefront-outline" size={22} color={Brand.text} />
+                  </Pressable>
+                )}
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Share profile"
                   onPress={share}
-                  style={({ pressed }) => [styles.share, pressed && styles.sharePressed]}
+                  style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
                 >
                   <Ionicons name="share-social-outline" size={22} color={Brand.text} />
                 </Pressable>
@@ -132,11 +145,7 @@ export function ProfileScreen() {
                 <ProfileChecklist profile={data} onStep={openStep} />
               </Animated.View>
 
-              {isVendor ? (
-                <PrimaryButton label="Open vendor portal" onPress={() => router.push('/(vendor)/dashboard')} />
-              ) : (
-                <PrimaryButton label="Become a vendor" variant="outline" onPress={() => router.push('/(customer)/settings/verification')} />
-              )}
+              {isVendor ? <PrimaryButton label="Open vendor portal" onPress={() => router.push('/(vendor)/dashboard')} /> : null}
               {isPartner ? <PrimaryButton label="Open Ruxstar Partner app" onPress={() => router.push('/(partner)')} /> : null}
 
               <Animated.View entering={rise(5)} style={styles.tabs}>
@@ -194,7 +203,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three },
   actions: { flexDirection: 'row', gap: Spacing.two },
   grow: { flex: 1 },
-  share: { width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: Brand.border, alignItems: 'center', justifyContent: 'center' },
-  sharePressed: { backgroundColor: Brand.surfaceAlt, transform: [{ scale: 0.94 }] },
+  iconButton: { width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: Brand.border, alignItems: 'center', justifyContent: 'center' },
+  iconButtonPressed: { backgroundColor: Brand.surfaceAlt, transform: [{ scale: 0.94 }] },
   tabs: { gap: Spacing.three },
 });
