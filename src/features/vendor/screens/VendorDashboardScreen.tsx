@@ -2,11 +2,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
-import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { ListRow } from '@/components/ui/ListRow';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
-import { OpenAllCard } from '@/features/vendor/components/OpenAllCard';
 import { VendorTabScreen } from '@/features/vendor/components/VendorTabScreen';
 import { useVendorBusinesses } from '@/features/vendor/hooks/use-vendor-businesses';
 import { MISSING_LABEL, listOf } from '@/features/vendor/lib/business-modules';
@@ -25,7 +23,7 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-/** The portal's first tab: open or close everything, counts, what still needs setting up, and the balance. */
+/** The portal's first tab: counts, what still needs setting up, and the balance. Opening and closing is per business, on Businesses. */
 export function VendorDashboardScreen() {
   const router = useRouter();
   const token = useAuthToken();
@@ -41,9 +39,6 @@ export function VendorDashboardScreen() {
       <AsyncBoundary loading={businesses.loading} error={businesses.error} hasData={!!businesses.data} onRetry={businesses.reload} skeletonRows={4}>
         {list.length ? (
           <>
-            <OpenAllCard openable={businesses.openable} busy={businesses.busy.size > 0} onSetAll={businesses.setAll} />
-            {businesses.failure ? <ErrorBanner message={businesses.failure} /> : null}
-
             <View style={styles.card}>
               <View style={styles.stats}>
                 <Stat value={String(open)} label="Open" />

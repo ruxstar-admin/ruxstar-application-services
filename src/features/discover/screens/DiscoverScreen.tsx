@@ -1,118 +1,110 @@
-import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Badge } from '@/components/ui/Badge';
 import { ChoiceChips } from '@/components/ui/ChoiceChips';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ListRow } from '@/components/ui/ListRow';
+import { InputField } from '@/components/ui/InputField';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
-import { listingRoute, MODULE_ICON } from '@/features/discover/lib/module-routes';
-import { MODULES } from '@/features/vendor/lib/capabilities';
-import { useAsyncResource } from '@/hooks/use-async-resource';
+import { Brand, Spacing, Typography } from '@/constants/theme';
+import { ShopCardView } from '@/features/pod/components/ShopCardView';
+import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { Feedback } from '@/lib/haptics';
-import { CommerceService } from '@/services/commerce-service';
-import type { Listing } from '@/types/commerce';
-import type { ModuleKey } from '@/types/vendor';
+import { usePaginated } from '@/hooks/use-paginated';
+import { ShopService } from '@/services/shop-service';
+import type { PodProduct } from '@/types/business';
+import type { ShopFilters } from '@/types/shop';
 
-type Filter = 'all' | ModuleKey;
+/** Waits this long after the last keystroke before searching. */
+const SEARCH_DELAY_MS = 350;
 
-const FILTERS: readonly { key: Filter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'pod', label: 'Print' },
-  { key: 'events', label: 'Events' },
-  { key: 'coaching', label: 'Courses' },
-  { key: 'pg', label: 'Stays' },
-];
+type Filter = 'all' | PodProduct;
 
-function ListingCard({ listing, onPress }: { listing: Listing; onPress: (listing: Listing) => void }) {
+function Results({ filters }: { filters: ShopFilters }) {
+  const router = useRouter();
+  const token = useAuthToken();
+  const list = usePaginated((cursor) => ShopService.list(token, filters, cursor));
+
+  if (list.loading) {
+    return (
+      <View style={styles.skeletons}>
+        {[0, 1].map((i) => (
+          <View key={i} style={styles.skeletonCard}>
+            <Skeleton height={190} radius={18} />
+            <Skeleton height={16} width="60%" />
+            <Skeleton height={12} width="40%" />
+          </View>
+        ))}
+      </View>
+    );
+  }
+  if (list.error && list.items.length === 0) {
+    return <EmptyState icon="cloud-offline-outline" title="Could not load shops" message="Check your connection and try again." actionLabel="Try again" onAction={list.retry} />;
+  }
+
+  const searching = Boolean(filters.q || filters.product);
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() => {
-        Feedback.tap();
-        onPress(listing);
-      }}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-    >
-      <View style={styles.icon}>
-        <Ionicons name={MODULE_ICON[listing.module]} size={24} color={Brand.primarySoft} />
-      </View>
-      <View style={styles.text}>
-        <Text style={styles.title} numberOfLines={1}>
-          {listing.title}
-        </Text>
-        <Text style={styles.subtitle} numberOfLines={1}>
-          {listing.subtitle}
-        </Text>
-        <Text style={styles.price}>{listing.price}</Text>
-      </View>
-      <View style={styles.side}>
-        {listing.badge ? <Badge label={listing.badge} tone="neutral" /> : null}
-        <Text style={styles.module}>{MODULES[listing.module].label}</Text>
-      </View>
-    </Pressable>
+    <FlatList
+      data={list.items}
+      keyExtractor={(s) => s.id}
+      contentContainerStyle={styles.list}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      refreshControl={<RefreshControl refreshing={list.refreshing} onRefresh={list.refresh} tintColor={Brand.primarySoft} />}
+      onEndReached={list.loadMore}
+      onEndReachedThreshold={0.5}
+      ListEmptyComponent={
+        <EmptyState
+          icon="print-outline"
+          title={searching ? 'No shops match' : 'No print shops yet'}
+          message={searching ? 'Try another product or name.' : 'Print shops on Ruxstar show up here as soon as they open.'}
+        />
+      }
+      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={styles.footer} /> : null}
+      renderItem={({ item }) => <ShopCardView shop={item} onPress={() => router.push({ pathname: '/(customer)/pod/shop/[id]', params: { id: item.id } })} />}
+    />
   );
 }
 
-/** Browse everything bookable on Ruxstar, filtered by module. */
+/** Print shops customers can order from, searchable and filtered by what they print. */
 export function DiscoverScreen() {
-  const router = useRouter();
-  const token = useAuthToken();
-  const [filter, setFilter] = useState<Filter>('all');
-  const { data, loading, error, reload } = useAsyncResource(() => CommerceService.discover(token));
+  const catalog = useBusinessCatalog();
+  const [text, setText] = useState('');
+  const [q, setQ] = useState('');
+  const [product, setProduct] = useState<Filter>('all');
 
-  const visible = (data ?? []).filter((l) => filter === 'all' || l.module === filter);
+  useEffect(() => {
+    const t = setTimeout(() => setQ(text.trim()), SEARCH_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [text]);
+
+  const chips: { key: Filter; label: string }[] = [{ key: 'all', label: 'All' }, ...(catalog.data?.podProducts ?? []).map((p) => ({ key: p.id, label: p.label }))];
+  const filters: ShopFilters = { ...(q ? { q } : {}), ...(product === 'all' ? {} : { product }) };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.heading}>Discover</Text>
-      <ChoiceChips options={FILTERS} value={filter} onChange={setFilter} />
-
-      {filter === 'pg' ? (
-        <View style={styles.stayCta}>
-          <ListRow icon="search-outline" title="Search stays by dates" subtitle="Location, facilities and free beds" onPress={() => router.push('/(customer)/stays')} />
-        </View>
-      ) : null}
-
-      {loading && !data ? (
-        <View style={styles.skeletons}>
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} height={84} radius={16} />
-          ))}
-        </View>
-      ) : error && !data ? (
-        <EmptyState icon="cloud-offline-outline" title="Could not load listings" actionLabel="Try again" onAction={reload} />
-      ) : (
-        <FlatList
-          data={visible}
-          keyExtractor={(l) => `${l.module}-${l.id}`}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => <ListingCard listing={item} onPress={(l) => router.push(listingRoute(l) as never)} />}
-          ListEmptyComponent={<EmptyState icon="compass-outline" title="Nothing here yet" message="New listings from businesses near you will show up here." />}
-        />
-      )}
+      <View style={styles.header}>
+        <Text style={styles.heading}>Discover</Text>
+        <Text style={styles.subheading}>Print shops on Ruxstar</Text>
+      </View>
+      <View style={styles.search}>
+        <InputField value={text} onChangeText={setText} placeholder="Search shops" autoCorrect={false} returnKeyType="search" accessibilityLabel="Search shops" />
+      </View>
+      <ChoiceChips options={chips} value={product} onChange={setProduct} />
+      <Results key={`${q}|${product}`} filters={filters} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Brand.bg, gap: Spacing.three },
-  heading: { ...Typography.title, color: Brand.text, paddingHorizontal: Spacing.three, paddingTop: Spacing.three },
-  list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.two },
-  stayCta: { paddingHorizontal: Spacing.three },
-  skeletons: { paddingHorizontal: Spacing.three, gap: Spacing.three },
-  card: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
-  pressed: { opacity: 0.7 },
-  icon: { width: 48, height: 48, borderRadius: Radius.md, backgroundColor: 'rgba(180,92,242,0.14)', alignItems: 'center', justifyContent: 'center' },
-  text: { flex: 1, gap: 2 },
-  title: { ...Typography.bodyStrong, color: Brand.text },
-  subtitle: { ...Typography.caption, color: Brand.textMuted },
-  price: { ...Typography.caption, color: Brand.primarySoft },
-  side: { alignItems: 'flex-end', gap: Spacing.one },
-  module: { ...Typography.caption, fontSize: 11, color: Brand.textFaint },
+  header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.three, gap: 2 },
+  heading: { ...Typography.title, color: Brand.text },
+  subheading: { ...Typography.caption, color: Brand.textMuted },
+  search: { paddingHorizontal: Spacing.three },
+  list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three, flexGrow: 1 },
+  skeletons: { paddingHorizontal: Spacing.three, gap: Spacing.four },
+  skeletonCard: { gap: Spacing.two },
+  footer: { paddingVertical: Spacing.three },
 });

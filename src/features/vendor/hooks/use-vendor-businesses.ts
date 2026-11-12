@@ -13,10 +13,7 @@ export const canOpen = (b: Business) => b.status === 'live' && !b.suspension && 
 const messageOf = (err: unknown) =>
   err instanceof ApiError && err.kind !== 'network' && err.kind !== 'timeout' ? err.message : 'Could not reach Ruxstar. Check your connection and try again.';
 
-/**
- * The vendor's businesses, reloaded on focus, with open and close for one or all of them.
- * Switches flip at once and go back if the API refuses.
- */
+/** The vendor's businesses, reloaded on focus, with open and close. Switches flip at once and go back if the API refuses. */
 export function useVendorBusinesses() {
   const token = useAuthToken();
   const resource = useAsyncResource(() => BusinessService.list(token));
@@ -61,14 +58,11 @@ export function useVendorBusinesses() {
     reload();
   };
 
-  const openable = (data ?? []).filter(canOpen);
   return {
     ...resource,
-    openable,
+    openable: (data ?? []).filter(canOpen),
     busy,
     failure,
-    clearFailure: () => setFailure(null),
     setOne: (business: Business, open: boolean) => setOpen([business], open),
-    setAll: (open: boolean) => setOpen(openable.filter((b) => b.open !== open), open),
   };
 }

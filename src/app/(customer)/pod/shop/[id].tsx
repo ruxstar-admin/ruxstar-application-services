@@ -1,3 +1,3 @@
-import { PodOrderScreen } from '@/features/pod/screens/PodOrderScreen';
+import { ShopScreen } from '@/features/pod/screens/ShopScreen';
 
-export default PodOrderScreen;
+export default ShopScreen;
