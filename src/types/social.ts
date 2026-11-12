@@ -65,6 +65,10 @@ export interface AppNotification {
   verification?: boolean;
   /** A hold on one of your businesses, or its lifting: tapping opens it in the vendor portal. */
   businessId?: string;
+  /** News about your print order: tapping opens it. */
+  orderId?: string;
+  /** A new or cancelled order to your shop: tapping opens it in the vendor portal. */
+  shopOrderId?: string;
 }
 
 export const SEARCH_SCOPES = [

@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Badge } from '@/components/ui/Badge';
-import { BottomSheet } from '@/components/ui/BottomSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -97,7 +96,6 @@ function ProductCard({ product, shopDays }: { product: ShopProduct; shopDays: nu
 function ShopBody({ shop }: { shop: Shop }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [ordering, setOrdering] = useState(false);
   const price = fromLine(shop);
   const place = [placeLine(shop), shop.pincode].filter(Boolean).join(' ');
 
@@ -161,14 +159,13 @@ function ShopBody({ shop }: { shop: Shop }) {
           <Text style={styles.faint}>{shop.open ? readyLine(shop.turnaroundDays) : 'Closed right now'}</Text>
         </View>
         <View style={styles.barButton}>
-          <PrimaryButton label={shop.open ? 'Order' : 'Closed'} disabled={!shop.open} onPress={() => setOrdering(true)} />
+          <PrimaryButton
+            label={shop.open ? 'Order' : 'Closed'}
+            disabled={!shop.open || !shop.catalog.length}
+            onPress={() => router.push({ pathname: '/(customer)/pod/new/[shopId]', params: { shopId: shop.id } })}
+          />
         </View>
       </View>
-
-      <BottomSheet visible={ordering} onClose={() => setOrdering(false)} title="Ordering is almost here">
-        <Text style={styles.text}>Soon you will upload your file, pick the size and paper, and pay right here. {shop.name} gets the order as soon as you pay.</Text>
-        <PrimaryButton label="Got it" onPress={() => setOrdering(false)} />
-      </BottomSheet>
     </View>
   );
 }

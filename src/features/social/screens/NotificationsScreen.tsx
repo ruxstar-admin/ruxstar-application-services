@@ -11,6 +11,7 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { Feedback } from '@/lib/haptics';
 import { SocialService } from '@/services/social-service';
+import type { AppNotification } from '@/types/social';
 
 export function NotificationsScreen() {
   const router = useRouter();
@@ -23,6 +24,15 @@ export function NotificationsScreen() {
   useEffect(() => {
     if (!loading && !error) SocialService.markRead(token).catch(() => undefined);
   }, [loading, error, token]);
+
+  const openerFor = (n: AppNotification): (() => void) | undefined => {
+    if (n.postId) return () => router.push({ pathname: '/(customer)/post/[id]', params: { id: n.postId! } });
+    if (n.businessId) return () => router.push({ pathname: '/(vendor)/businesses/[id]', params: { id: n.businessId! } });
+    if (n.orderId) return () => router.push({ pathname: '/(customer)/pod/order/[id]', params: { id: n.orderId! } });
+    if (n.shopOrderId) return () => router.push({ pathname: '/(vendor)/sale/[id]', params: { id: n.shopOrderId! } });
+    if (n.verification) return () => router.push('/(customer)/settings/verification');
+    return undefined;
+  };
 
   const respond = async (id: string, accept: boolean) => {
     setBusyId(id);
@@ -60,15 +70,7 @@ export function NotificationsScreen() {
               notification={item}
               busy={busyId === item.id}
               onRespond={(n, accept) => respond(n.id, accept)}
-              onOpen={
-                item.postId
-                  ? (n) => router.push({ pathname: '/(customer)/post/[id]', params: { id: n.postId! } })
-                  : item.businessId
-                    ? (n) => router.push({ pathname: '/(vendor)/businesses/[id]', params: { id: n.businessId! } })
-                    : item.verification
-                      ? () => router.push('/(customer)/settings/verification')
-                      : undefined
-              }
+              onOpen={openerFor(item)}
             />
           )}
           refreshControl={<RefreshControl refreshing={list.refreshing} onRefresh={list.refresh} tintColor={Brand.primarySoft} />}

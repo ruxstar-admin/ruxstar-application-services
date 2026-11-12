@@ -1,62 +1,74 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
-import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ListRow } from '@/components/ui/ListRow';
-import { ScreenContainer } from '@/components/ui/ScreenContainer';
-import { Brand, Spacing, Typography } from '@/constants/theme';
-import { engagementRoute, MODULE_ICON } from '@/features/discover/lib/module-routes';
-import { useAsyncResource } from '@/hooks/use-async-resource';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { Brand, Spacing } from '@/constants/theme';
+import { OrderRow } from '@/features/pod/components/OrderRow';
+import { STATUS_LABEL } from '@/features/pod/lib/order';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { usePaginated } from '@/hooks/use-paginated';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
-import { formatRupees } from '@/lib/money';
-import { timeAgo } from '@/lib/time';
-import { CommerceService } from '@/services/commerce-service';
-import type { Engagement } from '@/types/commerce';
+import { OrderService } from '@/services/order-service';
 
-const STATUS: Record<Engagement['status'], { label: string; tone: 'accent' | 'warning' | 'success' | 'error' }> = {
-  confirmed: { label: 'Confirmed', tone: 'accent' },
-  in_progress: { label: 'In progress', tone: 'warning' },
-  completed: { label: 'Completed', tone: 'success' },
-  cancelled: { label: 'Cancelled', tone: 'error' },
-};
-
-/** Every order, ticket, enrolment and stay in one list, newest first. */
+/** Your print orders, newest first. Tickets, classes and stays join this list as those modules open. */
 export function MyOrdersScreen() {
   const router = useRouter();
   const token = useAuthToken();
-  const { data, loading, error, reload } = useAsyncResource(() => CommerceService.engagements(token));
-  useRefetchOnFocus(reload);
+  const list = usePaginated((cursor) => OrderService.list(token, cursor));
+  useRefetchOnFocus(list.refresh);
 
   return (
-    <ScreenContainer title="Orders & bookings">
-      <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload}>
-        {data?.map((e) => (
-          <View key={e.id}>
-            <ListRow
-              icon={MODULE_ICON[e.module]}
-              title={e.title}
-              subtitle={`${e.subtitle} · ${timeAgo(e.createdAt)}`}
-              right={
-                <View style={styles.right}>
-                  <Text style={styles.amount}>{formatRupees(e.amount)}</Text>
-                  <Badge label={STATUS[e.status].label} tone={STATUS[e.status].tone} />
-                </View>
-              }
-              onPress={() => router.push(engagementRoute(e) as never)}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <ScreenHeader title="Your orders" onBack={() => router.back()} />
+      </View>
+      {list.loading ? (
+        <View style={styles.skeletons}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} height={72} radius={18} />
+          ))}
+        </View>
+      ) : list.error && list.items.length === 0 ? (
+        <EmptyState icon="cloud-offline-outline" title="Could not load your orders" actionLabel="Try again" onAction={list.retry} />
+      ) : (
+        <FlatList
+          data={list.items}
+          keyExtractor={(o) => o.id}
+          renderItem={({ item }) => (
+            <OrderRow
+              order={item}
+              subtitle={item.shop.name}
+              amount={item.price.total}
+              statusLabel={STATUS_LABEL}
+              onPress={() => router.push({ pathname: '/(customer)/pod/order/[id]', params: { id: item.id } })}
             />
-          </View>
-        ))}
-        {data?.length === 0 ? (
-          <EmptyState icon="receipt-outline" title="Nothing yet" message="Your print orders, tickets, classes and stays will be listed here." actionLabel="Discover" onAction={() => router.push('/(customer)/(tabs)/discover')} />
-        ) : null}
-      </AsyncBoundary>
-    </ScreenContainer>
+          )}
+          refreshControl={<RefreshControl refreshing={list.refreshing} onRefresh={list.refresh} tintColor={Brand.primarySoft} />}
+          contentContainerStyle={styles.list}
+          onEndReached={list.loadMore}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
+            <EmptyState
+              icon="receipt-outline"
+              title="No orders yet"
+              message="Print orders you place show up here, with where each one is."
+              actionLabel="Find a print shop"
+              onAction={() => router.push('/(customer)/(tabs)/discover')}
+            />
+          }
+          ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={styles.footer} /> : null}
+        />
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  right: { alignItems: 'flex-end', gap: Spacing.one },
-  amount: { ...Typography.bodyStrong, color: Brand.text },
+  container: { flex: 1, backgroundColor: Brand.bg },
+  header: { paddingHorizontal: Spacing.three },
+  list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five },
+  footer: { paddingVertical: Spacing.three },
+  skeletons: { gap: Spacing.three, paddingHorizontal: Spacing.three },
 });

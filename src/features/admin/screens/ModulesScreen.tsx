@@ -20,18 +20,23 @@ import { Card, Fact, Facts, consoleStyles, errorText } from '../components/parts
 import { MODULE_LABEL } from '../labels';
 
 const percentOf = (bps: number) => String(bps / 100);
+const rupeesOf = (paise: number) => String(paise / 100);
+const MAX_FEE_RUPEES = 500;
 
 function Module({ m, onSaved }: { m: ModuleSettings; onSaved: (m: ModuleSettings) => void }) {
   const token = useAuthToken();
   const canManage = useCan('modules.manage');
   const [busy, setBusy] = useState<keyof ModulePatch | null>(null);
   const [commission, setCommission] = useState(percentOf(m.commissionBps));
+  const [fee, setFee] = useState(rupeesOf(m.platformFee));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const key = useRef(newIdempotencyKey());
 
   const bps = Math.round(Number(commission) * 100);
   const commissionValid = commission.trim() !== '' && Number.isFinite(bps) && bps >= 0 && bps <= 10000;
+  const feePaise = Math.round(Number(fee) * 100);
+  const feeValid = fee.trim() !== '' && Number.isFinite(feePaise) && feePaise >= 0 && feePaise <= MAX_FEE_RUPEES * 100;
 
   const save = async (patch: ModulePatch) => {
     if (busy) return;
@@ -44,6 +49,7 @@ function Module({ m, onSaved }: { m: ModuleSettings; onSaved: (m: ModuleSettings
       Feedback.success();
       onSaved(done);
       setCommission(percentOf(done.commissionBps));
+      setFee(rupeesOf(done.platformFee));
       setSaved(true);
     } catch (err) {
       Feedback.error();
@@ -82,12 +88,28 @@ function Module({ m, onSaved }: { m: ModuleSettings; onSaved: (m: ModuleSettings
             loading={busy === 'commissionBps'}
             disabled={!commissionValid || bps === m.commissionBps || (busy !== null && busy !== 'commissionBps')}
           />
+          <InputField
+            label="Platform fee the customer pays on each order (₹)"
+            keyboardType="decimal-pad"
+            value={fee}
+            onChangeText={(value) => setFee(value.replace(/[^\d.]/g, ''))}
+            hint="Added to the customer's total and kept by Ruxstar. 0 for none."
+            error={feeValid ? undefined : `Enter an amount from 0 to ${MAX_FEE_RUPEES}`}
+          />
+          <PrimaryButton
+            label="Save platform fee"
+            variant="outline"
+            onPress={() => save({ platformFee: feePaise })}
+            loading={busy === 'platformFee'}
+            disabled={!feeValid || feePaise === m.platformFee || (busy !== null && busy !== 'platformFee')}
+          />
         </>
       ) : (
         <Facts>
           <Fact label="New vendors can join" value={m.signupsOpen ? 'Yes' : 'No'} />
           <Fact label="Delivery" value={m.deliveryEnabled ? 'On' : 'Off'} />
           <Fact label="Commission" value={`${percentOf(m.commissionBps)}%`} />
+          <Fact label="Platform fee" value={m.platformFee ? `₹${rupeesOf(m.platformFee)}` : 'None'} />
         </Facts>
       )}
       {error ? <ErrorBanner message={error} /> : null}

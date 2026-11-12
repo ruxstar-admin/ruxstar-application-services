@@ -38,7 +38,7 @@ interface ApiNotification {
   kind: 'social' | 'account';
   title: string;
   body: string;
-  link: { screen: 'post' | 'verification' | 'business'; id: string };
+  link: { screen: 'post' | 'verification' | 'business' | 'order' | 'shop_order'; id: string };
   read: boolean;
   createdAt: string;
 }
@@ -72,8 +72,16 @@ const toNotification = (n: ApiNotification): AppNotification => ({
   createdAt: n.createdAt,
   read: n.read,
   actionable: false,
-  ...(n.link.screen === 'post' ? { postId: n.link.id } : n.link.screen === 'business' ? { businessId: n.link.id } : { verification: true }),
+  ...LINKS[n.link.screen](n.link.id),
 });
+
+const LINKS: Record<ApiNotification['link']['screen'], (id: string) => Partial<AppNotification>> = {
+  post: (id) => ({ postId: id }),
+  business: (id) => ({ businessId: id }),
+  verification: () => ({ verification: true }),
+  order: (id) => ({ orderId: id }),
+  shop_order: (id) => ({ shopOrderId: id }),
+};
 
 const mapPage = async <A, B>(page: Promise<Page<A>>, map: (a: A) => B): Promise<Page<B>> => {
   const { items, nextCursor } = await page;

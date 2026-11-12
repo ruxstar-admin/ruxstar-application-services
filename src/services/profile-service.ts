@@ -87,6 +87,8 @@ const lastActive = (session: ApiSession) => {
  */
 export const ProfileService = {
   getMe: async (token: string) => toProfile(await apiGet<AuthUser>('/v1/account/me', token)),
+  /** The account itself, with the phone number, for forms that fill in contact details. */
+  account: (token: string) => apiGet<AuthUser>('/v1/account/me', token),
   update: async (token: string, changes: ProfileUpdate) => toProfile(await apiPatch<AuthUser>('/v1/account/me', toPatch(changes), token)),
   /** Someone's public profile, by username or user id. */
   getUser: async (token: string, ref: string) =>

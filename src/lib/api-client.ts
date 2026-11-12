@@ -28,6 +28,9 @@ interface RequestOptions {
   envelope?: boolean;
   /** Sent as `Idempotency-Key`. Reuse the same key when retrying the same action, so it is applied once. */
   idempotencyKey?: string;
+  headers?: Record<string, string>;
+  /** Large uploads need longer than the default. */
+  timeoutMs?: number;
 }
 
 /** Extra options for writes. */
@@ -50,11 +53,12 @@ const toApiError = (status: number, parsed: unknown): ApiError => {
   return new ApiError(status, message, undefined, code, details);
 };
 
-const realRequest = async <T>({ method, path, body, bytes, token, query, envelope, idempotencyKey }: RequestOptions): Promise<T> => {
+const realRequest = async <T>({ method, path, body, bytes, token, query, envelope, idempotencyKey, headers: extra, timeoutMs }: RequestOptions): Promise<T> => {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs ?? REQUEST_TIMEOUT_MS);
   const url = `${API_BASE_URL}${withQuery(path, query)}`;
   const headers = {
+    ...extra,
     ...CLIENT_HEADERS,
     // An empty body with a JSON content type is a 400 on the API, so the header goes only with a body.
     ...(bytes ? { 'Content-Type': bytes.type } : body ? { 'Content-Type': 'application/json' } : {}),
@@ -153,8 +157,12 @@ export const apiGetPage = async <T>(path: string, token?: string, query?: Query)
 export const apiPut = <T>(path: string, token: string, body?: Json, options?: WriteOptions): Promise<T> =>
   request<T>({ method: 'PUT', path, body, token, ...options });
 
-export const apiPostBytes = <T>(path: string, bytes: NonNullable<RequestOptions['bytes']>, token: string): Promise<T> =>
-  request<T>({ method: 'POST', path, bytes, token });
+export const apiPostBytes = <T>(
+  path: string,
+  bytes: NonNullable<RequestOptions['bytes']>,
+  token: string,
+  options: Pick<RequestOptions, 'headers' | 'timeoutMs'> = {},
+): Promise<T> => request<T>({ method: 'POST', path, bytes, token, ...options });
 
 export const apiPatch = <T>(path: string, body: Json, token: string, options?: WriteOptions): Promise<T> =>
   request<T>({ method: 'PATCH', path, body, token, ...options });

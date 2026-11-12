@@ -170,11 +170,13 @@ export interface ModuleSettings {
   signupsOpen: boolean;
   /** Basis points: 1000 is 10%. */
   commissionBps: number;
+  /** Paise the customer pays Ruxstar on each order, on top of the price. */
+  platformFee: number;
   deliveryEnabled: boolean;
   updatedAt: string;
 }
 
-export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 'commissionBps' | 'deliveryEnabled'>>;
+export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 'commissionBps' | 'platformFee' | 'deliveryEnabled'>>;
 
 // Audit log.
 
