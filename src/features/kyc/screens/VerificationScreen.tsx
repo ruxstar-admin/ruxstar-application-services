@@ -236,7 +236,7 @@ export function VerificationScreen() {
             </View>
 
             {approved ? (
-              <PrimaryButton label="Open vendor portal" variant="outline" onPress={() => router.push('/(vendor)/dashboard')} />
+              <PrimaryButton label="Open vendor portal" variant="outline" onPress={() => router.push('/(vendor)/(tabs)/dashboard')} />
             ) : null}
 
             {failure ? <ErrorBanner message={failure} /> : null}

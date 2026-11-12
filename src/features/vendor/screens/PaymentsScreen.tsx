@@ -6,11 +6,11 @@ import { Badge } from '@/components/ui/Badge';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { digitsOnly, isValidAccountNumber, isValidIfsc } from '@/features/kyc/lib/validators';
+import { VendorTabScreen } from '@/features/vendor/components/VendorTabScreen';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
@@ -130,7 +130,7 @@ export function PaymentsScreen() {
   const [changing, setChanging] = useState(false);
 
   return (
-    <ScreenContainer title="Payments">
+    <VendorTabScreen title="Payments" onRefresh={reload}>
       <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={4}>
         {data ? (
           <>
@@ -193,7 +193,7 @@ export function PaymentsScreen() {
           </>
         ) : null}
       </AsyncBoundary>
-    </ScreenContainer>
+    </VendorTabScreen>
   );
 }
 

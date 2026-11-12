@@ -36,7 +36,12 @@ export function useAsyncResource<T>(load: () => Promise<T>, key?: string) {
     setNonce((n) => n + 1);
   }, []);
 
-  const setData = useCallback((data: T) => setState({ data, loading: false }), []);
+  /** A value, or an update from the latest data so several updates in a row do not overwrite each other. */
+  const setData = useCallback(
+    (next: T | ((prev: T | undefined) => T)) =>
+      setState((prev) => ({ data: typeof next === 'function' ? (next as (prev: T | undefined) => T)(prev.data) : next, loading: false })),
+    [],
+  );
 
   return { ...state, reload, setData };
 }

@@ -11,10 +11,11 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
-import { ToggleRow } from '@/components/ui/ToggleRow';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
 import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
+import { canOpen } from '@/features/vendor/hooks/use-vendor-businesses';
 import { BUSINESS_MODULES, MISSING_LABEL, listOf, statusOf } from '@/features/vendor/lib/business-modules';
 import { addressOf, areaLine } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
@@ -29,6 +30,10 @@ import type { Business } from '@/types/business';
 const MAX_PHOTOS = 3;
 /** The API keeps business photos within 1440 px, like post photos. */
 const UPLOAD_SIDE = 1440;
+const OPEN_OPTIONS = [
+  { key: 'open', label: 'Open' },
+  { key: 'closed', label: 'Closed' },
+] as const;
 
 const messageOf = (err: unknown) =>
   err instanceof ApiError && err.kind !== 'network' && err.kind !== 'timeout' ? err.message : 'Could not reach Ruxstar. Check your connection and try again.';
@@ -180,6 +185,22 @@ export function BusinessScreen() {
               </View>
             ) : null}
 
+            {canOpen(data) ? (
+              <View style={[styles.openCard, data.open && styles.openCardOn]}>
+                <SegmentedTabs
+                  options={OPEN_OPTIONS}
+                  value={data.open ? 'open' : 'closed'}
+                  onChange={(next) => {
+                    if (busy || (next === 'open') === data.open) return;
+                    const open = next === 'open';
+                    setData({ ...data, open });
+                    void run('open', () => BusinessService.setOpen(token, id, open));
+                  }}
+                />
+                <Text style={styles.muted}>{data.open ? 'Customers can order and book now.' : 'Customers still see it, marked closed.'}</Text>
+              </View>
+            ) : null}
+
             <Photos business={data} busy={busy} onAdd={addPhoto} onRemove={(photoId) => run(photoId, () => BusinessService.removePhoto(token, id, photoId))} />
 
             {data.pod && !data.suspension ? (
@@ -219,18 +240,6 @@ export function BusinessScreen() {
                 />
               ) : null}
             </View>
-
-            {data.status === 'live' && !data.suspension ? (
-              <ToggleRow
-                title={data.open ? 'Open' : 'Closed'}
-                subtitle={data.open ? 'Taking orders and bookings' : 'Customers see it, marked closed'}
-                value={data.open}
-                onValueChange={(open) => {
-                  if (busy) return;
-                  void run('open', () => BusinessService.setOpen(token, id, open));
-                }}
-              />
-            ) : null}
 
             {data.status === 'draft' && !data.suspension ? (
               <View style={styles.publish}>
@@ -309,6 +318,8 @@ const styles = StyleSheet.create({
   detailValue: { ...Typography.body, color: Brand.text },
   detailEmpty: { ...Typography.body, color: Brand.textFaint },
   publish: { gap: Spacing.two, paddingTop: Spacing.two },
+  openCard: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, borderWidth: 1, borderColor: Brand.border, backgroundColor: Brand.surface },
+  openCardOn: { borderColor: 'rgba(52,199,89,0.45)' },
   steps: { borderRadius: Radius.lg, borderWidth: 1, borderColor: Brand.border, backgroundColor: Brand.surface, paddingHorizontal: Spacing.three },
   step: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, minHeight: 64, paddingVertical: Spacing.two },
   stepDisabled: { opacity: 0.5 },

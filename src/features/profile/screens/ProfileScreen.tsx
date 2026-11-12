@@ -129,7 +129,7 @@ export function ProfileScreen() {
                   accessibilityLabel={isVendor ? 'Open vendor portal' : 'Get verified to open the vendor portal'}
                   onPress={() => {
                     Feedback.tap();
-                    router.push(isVendor ? '/(vendor)/dashboard' : '/(customer)/settings/verification');
+                    router.push(isVendor ? '/(vendor)/(tabs)/dashboard' : '/(customer)/settings/verification');
                   }}
                   style={({ pressed }) => [styles.iconButton, isVendor && styles.vendorButton, pressed && styles.iconButtonPressed]}
                 >
@@ -176,7 +176,7 @@ export function ProfileScreen() {
                       title: 'No business posts yet',
                       message: 'Post offers and updates from the vendor portal.',
                       actionLabel: 'Open vendor portal',
-                      onAction: () => router.push('/(vendor)/dashboard'),
+                      onAction: () => router.push('/(vendor)/(tabs)/dashboard'),
                     }}
                   />
                 )}
