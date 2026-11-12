@@ -27,9 +27,6 @@ const TABS = [
   { key: 'business', label: 'Business' },
 ] as const;
 
-/** The Ruxstar Card's champagne; the theme is frozen, so it lives here. */
-const VENDOR_GOLD = '#D6B36A';
-
 const rise = (step: number) => FadeInDown.duration(360).delay(70 * step).springify().damping(18);
 
 export function ProfileScreen() {
@@ -136,7 +133,7 @@ export function ProfileScreen() {
                   }}
                   style={({ pressed }) => [styles.iconButton, isVendor && styles.vendorButton, pressed && styles.iconButtonPressed]}
                 >
-                  <Ionicons name={isVendor ? 'storefront' : 'storefront-outline'} size={22} color={isVendor ? VENDOR_GOLD : Brand.textFaint} />
+                  <Ionicons name={isVendor ? 'storefront' : 'storefront-outline'} size={22} color={isVendor ? Brand.onAction : Brand.textFaint} />
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -152,7 +149,6 @@ export function ProfileScreen() {
                 <ProfileChecklist profile={data} onStep={openStep} />
               </Animated.View>
 
-              {isVendor ? <PrimaryButton label="Open vendor portal" onPress={() => router.push('/(vendor)/dashboard')} /> : null}
               {isPartner ? <PrimaryButton label="Open Ruxstar Partner app" onPress={() => router.push('/(partner)')} /> : null}
 
               <Animated.View entering={rise(5)} style={styles.tabs}>
@@ -211,7 +207,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: Spacing.two },
   grow: { flex: 1 },
   iconButton: { width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: Brand.border, alignItems: 'center', justifyContent: 'center' },
-  vendorButton: { borderColor: 'rgba(214,179,106,0.55)', backgroundColor: 'rgba(214,179,106,0.08)' },
+  vendorButton: { borderColor: Brand.action, backgroundColor: Brand.action },
   iconButtonPressed: { backgroundColor: Brand.surfaceAlt, transform: [{ scale: 0.94 }] },
   tabs: { gap: Spacing.three },
 });
