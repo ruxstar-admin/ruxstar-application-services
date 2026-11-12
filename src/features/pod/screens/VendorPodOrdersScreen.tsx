@@ -66,7 +66,7 @@ export function VendorPodOrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, marginBottom: Spacing.two },
+  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, marginBottom: Spacing.two },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   id: { ...Typography.bodyStrong, color: Brand.text },
   meta: { ...Typography.caption, color: Brand.textMuted },

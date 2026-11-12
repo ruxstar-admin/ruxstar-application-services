@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   title: { ...Typography.title, color: Brand.text },
   meta: { ...Typography.caption, color: Brand.textMuted },
   row: { ...Typography.bodyStrong, color: Brand.text },
-  card: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, marginTop: Spacing.three },
+  card: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, marginTop: Spacing.three },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.four },
   cancel: { marginTop: Spacing.four },
 });

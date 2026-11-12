@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   title: { ...Typography.title, color: Brand.text },
   meta: { ...Typography.caption, color: Brand.textMuted },
-  card: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, marginTop: Spacing.three },
+  card: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, marginTop: Spacing.three },
   cardLabel: { ...Typography.overline, color: Brand.textMuted },
   fee: { ...Typography.title, color: Brand.text },
   refundable: { ...Typography.caption, color: Brand.success },

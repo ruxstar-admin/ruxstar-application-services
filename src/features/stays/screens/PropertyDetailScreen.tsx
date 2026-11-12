@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   facilities: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginTop: Spacing.two },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.four },
   label: { ...Typography.caption, color: Brand.textMuted, marginTop: Spacing.two },
-  room: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: 'transparent', marginBottom: Spacing.two },
+  room: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, marginBottom: Spacing.two },
   roomSelected: { borderColor: Brand.primary },
   roomTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   roomName: { ...Typography.bodyStrong, color: Brand.text, flex: 1 },

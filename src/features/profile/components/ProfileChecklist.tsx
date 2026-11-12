@@ -66,7 +66,7 @@ export function ProfileChecklist({ profile, onStep }: ProfileChecklistProps) {
 }
 
 const styles = StyleSheet.create({
-  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface },
+  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   head: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   title: { ...Typography.bodyStrong, color: Brand.text },
   count: { ...Typography.caption, color: Brand.textMuted, fontVariant: ['tabular-nums'] },

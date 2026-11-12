@@ -27,7 +27,7 @@ const TABS = [
   { key: 'business', label: 'Business' },
 ] as const;
 
-const rise = (step: number) => FadeInDown.duration(360).delay(70 * step).springify().damping(18);
+const rise = (step: number) => FadeInDown.duration(280).delay(60 * step);
 
 export function ProfileScreen() {
   const router = useRouter();

@@ -186,10 +186,10 @@ export function PodOrderScreen() {
 const styles = StyleSheet.create({
   meta: { ...Typography.caption, color: Brand.textMuted },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.four },
-  fileBox: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface },
+  fileBox: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   fileName: { ...Typography.bodyStrong, color: Brand.text },
   copies: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56 },
   label: { ...Typography.body, color: Brand.text },
   address: { height: 88, paddingTop: Spacing.three, textAlignVertical: 'top' },
-  summary: { marginTop: Spacing.four, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface },
+  summary: { marginTop: Spacing.four, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
 });

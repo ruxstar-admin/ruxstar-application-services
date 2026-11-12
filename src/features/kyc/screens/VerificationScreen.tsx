@@ -199,7 +199,7 @@ export function VerificationScreen() {
       <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={4}>
         {data ? (
           <>
-            <View style={styles.section}>
+            <View style={[styles.section, approved && styles.bare]}>
               <View style={styles.sectionHead}>
                 <Ionicons name="shield-checkmark-outline" size={22} color={Brand.text} />
                 <Text style={styles.sectionTitle}>Identity</Text>
@@ -352,7 +352,9 @@ function IdentitySteps({ base, busy, pan, panError, faceError, cameraDenied, onP
 
 const styles = StyleSheet.create({
   intro: { ...Typography.body, color: Brand.textMuted, marginBottom: Spacing.two },
-  section: { gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, marginBottom: Spacing.three },
+  section: { gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, marginBottom: Spacing.three },
+  /** Once verified, the card stands on the page by itself. */
+  bare: { padding: 0, backgroundColor: 'transparent', borderWidth: 0 },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   sectionTitle: { ...Typography.bodyStrong, fontSize: 18, color: Brand.text, flex: 1 },
   muted: { ...Typography.caption, fontSize: 14, color: Brand.textMuted },

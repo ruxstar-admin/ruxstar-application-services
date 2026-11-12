@@ -24,7 +24,7 @@ export function JobCard({ job, children }: { job: DeliveryJob; children?: React.
 }
 
 const styles = StyleSheet.create({
-  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, marginBottom: Spacing.two },
+  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, marginBottom: Spacing.two },
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   shop: { ...Typography.bodyStrong, color: Brand.text, flex: 1 },
   fee: { ...Typography.title, color: Brand.success },

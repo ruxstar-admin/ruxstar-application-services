@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Brand.bg },
   title: { ...Typography.title, color: Brand.text, padding: Spacing.three },
   content: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five },
-  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.xl, backgroundColor: Brand.surface },
+  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.xl, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   label: { ...Typography.caption, color: Brand.textMuted },
   big: { ...Typography.display, color: Brand.text },
   row: { flexDirection: 'row', justifyContent: 'space-between' },

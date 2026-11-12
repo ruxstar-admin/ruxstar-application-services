@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.three },
   skeletons: { gap: Spacing.three, paddingHorizontal: Spacing.three },
   list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five },
-  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.xl, backgroundColor: Brand.surface },
+  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.xl, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   label: { ...Typography.caption, color: Brand.textMuted },
   big: { ...Typography.display, color: Brand.text },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: Spacing.two },

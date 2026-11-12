@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   overline: { ...Typography.overline, color: Brand.text },
   sub: { ...Typography.caption, color: Brand.textMuted },
   content: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.two },
-  duty: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.xl, backgroundColor: Brand.surface },
+  duty: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.xl, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   dutyOn: { backgroundColor: 'rgba(52,199,89,0.14)' },
   dutyLabel: { ...Typography.title, color: Brand.text },
   dutyText: { ...Typography.caption, color: Brand.textMuted },
@@ -117,6 +117,6 @@ const styles = StyleSheet.create({
   statValue: { ...Typography.title, color: Brand.text },
   statLabel: { ...Typography.caption, color: Brand.textMuted },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.three },
-  waiting: { gap: 2, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface },
+  waiting: { gap: 2, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   waitingText: { ...Typography.bodyStrong, color: Brand.text },
 });

@@ -199,7 +199,7 @@ export function PaymentsScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  card: { backgroundColor: Brand.surface, borderRadius: Radius.lg, padding: Spacing.three, gap: Spacing.two },
+  card: { backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, borderRadius: Radius.lg, padding: Spacing.three, gap: Spacing.two },
   stats: { flexDirection: 'row', justifyContent: 'space-between' },
   stat: { gap: 2 },
   statValue: { ...Typography.heading, color: Brand.text },

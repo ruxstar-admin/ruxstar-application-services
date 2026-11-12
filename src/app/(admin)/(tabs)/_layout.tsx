@@ -10,7 +10,7 @@ export default function AdminTabs() {
   const people = useCan('users.view');
 
   return (
-    <Tabs screenOptions={TAB_SCREEN_OPTIONS} screenListeners={{ tabPress: Feedback.select }}>
+    <Tabs backBehavior="history" screenOptions={TAB_SCREEN_OPTIONS} screenListeners={{ tabPress: Feedback.select }}>
       <Tabs.Screen name="index" options={{ title: 'Dashboard', tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} /> }} />
       <Tabs.Screen
         name="kyc"

@@ -15,7 +15,7 @@ const TABS: readonly { name: string; title: string; icon: IconName; iconActive: 
 
 export default function CustomerTabs() {
   return (
-    <Tabs screenOptions={TAB_SCREEN_OPTIONS} screenListeners={{ tabPress: Feedback.select }}>
+    <Tabs backBehavior="history" screenOptions={TAB_SCREEN_OPTIONS} screenListeners={{ tabPress: Feedback.select }}>
       {TABS.map(({ name, title, icon, iconActive }) => (
         <Tabs.Screen
           key={name}

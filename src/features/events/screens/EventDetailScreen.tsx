@@ -116,7 +116,7 @@ export function EventDetailScreen() {
 const styles = StyleSheet.create({
   title: { ...Typography.title, color: Brand.text },
   organiser: { ...Typography.caption, color: Brand.textMuted },
-  facts: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, marginTop: Spacing.three },
+  facts: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, marginTop: Spacing.three },
   fact: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   factText: { ...Typography.body, color: Brand.text, flex: 1 },
   badges: { flexDirection: 'row', marginTop: Spacing.three },

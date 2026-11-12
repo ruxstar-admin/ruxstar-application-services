@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   id: { ...Typography.title, color: Brand.text },
   meta: { ...Typography.caption, color: Brand.textMuted },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.four, marginBottom: Spacing.one },
-  card: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface },
+  card: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   file: { ...Typography.bodyStrong, color: Brand.text },
   cancel: { marginTop: Spacing.four },
   code: { alignItems: 'center', gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: 'rgba(180,92,242,0.14)', marginTop: Spacing.three },

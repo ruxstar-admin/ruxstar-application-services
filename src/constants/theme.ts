@@ -7,8 +7,8 @@ export const Brand = {
   action: '#FFFFFF', // primary button fill
   onAction: '#0D0C12', // text/icon on the primary button
   bg: '#0D0C12',
-  surface: '#15141B',
-  surfaceAlt: '#1F1D29',
+  surface: '#1A1922', // cards and panels, outlined with `border`
+  surfaceAlt: '#24222F',
   border: '#2C2A39',
   text: '#FFFFFF',
   textMuted: '#9E9CB0',

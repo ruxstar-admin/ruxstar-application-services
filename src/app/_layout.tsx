@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Slot, useRootNavigationState, useRouter, useSegments } from 'expo-router';
+import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '@/stores/auth-store';
@@ -13,6 +13,7 @@ import {
   PlusJakartaSans_700Bold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import * as SplashScreen from 'expo-splash-screen';
+import { STACK_SCREEN_OPTIONS } from '@/constants/motion';
 import { Brand } from '@/constants/theme';
 import { initMonitoring, wrapRoot } from '@/lib/monitoring';
 import { ErrorFallback } from '@/components/ui/ErrorFallback';
@@ -109,7 +110,8 @@ function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: Brand.bg }}>
       <StatusBar style="light" />
       <AuthGuard />
-      <Slot />
+      {/* A stack, not a slot: opening the vendor or partner area from Profile must keep Profile underneath for Back. */}
+      <Stack screenOptions={STACK_SCREEN_OPTIONS} />
     </GestureHandlerRootView>
   );
 }

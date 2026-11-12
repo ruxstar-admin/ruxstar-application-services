@@ -3,8 +3,8 @@
 Source of truth: `src/constants/theme.ts`, `motion.ts`, `src/lib/haptics.ts`.
 
 ## Tokens
-- **Colour:** `Brand` — purple on near-black (District-style). `bg` #0D0C12, `surface` #15141B, `surfaceAlt`,
-  `border`; accent `primary` #B45CF2 / `primarySoft` / `primaryDeep`; **primary button is white** (`action` / `onAction`).
+- **Colour:** `Brand` — purple on near-black (District-style). `bg` #0D0C12, `surface` #1A1922, `surfaceAlt`,
+  `border`; cards and panels are `surface` with a 1px `border` outline; accent `primary` #B45CF2 / `primarySoft` / `primaryDeep`; **primary button is white** (`action` / `onAction`).
   Status: `success`, `warning`, `error`. Disabled buttons are grey (`disabled` / `disabledText`). Tokens are frozen after Phase 1 sign-off.
 - **Spacing / Radius:** `Spacing`, `Radius` (pill buttons, 32px sheet corners).
 - **Font:** Plus Jakarta Sans, loaded in `src/app/_layout.tsx`. Each weight is its own family

@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   coach: { ...Typography.caption, color: Brand.textMuted },
   description: { ...Typography.body, color: Brand.text, marginTop: Spacing.two },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.four },
-  batch: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: 'transparent', marginBottom: Spacing.two },
+  batch: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, marginBottom: Spacing.two },
   batchSelected: { borderColor: Brand.primary },
   batchTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   batchTitle: { ...Typography.bodyStrong, color: Brand.text },

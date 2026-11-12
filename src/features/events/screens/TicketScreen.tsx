@@ -73,7 +73,7 @@ export function TicketScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: { gap: Spacing.two, padding: Spacing.four, borderRadius: Radius.xl, backgroundColor: Brand.surface, alignItems: 'flex-start' },
+  card: { gap: Spacing.two, padding: Spacing.four, borderRadius: Radius.xl, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, alignItems: 'flex-start' },
   title: { ...Typography.title, color: Brand.text, marginTop: Spacing.two },
   meta: { ...Typography.body, color: Brand.textMuted },
   divider: { alignSelf: 'stretch', height: StyleSheet.hairlineWidth, backgroundColor: Brand.border, marginVertical: Spacing.three },

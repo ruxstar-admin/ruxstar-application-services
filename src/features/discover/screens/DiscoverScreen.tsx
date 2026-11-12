@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.two },
   stayCta: { paddingHorizontal: Spacing.three },
   skeletons: { paddingHorizontal: Spacing.three, gap: Spacing.three },
-  card: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface },
+  card: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   pressed: { opacity: 0.7 },
   icon: { width: 48, height: 48, borderRadius: Radius.md, backgroundColor: 'rgba(180,92,242,0.14)', alignItems: 'center', justifyContent: 'center' },
   text: { flex: 1, gap: 2 },

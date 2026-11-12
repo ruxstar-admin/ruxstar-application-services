@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   overline: { ...Typography.overline, color: Brand.textMuted },
   title: { ...Typography.title, color: Brand.text },
   muted: { ...Typography.caption, color: Brand.textMuted },
-  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface },
+  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   pressed: { opacity: 0.7 },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, minHeight: 52 },
   rowTitle: { ...Typography.bodyStrong, color: Brand.text },

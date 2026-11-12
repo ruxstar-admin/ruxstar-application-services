@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   },
   addPhoto: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderStyle: 'dashed', borderColor: Brand.border, backgroundColor: 'transparent' },
   pressed: { opacity: 0.7 },
-  section: { gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface },
+  section: { gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   detail: { gap: 2 },
   detailLabel: { ...Typography.caption, color: Brand.textMuted },
   detailValue: { ...Typography.body, color: Brand.text },

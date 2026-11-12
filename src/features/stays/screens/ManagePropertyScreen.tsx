@@ -129,6 +129,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1, gap: 2 },
   meta: { ...Typography.caption, color: Brand.textMuted },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.four },
-  room: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, marginBottom: Spacing.two },
+  room: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, marginBottom: Spacing.two },
   roomName: { ...Typography.bodyStrong, color: Brand.text },
 });

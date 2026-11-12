@@ -21,15 +21,14 @@ interface ProfileHeaderProps {
   editable?: boolean;
 }
 
-const BADGE_LABELS: Record<ProfileBadge, string> = {
-  user: 'Normal user',
+const BADGE_LABELS: Record<Exclude<ProfileBadge, 'user'>, string> = {
   vendor: 'Vendor',
   trainer: 'Trainer',
   delivery: 'Delivery partner',
 };
 
-/** Each block rises 70ms after the one before it; Reanimated skips layout animations under Reduce Motion. */
-const rise = (step: number) => FadeInDown.duration(360).delay(70 * step).springify().damping(18);
+/** Each block rises 60ms after the one before it; Reanimated skips layout animations under Reduce Motion. */
+const rise = (step: number) => FadeInDown.duration(280).delay(60 * step);
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
@@ -72,6 +71,7 @@ function ProfileAvatar({ name, uri, onPress, editable }: { name: string; uri?: s
 
 /** Identity block shared by your profile and other people's: avatar, counts, handle, bio, city, role badges. */
 export function ProfileHeader({ profile, name, onPressAvatar, editable }: ProfileHeaderProps) {
+  const roleBadges = profile.badges.filter((b): b is Exclude<ProfileBadge, 'user'> => b !== 'user');
   return (
     <View style={styles.container}>
       <Animated.View entering={rise(0)} style={styles.topRow}>
@@ -99,11 +99,13 @@ export function ProfileHeader({ profile, name, onPressAvatar, editable }: Profil
         <Text style={styles.member}>Member since {profile.memberSince}</Text>
       </Animated.View>
 
-      <Animated.View entering={rise(2)} style={styles.badges}>
-        {profile.badges.map((badge) => (
-          <Badge key={badge} label={BADGE_LABELS[badge]} tone={badge === 'user' ? 'neutral' : 'accent'} />
-        ))}
-      </Animated.View>
+      {roleBadges.length > 0 ? (
+        <Animated.View entering={rise(2)} style={styles.badges}>
+          {roleBadges.map((badge) => (
+            <Badge key={badge} label={BADGE_LABELS[badge]} tone="accent" />
+          ))}
+        </Animated.View>
+      ) : null}
     </View>
   );
 }

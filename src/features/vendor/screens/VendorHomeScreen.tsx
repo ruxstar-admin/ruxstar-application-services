@@ -99,7 +99,7 @@ export function VendorHomeScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
         <Text style={styles.overline}>Vendor portal</Text>
-        <Pressable accessibilityRole="button" hitSlop={12} onPress={() => router.replace('/(customer)/(tabs)/profile')}>
+        <Pressable accessibilityRole="button" hitSlop={12} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(customer)/(tabs)/profile'))}>
           <Text style={styles.exit}>Exit</Text>
         </Pressable>
       </View>
@@ -147,14 +147,14 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three },
   title: { ...Typography.title, color: Brand.text },
   list: { gap: Spacing.two },
-  business: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.two, borderRadius: Radius.lg, backgroundColor: Brand.surface },
+  business: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.two, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   pressed: { opacity: 0.7 },
   cover: { width: 56, height: 56, borderRadius: Radius.md, backgroundColor: Brand.surfaceAlt },
   coverEmpty: { alignItems: 'center', justifyContent: 'center' },
   businessText: { flex: 1, gap: 2 },
   businessName: { ...Typography.bodyStrong, color: Brand.text },
   muted: { ...Typography.caption, color: Brand.textMuted },
-  card: { backgroundColor: Brand.surface, borderRadius: Radius.lg, padding: Spacing.three, gap: Spacing.three },
+  card: { backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border, borderRadius: Radius.lg, padding: Spacing.three, gap: Spacing.three },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardTitle: { ...Typography.heading, color: Brand.text },
   stats: { flexDirection: 'row', gap: Spacing.five },
