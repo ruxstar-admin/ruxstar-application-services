@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { VerifiedTick } from '@/features/kyc/components/VerifiedTick';
 import { Feedback } from '@/lib/haptics';
+import { compactCount } from '@/lib/time';
 import type { Profile, ProfileBadge } from '@/types/profile';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -19,6 +20,8 @@ interface ProfileHeaderProps {
   /** Makes the photo a button, with a camera mark when `editable`. */
   onPressAvatar?: () => void;
   editable?: boolean;
+  /** Opens the followers or following list. */
+  onOpenPeople?: (side: 'followers' | 'following') => void;
 }
 
 const BADGE_LABELS: Record<Exclude<ProfileBadge, 'user'>, string> = {
@@ -30,12 +33,33 @@ const BADGE_LABELS: Record<Exclude<ProfileBadge, 'user'>, string> = {
 /** Each block rises 60ms after the one before it; Reanimated skips layout animations under Reduce Motion. */
 const rise = (step: number) => FadeInDown.duration(280).delay(60 * step);
 
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <View style={styles.stat} accessible accessibilityLabel={`${value} ${label}`}>
+function Stat({ value, label, onPress }: { value: string; label: string; onPress?: () => void }) {
+  const body = (
+    <>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </>
+  );
+  if (!onPress) {
+    return (
+      <View style={styles.stat} accessible accessibilityLabel={`${value} ${label}`}>
+        {body}
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      style={styles.stat}
+      accessibilityRole="button"
+      accessibilityLabel={`${value} ${label}`}
+      hitSlop={8}
+      onPress={() => {
+        Feedback.tap();
+        onPress();
+      }}
+    >
+      {body}
+    </Pressable>
   );
 }
 
@@ -70,16 +94,16 @@ function ProfileAvatar({ name, uri, onPress, editable }: { name: string; uri?: s
 }
 
 /** Identity block shared by your profile and other people's: avatar, counts, handle, bio, city, role badges. */
-export function ProfileHeader({ profile, name, onPressAvatar, editable }: ProfileHeaderProps) {
+export function ProfileHeader({ profile, name, onPressAvatar, editable, onOpenPeople }: ProfileHeaderProps) {
   const roleBadges = profile.badges.filter((b): b is Exclude<ProfileBadge, 'user'> => b !== 'user');
   return (
     <View style={styles.container}>
       <Animated.View entering={rise(0)} style={styles.topRow}>
         <ProfileAvatar name={name} uri={profile.avatarUrl} onPress={onPressAvatar} editable={editable} />
         <View style={styles.stats}>
-          <Stat value={String(profile.posts)} label="Posts" />
-          <Stat value={String(profile.engagements)} label="Engagements" />
-          <Stat value={profile.rating === null ? '–' : profile.rating.toFixed(1)} label="Rating" />
+          <Stat value={compactCount(profile.posts)} label="Posts" />
+          <Stat value={compactCount(profile.followers)} label="Followers" onPress={onOpenPeople && (() => onOpenPeople('followers'))} />
+          <Stat value={compactCount(profile.following)} label="Following" onPress={onOpenPeople && (() => onOpenPeople('following'))} />
         </View>
       </Animated.View>
 

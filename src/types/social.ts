@@ -25,10 +25,21 @@ export interface PostPhoto {
   height: number;
 }
 
+/** The business a business post is for. `orderable` when it is a live print shop taking orders. */
+export interface PostBusiness {
+  id: string;
+  name: string;
+  module: string;
+  orderable: boolean;
+}
+
+export type FeedTab = 'for_you' | 'following';
+
 export interface Post {
   id: string;
   author: Author;
   kind: PostKind;
+  business: PostBusiness | null;
   text: string;
   photos: PostPhoto[];
   createdAt: string;
@@ -39,6 +50,31 @@ export interface Post {
   savedByMe: boolean;
   mine: boolean;
 }
+
+/** Someone in a followers, following or blocked list. */
+export interface Person extends Author {
+  followedByMe: boolean;
+  /** The signed-in user, who has no Follow button. */
+  me: boolean;
+}
+
+/** You and someone else. */
+export interface Relation {
+  following: boolean;
+  followsMe: boolean;
+  blockedByMe: boolean;
+  counts: { followers: number; following: number };
+}
+
+export const USER_REPORT_REASONS = [
+  { key: 'spam', label: 'Spam' },
+  { key: 'fake', label: 'Fake account or pretending to be someone' },
+  { key: 'abuse', label: 'Rude or abusive behaviour' },
+  { key: 'scam', label: 'Scam or asking for money' },
+  { key: 'other', label: 'Something else' },
+] as const;
+
+export type UserReportReason = (typeof USER_REPORT_REASONS)[number]['key'];
 
 export interface Comment {
   id: string;
@@ -69,6 +105,8 @@ export interface AppNotification {
   orderId?: string;
   /** A new or cancelled order to your shop: tapping opens it in the vendor portal. */
   shopOrderId?: string;
+  /** A new follower: tapping opens their profile. */
+  profileId?: string;
 }
 
 export const SEARCH_SCOPES = [

@@ -1,56 +1,84 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
-import { Avatar } from '@/components/ui/Avatar';
+import { useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Chip } from '@/components/ui/Chip';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ScreenContainer } from '@/components/ui/ScreenContainer';
-import { Brand, Spacing, Typography } from '@/constants/theme';
-import { useAsyncResource } from '@/hooks/use-async-resource';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { Brand, Spacing } from '@/constants/theme';
+import { PersonRow } from '@/features/social/components/PersonRow';
+import { useFeedStore } from '@/features/social/stores/feed-store';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { usePaginated } from '@/hooks/use-paginated';
 import { Feedback } from '@/lib/haptics';
-import { ProfileService } from '@/services/profile-service';
+import { SocialService } from '@/services/social-service';
+import type { Person } from '@/types/social';
 
+/** People you blocked, most recent first. Unblocking doesn't bring back the follows that ended. */
 export function BlockedUsersScreen() {
+  const router = useRouter();
   const token = useAuthToken();
-  const { data, loading, error, reload, setData } = useAsyncResource(() => ProfileService.getBlocked(token));
+  const markFeedDirty = useFeedStore((s) => s.markDirty);
+  const list = usePaginated((cursor) => SocialService.blocked(token, cursor));
+  const [busy, setBusy] = useState<string | null>(null);
 
-  const unblock = async (userId: string) => {
-    if (!data) return;
-    const previous = data;
-    setData(data.filter((user) => user.id !== userId));
+  const unblock = async (person: Person) => {
+    setBusy(person.id);
     try {
-      await ProfileService.unblock(token, userId);
+      await SocialService.block(token, person.id, false);
       Feedback.success();
+      list.setItems((items) => items.filter((p) => p.id !== person.id));
+      markFeedDirty();
     } catch {
       Feedback.error();
-      setData(previous);
+    } finally {
+      setBusy(null);
     }
   };
 
   return (
-    <ScreenContainer title="Blocked users">
-      <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload}>
-        {data?.map((user) => (
-          <View key={user.id} style={styles.row}>
-            <Avatar name={user.name} size={44} />
-            <View style={styles.text}>
-              <Text style={styles.name}>{user.name}</Text>
-              <Text style={styles.username}>@{user.username}</Text>
-            </View>
-            <Chip label="Unblock" onPress={() => unblock(user.id)} />
-          </View>
-        ))}
-        {data?.length === 0 ? (
-          <EmptyState icon="happy-outline" title="No blocked users" message="People you block cannot message you or see your posts." />
-        ) : null}
-      </AsyncBoundary>
-    </ScreenContainer>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <ScreenHeader title="Blocked accounts" onBack={() => router.back()} />
+      </View>
+      {list.loading ? (
+        <View style={styles.skeletons}>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} height={52} radius={14} />
+          ))}
+        </View>
+      ) : list.error && list.items.length === 0 ? (
+        <EmptyState icon="cloud-offline-outline" title="Could not load blocked accounts" actionLabel="Try again" onAction={list.retry} />
+      ) : (
+        <FlatList
+          data={list.items}
+          keyExtractor={(p) => p.id}
+          contentContainerStyle={styles.list}
+          onEndReached={list.loadMore}
+          onEndReachedThreshold={0.6}
+          refreshControl={<RefreshControl refreshing={list.refreshing} onRefresh={list.refresh} tintColor={Brand.primarySoft} />}
+          ListEmptyComponent={
+            <EmptyState icon="happy-outline" title="No blocked accounts" message="People you block can't see your posts, comment, follow or message you." />
+          }
+          ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={styles.footer} /> : null}
+          renderItem={({ item }) => (
+            <PersonRow
+              person={item}
+              onPress={() => router.push({ pathname: '/(customer)/user/[id]', params: { id: item.id } })}
+              right={<Chip label="Unblock" disabled={busy === item.id} onPress={() => unblock(item)} />}
+            />
+          )}
+        />
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.two },
-  text: { flex: 1 },
-  name: { ...Typography.body, color: Brand.text },
-  username: { ...Typography.caption, color: Brand.textMuted },
+  container: { flex: 1, backgroundColor: Brand.bg },
+  header: { paddingHorizontal: Spacing.three },
+  list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five },
+  footer: { paddingVertical: Spacing.three },
+  skeletons: { gap: Spacing.three, paddingHorizontal: Spacing.three },
 });

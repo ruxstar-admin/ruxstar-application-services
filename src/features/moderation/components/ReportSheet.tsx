@@ -11,14 +11,16 @@ import { REPORT_REASONS, type ReportReason } from '@/types/profile';
 
 const log = createLogger('moderation');
 
-interface ReportSheetProps {
+interface ReportSheetProps<R extends string> {
   visible: boolean;
   onClose: () => void;
   /** Sheet heading, e.g. "Report Priya Nair" or "Report post". */
   title: string;
   /** Name shown in "Also block …" after reporting. */
   subject: string;
-  onReport: (reason: ReportReason) => Promise<unknown>;
+  /** The reasons to pick from; post reasons when left out. */
+  reasons?: readonly { key: R; label: string }[];
+  onReport: (reason: R) => Promise<unknown>;
   /** When provided, the confirmation offers to also block the person. */
   onBlock?: () => Promise<unknown>;
 }
@@ -26,11 +28,17 @@ interface ReportSheetProps {
 type Step = 'reason' | 'done';
 
 /** Two-step report flow: pick a reason (sent immediately), then a confirmation that can also block. */
-function ReportFlow({ subject, onReport, onBlock, onClose }: Omit<ReportSheetProps, 'visible' | 'title'>) {
+function ReportFlow<R extends string>({
+  subject,
+  reasons,
+  onReport,
+  onBlock,
+  onClose,
+}: Omit<ReportSheetProps<R>, 'visible' | 'title' | 'reasons'> & { reasons: readonly { key: R; label: string }[] }) {
   const [step, setStep] = useState<Step>('reason');
   const [busy, setBusy] = useState(false);
 
-  const send = async (reason: ReportReason) => {
+  const send = async (reason: R) => {
     setBusy(true);
     try {
       await onReport(reason);
@@ -75,7 +83,7 @@ function ReportFlow({ subject, onReport, onBlock, onClose }: Omit<ReportSheetPro
   return (
     <>
       <Text style={styles.note}>Reports are private. They never see who reported them.</Text>
-      {REPORT_REASONS.map((reason) => (
+      {reasons.map((reason) => (
         <ListRow key={reason.key} title={reason.label} onPress={busy ? undefined : () => send(reason.key)} />
       ))}
       <PrimaryButton label="Cancel" variant="outline" onPress={onClose} disabled={busy} />
@@ -84,10 +92,11 @@ function ReportFlow({ subject, onReport, onBlock, onClose }: Omit<ReportSheetPro
 }
 
 /** Bottom sheet for reporting a person or a post. Its flow state resets each time the sheet is reopened. */
-export function ReportSheet({ visible, onClose, title, subject, onReport, onBlock }: ReportSheetProps) {
+export function ReportSheet<R extends string = ReportReason>({ visible, onClose, title, subject, reasons, onReport, onBlock }: ReportSheetProps<R>) {
+  const list = reasons ?? (REPORT_REASONS as readonly { key: string; label: string }[] as readonly { key: R; label: string }[]);
   return (
     <BottomSheet visible={visible} onClose={onClose} title={title}>
-      <ReportFlow subject={subject} onReport={onReport} onBlock={onBlock} onClose={onClose} />
+      <ReportFlow subject={subject} reasons={list} onReport={onReport} onBlock={onBlock} onClose={onClose} />
     </BottomSheet>
   );
 }

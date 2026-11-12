@@ -24,7 +24,7 @@ export interface AuthUser {
   /** Issued when identity is approved. The full card is at GET /v1/kyc/card. */
   card: { id: string } | null;
   /** Posts that are up, and likes plus comments they have received. */
-  stats: { posts: number; engagements: number };
+  stats: { posts: number; engagements: number; followers: number; following: number };
   createdAt: string;
 }
 

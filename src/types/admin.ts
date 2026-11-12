@@ -27,7 +27,7 @@ export interface Access {
 /** A section is null when this person may not see it. */
 export interface Overview {
   kyc: { waiting: number } | null;
-  reports: { posts: number; reports: number } | null;
+  reports: { posts: number; reports: number; people: number } | null;
   users: { total: number; newThisWeek: number; suspended: number } | null;
   businesses: { total: number; live: number; suspended: number } | null;
   modules: { module: ModuleName; live: boolean }[] | null;
@@ -81,6 +81,25 @@ export interface ReportCase {
   firstAt: string;
   lastAt: string;
   outcome: 'kept' | 'removed' | null;
+  closedAt: string | null;
+}
+
+// Reported people.
+
+export type PersonReportReason = 'spam' | 'fake' | 'abuse' | 'scam' | 'other';
+
+export interface PersonCase {
+  userId: string;
+  user: { id: string; name: string; username: string; avatarUrl: string | null; status: AccountStatus } | null;
+  status: ReportStatus;
+  reports: number;
+  reasons: Record<PersonReportReason, number>;
+  /** What reporters wrote, newest first, up to 5. */
+  notes: string[];
+  firstAt: string;
+  lastAt: string;
+  /** `held` when their account was put on hold. */
+  outcome: 'dismissed' | 'held' | null;
   closedAt: string | null;
 }
 

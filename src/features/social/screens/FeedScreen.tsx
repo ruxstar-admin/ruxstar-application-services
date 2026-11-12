@@ -1,9 +1,10 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { PostCard } from '@/features/social/components/PostCard';
@@ -15,9 +16,14 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { Feedback } from '@/lib/haptics';
 import { SocialService } from '@/services/social-service';
-import type { Post } from '@/types/social';
+import type { FeedTab, Post } from '@/types/social';
 
 const END_REACHED_THRESHOLD = 0.6;
+
+const TABS = [
+  { key: 'for_you', label: 'For you' },
+  { key: 'following', label: 'Following' },
+] as const satisfies readonly { key: FeedTab; label: string }[];
 
 function FeedSkeleton() {
   return (
@@ -36,7 +42,8 @@ function FeedSkeleton() {
 export function FeedScreen() {
   const router = useRouter();
   const token = useAuthToken();
-  const feed = usePaginated((cursor) => SocialService.feed(token, cursor));
+  const [tab, setTab] = useState<FeedTab>('for_you');
+  const feed = usePaginated((cursor) => SocialService.feed(token, tab, cursor));
   const { items, setItems } = feed;
   const unread = useUnreadCount();
   const dirty = useFeedStore((s) => s.dirty);
@@ -94,6 +101,18 @@ export function FeedScreen() {
           ) : null}
         </Pressable>
       </View>
+      <View style={styles.tabs}>
+        <SegmentedTabs
+          options={TABS}
+          value={tab}
+          onChange={(next) => {
+            if (next === tab) return;
+            setTab(next);
+            feed.retry();
+            listRef.current?.scrollToOffset({ offset: 0, animated: false });
+          }}
+        />
+      </View>
 
       {feed.loading ? (
         <FeedSkeleton />
@@ -110,7 +129,13 @@ export function FeedScreen() {
           onEndReached={feed.loadMore}
           onEndReachedThreshold={END_REACHED_THRESHOLD}
           refreshControl={<RefreshControl refreshing={feed.refreshing} onRefresh={feed.refresh} tintColor={Brand.primarySoft} />}
-          ListEmptyComponent={<EmptyState icon="newspaper-outline" title="Nothing here yet" message="Be the first to post something." />}
+          ListEmptyComponent={
+            tab === 'following' ? (
+              <EmptyState icon="people-outline" title="No one to show yet" message="Follow people and their posts show up here, newest first." />
+            ) : (
+              <EmptyState icon="newspaper-outline" title="Nothing here yet" message="Be the first to post something." />
+            )
+          }
           ListFooterComponent={feed.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={styles.footer} /> : null}
           removeClippedSubviews
         />
@@ -137,6 +162,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Brand.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.three, paddingVertical: Spacing.three },
   wordmark: { ...Typography.title, color: Brand.text },
+  tabs: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.two },
   badge: {
     position: 'absolute',
     top: -6,

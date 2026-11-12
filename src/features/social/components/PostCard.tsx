@@ -1,15 +1,52 @@
 import { memo } from 'react';
 import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { WEBSITE_URL } from '@/constants/config';
-import { Brand, Spacing, Typography } from '@/constants/theme';
+import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { VerifiedTick } from '@/features/kyc/components/VerifiedTick';
 import { PostImages } from '@/features/social/components/PostImages';
 import { Feedback } from '@/lib/haptics';
 import { compactCount, timeAgo } from '@/lib/time';
-import type { Post } from '@/types/social';
+import type { Post, PostBusiness } from '@/types/social';
+
+/** The shop a business post is for, with Order when it is a print shop taking orders now. */
+function BusinessLine({ business }: { business: PostBusiness }) {
+  const router = useRouter();
+  const pod = business.module === 'pod';
+  return (
+    <View style={styles.business}>
+      <Pressable
+        accessibilityRole={pod ? 'link' : undefined}
+        accessibilityLabel={pod ? `Open ${business.name}` : business.name}
+        disabled={!pod}
+        style={styles.businessName}
+        onPress={() => router.push({ pathname: '/(customer)/pod/shop/[id]', params: { id: business.id } })}
+      >
+        <Ionicons name="storefront-outline" size={16} color={Brand.primarySoft} />
+        <Text style={styles.businessText} numberOfLines={1}>
+          {business.name}
+        </Text>
+      </Pressable>
+      {business.orderable ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Order from ${business.name}`}
+          style={styles.order}
+          onPress={() => {
+            Feedback.press();
+            router.push({ pathname: '/(customer)/pod/new/[shopId]', params: { shopId: business.id } });
+          }}
+        >
+          <Ionicons name="print-outline" size={16} color={Brand.onAction} />
+          <Text style={styles.orderText}>Order</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
 
 interface PostCardProps {
   post: Post;
@@ -79,6 +116,7 @@ export const PostCard = memo(function PostCard({ post, onLike, onSave, onOpenCom
 
       {post.text ? <Text style={styles.text}>{post.text}</Text> : null}
       <PostImages photos={post.photos} />
+      {post.business ? <BusinessLine business={post.business} /> : null}
 
       <View style={styles.actions}>
         <Action
@@ -111,6 +149,29 @@ const styles = StyleSheet.create({
   name: { ...Typography.bodyStrong, color: Brand.text, flexShrink: 1 },
   meta: { ...Typography.caption, color: Brand.textMuted },
   text: { ...Typography.body, color: Brand.text },
+  business: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    padding: Spacing.two,
+    paddingLeft: Spacing.three,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Brand.border,
+    backgroundColor: Brand.surface,
+  },
+  businessName: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, minHeight: 36 },
+  businessText: { ...Typography.bodyStrong, color: Brand.text, flexShrink: 1 },
+  order: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    minHeight: 36,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Radius.pill,
+    backgroundColor: Brand.action,
+  },
+  orderText: { ...Typography.bodyStrong, color: Brand.onAction },
   actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, marginHorizontal: -Spacing.two },
   action: {
     flexDirection: 'row',

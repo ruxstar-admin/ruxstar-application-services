@@ -71,7 +71,13 @@ export function DashboardScreen() {
                   icon="flag-outline"
                   label="Reported posts"
                   value={data.reports.posts}
-                  caption={data.reports.posts === 0 ? 'No open reports.' : `${data.reports.reports} reports in all`}
+                  caption={
+                    data.reports.people > 0
+                      ? `${data.reports.people === 1 ? '1 person' : `${data.reports.people} people`} reported too`
+                      : data.reports.posts === 0
+                        ? 'No open reports.'
+                        : `${data.reports.reports} reports in all`
+                  }
                   href="/(admin)/(tabs)/reports"
                 />
               ) : null}

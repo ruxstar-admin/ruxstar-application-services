@@ -1,16 +1,7 @@
 import { apiDelete, apiGet, apiPatch, apiPost, apiPutBytes } from '@/lib/api-client';
 import { timeAgo } from '@/lib/time';
 import type { AuthUser } from '@/types/auth';
-import type {
-  BlockedUser,
-  NotificationPrefs,
-  Profile,
-  ProfileBadge,
-  ProfileUpdate,
-  PublicProfileResponse,
-  ReportReason,
-  Session,
-} from '@/types/profile';
+import type { NotificationPrefs, Profile, ProfileBadge, ProfileUpdate, PublicProfileResponse, Session } from '@/types/profile';
 
 type Message = { message: string };
 
@@ -43,6 +34,8 @@ const toProfile = (user: AuthUser): Profile => ({
   gender: user.gender ?? undefined,
   posts: user.stats?.posts ?? 0,
   engagements: user.stats?.engagements ?? 0,
+  followers: user.stats?.followers ?? 0,
+  following: user.stats?.following ?? 0,
   rating: null,
   memberSince: monthYear(user.createdAt),
   badges: badgesOf(user.roles),
@@ -60,6 +53,8 @@ const fromPublic = (p: PublicProfileResponse): Profile => ({
   city: p.city ?? '',
   posts: p.stats?.posts ?? 0,
   engagements: p.stats?.engagements ?? 0,
+  followers: p.stats?.followers ?? 0,
+  following: p.stats?.following ?? 0,
   rating: null,
   memberSince: monthYear(p.memberSince),
   badges: badgesOf(p.badges),
@@ -82,8 +77,8 @@ const lastActive = (session: ApiSession) => {
 };
 
 /**
- * Profiles, photos and devices are `/v1/account`. Settings and moderation have no backend yet and
- * are mocked (profile.mocks.ts).
+ * Profiles, photos and devices are `/v1/account`; following, blocking and reporting people are in
+ * SocialService. Notification settings, export and pause have no backend yet and are mocked (profile.mocks.ts).
  */
 export const ProfileService = {
   getMe: async (token: string) => toProfile(await apiGet<AuthUser>('/v1/account/me', token)),
@@ -123,13 +118,6 @@ export const ProfileService = {
   getNotificationPrefs: (token: string) => apiGet<NotificationPrefs>('/settings/notifications', token),
   setNotificationPrefs: (token: string, prefs: Partial<NotificationPrefs>) =>
     apiPost<NotificationPrefs>('/settings/notifications', prefs, token),
-
-  getBlocked: (token: string) => apiGet<BlockedUser[]>('/settings/blocked', token),
-  unblock: (token: string, userId: string) => apiPost<Message>('/users/unblock', { userId }, token),
-  block: (token: string, user: { userId: string; name: string; username: string }) =>
-    apiPost<Message>('/users/block', user, token),
-  report: (token: string, userId: string, reason: ReportReason) =>
-    apiPost<Message>('/users/report', { userId, reason }, token),
 
   exportData: (token: string) => apiPost<Message>('/account/export', undefined, token),
   pauseAccount: (token: string) => apiPost<Message>('/account/pause', undefined, token),

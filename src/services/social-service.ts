@@ -1,5 +1,20 @@
 import { apiDelete, apiGet, apiGetPage, apiPatch, apiPost, apiPostBytes, apiPut } from '@/lib/api-client';
-import type { AppNotification, Author, Comment, Page, Post, PostKind, PostPhoto, SearchResult, SearchScope } from '@/types/social';
+import type {
+  AppNotification,
+  Author,
+  Comment,
+  FeedTab,
+  Page,
+  Person,
+  Post,
+  PostBusiness,
+  PostKind,
+  PostPhoto,
+  Relation,
+  SearchResult,
+  SearchScope,
+  UserReportReason,
+} from '@/types/social';
 import type { ReportReason } from '@/types/profile';
 
 interface ApiAuthor {
@@ -15,6 +30,7 @@ interface ApiPost {
   id: string;
   author: ApiAuthor;
   kind: PostKind;
+  business: PostBusiness | null;
   text: string;
   media: PostPhoto[];
   counts: { likes: number; comments: number };
@@ -38,7 +54,7 @@ interface ApiNotification {
   kind: 'social' | 'account';
   title: string;
   body: string;
-  link: { screen: 'post' | 'verification' | 'business' | 'order' | 'shop_order'; id: string };
+  link: { screen: 'post' | 'verification' | 'business' | 'order' | 'shop_order' | 'profile'; id: string };
   read: boolean;
   createdAt: string;
 }
@@ -81,7 +97,15 @@ const LINKS: Record<ApiNotification['link']['screen'], (id: string) => Partial<A
   verification: () => ({ verification: true }),
   order: (id) => ({ orderId: id }),
   shop_order: (id) => ({ shopOrderId: id }),
+  profile: (id) => ({ profileId: id }),
 };
+
+interface ApiPerson extends ApiAuthor {
+  followedByMe: boolean;
+  me: boolean;
+}
+
+const toPerson = ({ followedByMe, me, ...author }: ApiPerson): Person => ({ ...toAuthor(author), followedByMe, me });
 
 const mapPage = async <A, B>(page: Promise<Page<A>>, map: (a: A) => B): Promise<Page<B>> => {
   const { items, nextCursor } = await page;
@@ -89,10 +113,12 @@ const mapPage = async <A, B>(page: Promise<Page<A>>, map: (a: A) => B): Promise<
 };
 
 const path = (id: string) => `/v1/social/posts/${encodeURIComponent(id)}`;
+const user = (ref: string) => `/v1/social/users/${encodeURIComponent(ref)}`;
 
-/** Posts, comments and notifications are `/v1/social` and `/v1/notifications`. Search outside People is still mocked. */
+/** Posts, comments, people and notifications are `/v1/social` and `/v1/notifications`. Search outside People is still mocked. */
 export const SocialService = {
-  feed: (token: string, cursor?: string) => mapPage(apiGetPage<ApiPost>('/v1/social/feed', token, { cursor }), toPost),
+  /** For you ranks the week's posts by likes and comments; Following is people you follow, newest first. */
+  feed: (token: string, tab: FeedTab, cursor?: string) => mapPage(apiGetPage<ApiPost>('/v1/social/feed', token, { tab, cursor }), toPost),
   /** Someone's posts on one profile tab. `ref` is a username or a user id. */
   userPosts: (token: string, ref: string, kind: PostKind, cursor?: string) =>
     mapPage(apiGetPage<ApiPost>(`/v1/social/users/${encodeURIComponent(ref)}/posts`, token, { kind, cursor }), toPost),
@@ -102,7 +128,8 @@ export const SocialService = {
   /** A JPEG the app has already shrunk. Returns the id to pass to `createPost`. */
   uploadPhoto: (token: string, jpeg: Uint8Array<ArrayBuffer>) =>
     apiPostBytes<PostPhoto & { id: string }>('/v1/social/media', { data: jpeg, type: 'image/jpeg' }, token),
-  createPost: async (token: string, post: { text: string; mediaIds: string[]; kind: PostKind }) =>
+  /** `businessId` says which business a business post is for; needed when the vendor has more than one. */
+  createPost: async (token: string, post: { text: string; mediaIds: string[]; kind: PostKind; businessId?: string }) =>
     toPost(await apiPost<ApiPost>('/v1/social/posts', post, token)),
   updatePost: async (token: string, id: string, text: string) => toPost(await apiPatch<ApiPost>(path(id), { text }, token)),
   deletePost: (token: string, id: string) => apiDelete<Done>(path(id), token),
@@ -120,6 +147,16 @@ export const SocialService = {
   comments: (token: string, id: string, cursor?: string) => mapPage(apiGetPage<ApiComment>(`${path(id)}/comments`, token, { cursor }), toComment),
   addComment: async (token: string, id: string, text: string) => toComment(await apiPost<ApiComment>(`${path(id)}/comments`, { text }, token)),
   deleteComment: (token: string, id: string) => apiDelete<Done>(`/v1/social/comments/${encodeURIComponent(id)}`, token),
+
+  /** `ref` is a username or a user id. */
+  relation: (token: string, ref: string) => apiGet<Relation>(`${user(ref)}/relation`, token),
+  follow: (token: string, id: string, on: boolean) => (on ? apiPut<Relation>(`${user(id)}/follow`, token) : apiDelete<Relation>(`${user(id)}/follow`, token)),
+  followers: (token: string, ref: string, cursor?: string) => mapPage(apiGetPage<ApiPerson>(`${user(ref)}/followers`, token, { cursor }), toPerson),
+  following: (token: string, ref: string, cursor?: string) => mapPage(apiGetPage<ApiPerson>(`${user(ref)}/following`, token, { cursor }), toPerson),
+  /** Both of you stop seeing each other, and follows both ways end. They aren't told. */
+  block: (token: string, id: string, on: boolean) => (on ? apiPut<Relation>(`${user(id)}/block`, token) : apiDelete<Relation>(`${user(id)}/block`, token)),
+  blocked: (token: string, cursor?: string) => mapPage(apiGetPage<ApiPerson>('/v1/social/blocks', token, { cursor }), toPerson),
+  reportUser: (token: string, id: string, reason: UserReportReason) => apiPost<Done>(`${user(id)}/report`, { reason }, token),
 
   search: (token: string, q: string, scope: SearchScope) => apiPost<SearchResult[]>('/search', { q, scope }, token),
 

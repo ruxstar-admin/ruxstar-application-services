@@ -1,4 +1,4 @@
-import type { ModuleName, ReportReason } from '@/types/admin';
+import type { ModuleName, PersonReportReason, ReportReason } from '@/types/admin';
 
 export const MODULE_LABEL: Record<ModuleName, string> = {
   pod: 'Print on demand',
@@ -14,6 +14,14 @@ export const REASON_LABEL: Record<ReportReason, string> = {
   fake: 'Fake or scam',
   abuse: 'Abuse',
   undelivered: 'Not delivered',
+  other: 'Other',
+};
+
+export const PERSON_REASON_LABEL: Record<PersonReportReason, string> = {
+  spam: 'Spam',
+  fake: 'Fake account',
+  abuse: 'Abuse',
+  scam: 'Scam',
   other: 'Other',
 };
 
@@ -33,6 +41,7 @@ export const ACTION_LABEL: Record<string, string> = {
   'kyc.reject': 'Sent verification back',
   'report.keep': 'Kept a reported post',
   'post.remove': 'Removed a post',
+  'user_report.dismiss': 'Dismissed reports about someone',
   'user.suspend': 'Put an account on hold',
   'user.unlock': 'Unlocked an account',
   'user.sign_out': 'Signed an account out everywhere',

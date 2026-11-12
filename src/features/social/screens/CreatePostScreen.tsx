@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -13,10 +13,12 @@ import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
 import { useFeedStore } from '@/features/social/stores/feed-store';
+import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useDelayedFocus } from '@/hooks/use-delayed-focus';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
+import { BusinessService } from '@/services/business-service';
 import { SocialService } from '@/services/social-service';
 import type { PostKind } from '@/types/social';
 
@@ -41,12 +43,20 @@ export function CreatePostScreen() {
   const router = useRouter();
   const token = useAuthToken();
   const markFeedDirty = useFeedStore((s) => s.markDirty);
-  const { id, text: initialText, kind: kindParam } = useLocalSearchParams<{ id?: string; text?: string; kind?: PostKind }>();
+  const {
+    id,
+    text: initialText,
+    kind: kindParam,
+    businessId: businessParam,
+  } = useLocalSearchParams<{ id?: string; text?: string; kind?: PostKind; businessId?: string }>();
   const editing = !!id;
   const kind: PostKind = kindParam === 'business' ? 'business' : 'personal';
   const inputRef = useDelayedFocus<TextInput>();
 
   const [text, setText] = useState(initialText ?? '');
+  const businesses = useAsyncResource(() => (kind === 'business' && !editing ? BusinessService.list(token) : Promise.resolve([])));
+  const [picked, setPicked] = useState<string | null>(businessParam ?? null);
+  const businessId = picked ?? businesses.data?.[0]?.id;
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -90,7 +100,14 @@ export function CreatePostScreen() {
     setFailure(null);
     try {
       if (editing) await SocialService.updatePost(token, id, text.trim());
-      else await SocialService.createPost(token, { text: text.trim(), mediaIds: drafts.map((d) => d.id!), kind });
+      else {
+        await SocialService.createPost(token, {
+          text: text.trim(),
+          mediaIds: drafts.map((d) => d.id!),
+          kind,
+          ...(kind === 'business' && businessId ? { businessId } : {}),
+        });
+      }
       Feedback.success();
       markFeedDirty();
       router.back();
@@ -112,6 +129,32 @@ export function CreatePostScreen() {
       }
     >
       {kind === 'business' && !editing ? <Badge label="Shows on your Business tab" tone="accent" /> : null}
+      {kind === 'business' && !editing && (businesses.data?.length ?? 0) > 1 ? (
+        <View style={styles.picker}>
+          <Text style={styles.pickerLabel}>Posting for</Text>
+          <View style={styles.pills}>
+            {businesses.data!.map((b) => {
+              const on = b.id === businessId;
+              return (
+                <Pressable
+                  key={b.id}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                  onPress={() => {
+                    Feedback.select();
+                    setPicked(b.id);
+                  }}
+                  style={[styles.pill, on && styles.pillOn]}
+                >
+                  <Text style={[styles.pillText, on && styles.pillTextOn]} numberOfLines={1}>
+                    {b.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
       <TextInput
         ref={inputRef}
         style={styles.input}
@@ -207,4 +250,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hint: { ...Typography.caption, color: Brand.error },
+  picker: { gap: Spacing.two },
+  pickerLabel: { ...Typography.caption, color: Brand.textMuted },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  pill: {
+    maxWidth: '100%',
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.three,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Brand.border,
+  },
+  pillOn: { backgroundColor: Brand.action, borderColor: Brand.action },
+  pillText: { ...Typography.bodyStrong, color: Brand.text },
+  pillTextOn: { color: Brand.onAction },
 });

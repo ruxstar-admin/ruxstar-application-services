@@ -30,6 +30,7 @@ export function NotificationsScreen() {
     if (n.businessId) return () => router.push({ pathname: '/(vendor)/businesses/[id]', params: { id: n.businessId! } });
     if (n.orderId) return () => router.push({ pathname: '/(customer)/pod/order/[id]', params: { id: n.orderId! } });
     if (n.shopOrderId) return () => router.push({ pathname: '/(vendor)/sale/[id]', params: { id: n.shopOrderId! } });
+    if (n.profileId) return () => router.push({ pathname: '/(customer)/user/[id]', params: { id: n.profileId! } });
     if (n.verification) return () => router.push('/(customer)/settings/verification');
     return undefined;
   };

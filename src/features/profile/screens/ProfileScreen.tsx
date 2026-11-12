@@ -118,7 +118,13 @@ export function ProfileScreen() {
         <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={3}>
           {data ? (
             <>
-              <ProfileHeader profile={data} name={name} editable onPressAvatar={() => setViewingPhoto(true)} />
+              <ProfileHeader
+                profile={data}
+                name={name}
+                editable
+                onPressAvatar={() => setViewingPhoto(true)}
+                onOpenPeople={(side) => router.push({ pathname: '/(customer)/people/[id]', params: { id: data.id, side, title: `@${data.username}` } })}
+              />
 
               <Animated.View entering={rise(3)} style={styles.actions}>
                 <View style={styles.grow}>

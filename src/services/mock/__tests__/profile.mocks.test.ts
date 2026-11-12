@@ -18,12 +18,8 @@ describe('profile mocks', () => {
     await expect(call('GET', '/settings/notifications')).resolves.toMatchObject({ digest: true, orders: true });
   });
 
-  it('blocks then unblocks a user', async () => {
-    await call('POST', '/users/block', { userId: 'u-new', name: 'New Person', username: 'new.p' });
-    let list = (await call('GET', '/settings/blocked')) as { id: string }[];
-    expect(list.some((u) => u.id === 'u-new')).toBe(true);
-    await call('POST', '/users/unblock', { userId: 'u-new' });
-    list = (await call('GET', '/settings/blocked')) as { id: string }[];
-    expect(list.some((u) => u.id === 'u-new')).toBe(false);
+  it('leaves blocking and reporting people to the API', () => {
+    expect(findMock('PUT', '/v1/social/users/asha.rao/block', 'auto')).toBeUndefined();
+    expect(findMock('POST', '/users/block', 'auto')).toBeUndefined();
   });
 });

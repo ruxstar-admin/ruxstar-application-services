@@ -14,6 +14,7 @@ import type {
   ModuleSettings,
   Overview,
   Permission,
+  PersonCase,
   ReportCase,
   ReportStatus,
   ReviewCase,
@@ -42,6 +43,11 @@ export const AdminService = {
   /** The author is notified with the reason. */
   removePost: (token: string, postId: string, reason: string, key: string) =>
     apiPost<ReportCase>(`/v1/ruxstar/reports/${postId}/remove`, { reason }, token, keyed(key)),
+  peopleReports: (token: string, status: ReportStatus, cursor?: string) =>
+    apiGetPage<PersonCase>('/v1/ruxstar/reports/people', token, { status, cursor }),
+  /** To act on the account instead, put it on hold; that closes these too. */
+  dismissPerson: (token: string, userId: string, key: string) =>
+    apiPost<PersonCase>(`/v1/ruxstar/reports/people/${userId}/dismiss`, undefined, token, keyed(key)),
 
   findAccounts: (token: string, q: string, status?: AccountStatus, cursor?: string) =>
     apiGetPage<AccountRow>('/v1/ruxstar/users', token, { q: q.trim() || undefined, status, cursor }),

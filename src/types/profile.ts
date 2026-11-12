@@ -10,6 +10,8 @@ export interface Profile {
   avatarUrl?: string;
   posts: number;
   engagements: number;
+  followers: number;
+  following: number;
   /** null until the user has a rated engagement. */
   rating: number | null;
   memberSince: string;
@@ -32,7 +34,7 @@ export interface PublicProfileResponse {
   bio: string | null;
   city: string | null;
   badges: { verified: boolean; vendor: boolean; delivery: boolean };
-  stats: { posts: number; engagements: number };
+  stats: { posts: number; engagements: number; followers: number; following: number };
   memberSince: string;
 }
 
@@ -52,12 +54,6 @@ export interface NotificationPrefs {
   social: boolean;
   work: boolean;
   digest: boolean;
-}
-
-export interface BlockedUser {
-  id: string;
-  name: string;
-  username: string;
 }
 
 export const REPORT_REASONS = [
