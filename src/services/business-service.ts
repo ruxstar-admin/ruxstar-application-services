@@ -1,18 +1,30 @@
 import { apiDelete, apiGet, apiPatch, apiPost, apiPostBytes, apiPut, newIdempotencyKey } from '@/lib/api-client';
-import type { Business, BusinessModule, BusinessUpdate, ModuleChoice, Payments, PayoutMethod, PayoutMethodInput } from '@/types/business';
+import type {
+  Business,
+  BusinessCatalog,
+  BusinessUpdate,
+  NewBusiness,
+  Payments,
+  PayoutMethod,
+  PayoutMethodInput,
+  PodSetupUpdate,
+} from '@/types/business';
 
 const path = (id: string) => `/v1/vendor/businesses/${encodeURIComponent(id)}`;
 
 /** `/v1/vendor`: a verified person's businesses, one module each, and how they are paid. */
 export const BusinessService = {
-  modules: (token: string) => apiGet<ModuleChoice[]>('/v1/vendor/modules', token),
+  /** Categories with their types and module state, states and cities, print products. */
+  catalog: (token: string) => apiGet<BusinessCatalog>('/v1/vendor/catalog', token),
   list: (token: string) => apiGet<Business[]>('/v1/vendor/businesses', token),
   get: (token: string, id: string) => apiGet<Business>(path(id), token),
 
-  /** Starts a draft. Pass the same key when retrying the same tap. */
-  create: (token: string, module: BusinessModule, name: string, idempotencyKey = newIdempotencyKey()) =>
-    apiPost<Business>('/v1/vendor/businesses', { module, name }, token, { idempotencyKey }),
+  /** Starts a draft from its category, type and profile. Pass the same key when retrying the same tap. */
+  create: (token: string, business: NewBusiness, idempotencyKey = newIdempotencyKey()) =>
+    apiPost<Business>('/v1/vendor/businesses', { ...business }, token, { idempotencyKey }),
   update: (token: string, id: string, changes: BusinessUpdate) => apiPatch<Business>(path(id), { ...changes }, token),
+  /** Print on demand: products, area and prices. */
+  updatePod: (token: string, id: string, changes: PodSetupUpdate) => apiPatch<Business>(`${path(id)}/pod`, { ...changes }, token),
   /** A JPEG; the API keeps up to 3, the first being the cover. */
   addPhoto: (token: string, id: string, jpeg: Uint8Array<ArrayBuffer>) =>
     apiPostBytes<Business>(`${path(id)}/photos`, { data: jpeg, type: 'image/jpeg' }, token),

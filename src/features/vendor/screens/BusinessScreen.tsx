@@ -14,7 +14,9 @@ import { TextLink } from '@/components/ui/TextLink';
 import { ToggleRow } from '@/components/ui/ToggleRow';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
+import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
 import { BUSINESS_MODULES, MISSING_LABEL, listOf, statusOf } from '@/features/vendor/lib/business-modules';
+import { addressOf, areaLine } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
@@ -37,6 +39,29 @@ function Detail({ label, value }: { label: string; value: string | null }) {
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={value ? styles.detailValue : styles.detailEmpty}>{value ?? 'Not added'}</Text>
     </View>
+  );
+}
+
+function SetupStep({ title, subtitle, done, disabled, onPress }: { title: string; subtitle: string; done: boolean; disabled?: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${title}, ${done ? 'done' : 'to do'}`}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={() => {
+        Feedback.tap();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.step, disabled && styles.stepDisabled, pressed && styles.pressed]}
+    >
+      <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={done ? Brand.success : Brand.textMuted} />
+      <View style={styles.stepText}>
+        <Text style={styles.stepTitle}>{title}</Text>
+        <Text style={styles.muted}>{subtitle}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={Brand.textFaint} />
+    </Pressable>
   );
 }
 
@@ -77,6 +102,12 @@ export function BusinessScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, loading, error, reload, setData } = useAsyncResource(() => BusinessService.get(token, id), id);
   useRefetchOnFocus(reload);
+  const catalog = useBusinessCatalog();
+  const typeLabel = (b: Business) => {
+    const category = catalog.data?.categories.find((c) => c.module === b.module);
+    const type = category?.types.find((t) => t.id === b.type);
+    return type ? `${category!.label} · ${type.label}` : BUSINESS_MODULES[b.module].label;
+  };
   const [busy, setBusy] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -127,7 +158,7 @@ export function BusinessScreen() {
             <View style={styles.head}>
               <View style={styles.headText}>
                 <Text style={styles.name}>{data.name}</Text>
-                <Text style={styles.muted}>{BUSINESS_MODULES[data.module].label}</Text>
+                <Text style={styles.muted}>{typeLabel(data)}</Text>
               </View>
               <Badge {...statusOf(data)} />
             </View>
@@ -151,14 +182,34 @@ export function BusinessScreen() {
 
             <Photos business={data} busy={busy} onAdd={addPhoto} onRemove={(photoId) => run(photoId, () => BusinessService.removePhoto(token, id, photoId))} />
 
+            {data.pod && !data.suspension ? (
+              <View style={styles.steps}>
+                <SetupStep
+                  title="Products & delivery"
+                  subtitle={data.pod.products.length ? `${data.pod.products.length} products · ${areaLine(data.pod)}` : 'Choose what you print and where you deliver'}
+                  done={!data.missing.includes('products') && !data.missing.includes('area')}
+                  onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/products', params: { id } })}
+                />
+                <SetupStep
+                  title="Prices"
+                  subtitle={
+                    !data.pod.products.length
+                      ? 'After you choose products'
+                      : data.pod.unpriced.length
+                        ? `${data.pod.unpriced.length} product${data.pod.unpriced.length === 1 ? '' : 's'} need a price`
+                        : 'Every product has a price'
+                  }
+                  done={data.pod.products.length > 0 && !data.missing.includes('pricing')}
+                  disabled={!data.pod.products.length}
+                  onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/prices', params: { id } })}
+                />
+              </View>
+            ) : null}
+
             <View style={styles.section}>
               <Detail label="About" value={data.description} />
               <Detail label="Phone" value={data.phone} />
-              <Detail label="Email" value={data.email} />
-              <Detail
-                label="Address"
-                value={data.address ? [data.address.line1, data.address.line2, `${data.address.city}, ${data.address.state} ${data.address.pincode}`].filter(Boolean).join('\n') : null}
-              />
+              <Detail label="Location" value={addressOf(data.location)} />
               <Detail label="GSTIN" value={data.gstin ? `${data.gstin.number}${data.gstin.legalName ? ` · ${data.gstin.legalName}` : ''}` : null} />
               {!data.suspension ? (
                 <PrimaryButton
@@ -258,4 +309,9 @@ const styles = StyleSheet.create({
   detailValue: { ...Typography.body, color: Brand.text },
   detailEmpty: { ...Typography.body, color: Brand.textFaint },
   publish: { gap: Spacing.two, paddingTop: Spacing.two },
+  steps: { borderRadius: Radius.lg, borderWidth: 1, borderColor: Brand.border, backgroundColor: Brand.surface, paddingHorizontal: Spacing.three },
+  step: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, minHeight: 64, paddingVertical: Spacing.two },
+  stepDisabled: { opacity: 0.5 },
+  stepText: { flex: 1, gap: 2 },
+  stepTitle: { ...Typography.bodyStrong, color: Brand.text },
 });

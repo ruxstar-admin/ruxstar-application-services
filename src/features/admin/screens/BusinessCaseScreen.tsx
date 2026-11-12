@@ -10,6 +10,7 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { BUSINESS_MODULES, MISSING_LABEL, listOf, statusOf } from '@/features/vendor/lib/business-modules';
+import { addressOf, areaLine } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey } from '@/lib/api-client';
@@ -112,17 +113,14 @@ export function BusinessCaseScreen({ id }: { id: string }) {
               <Facts>
                 <Fact label="About" value={data.business.description ?? '—'} />
                 <Fact label="Phone" value={data.business.phone ?? '—'} />
-                <Fact label="Email" value={data.business.email ?? '—'} />
-                <Fact
-                  label="Address"
-                  value={
-                    data.business.address
-                      ? [data.business.address.line1, data.business.address.line2, data.business.address.city, data.business.address.state, data.business.address.pincode]
-                          .filter(Boolean)
-                          .join(', ')
-                      : '—'
-                  }
-                />
+                <Fact label="Location" value={addressOf(data.business.location)?.replace(/\n/g, ', ') ?? '—'} />
+                {data.business.pod ? (
+                  <>
+                    <Fact label="Products" value={data.business.pod.products.length ? `${data.business.pod.products.length}, ${data.business.pod.unpriced.length} without a price` : 'None yet'} />
+                    <Fact label="Delivers to" value={areaLine(data.business.pod)} />
+                    <Fact label="Ready in" value={`${data.business.pod.turnaroundDays} days`} />
+                  </>
+                ) : null}
                 <Fact
                   label="GSTIN"
                   value={data.business.gstin ? `${data.business.gstin.number}${data.business.gstin.status ? ` (${data.business.gstin.status})` : ''}` : 'Not given'}

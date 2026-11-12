@@ -1,18 +1,30 @@
 import type { Ionicons } from '@expo/vector-icons';
-import type { Business, BusinessMissing, BusinessModule } from '@/types/business';
+import type { Business, BusinessMissing, BusinessModule, BusinessType } from '@/types/business';
 
-export const BUSINESS_MODULES: Record<BusinessModule, { label: string; icon: keyof typeof Ionicons.glyphMap; blurb: string }> = {
-  pod: { label: 'Print on demand', icon: 'print-outline', blurb: 'T-shirts, mugs and posters printed to order.' },
-  events: { label: 'Events', icon: 'calendar-outline', blurb: 'Run events, sell tickets and check people in.' },
-  coaching: { label: 'Coaching', icon: 'school-outline', blurb: 'Courses and batches, with attendance.' },
-  stays: { label: 'Stays', icon: 'bed-outline', blurb: 'PGs, hostels and rooms to book.' },
+/** Icons and the short label for lists; the catalog has the full category names and descriptions. */
+export const BUSINESS_MODULES: Record<BusinessModule, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  pod: { label: 'Print on demand', icon: 'print-outline' },
+  events: { label: 'Events', icon: 'calendar-outline' },
+  coaching: { label: 'Coaching', icon: 'school-outline' },
+  stays: { label: 'Stays', icon: 'bed-outline' },
+};
+
+export const TYPE_ICONS: Record<BusinessType, keyof typeof Ionicons.glyphMap> = {
+  print_shop: 'print-outline',
+  concert: 'musical-notes-outline',
+  sports_event: 'trophy-outline',
+  coaching: 'school-outline',
+  pg: 'home-outline',
+  hostel: 'bed-outline',
 };
 
 export const MISSING_LABEL: Record<BusinessMissing, string> = {
-  description: 'a description of at least 20 characters',
+  photo: 'a cover photo',
   phone: 'a phone number',
-  address: 'an address',
-  photo: 'a photo',
+  location: 'a location',
+  products: 'the products you print',
+  area: 'where you deliver',
+  pricing: 'prices for every product',
 };
 
 /** The one badge a business shows: on hold beats everything, then draft, then paused, open or closed. */
