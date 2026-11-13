@@ -112,19 +112,20 @@ Types: `src/types/coupon.ts`. Services: `src/services/coupon-service.ts` (vendor
 
 Order clocks (`acceptBy` 6 h, `readyBy`, release 48 h after delivery, delivered 7 days after `readyBy`) run on the API: a scheduler calls `POST /jobs/orders` every 10 minutes and order reads catch up too.
 
-## Vendor portal & employment (all mocked — `src/services/mock/vendor.mocks.ts`)
+## Vendor team and Work (real API — `/v1`, decision 42)
 | Path | Request | Response | Notes |
 |---|---|---|---|
-| `/vendor/summary` | – | `{ business, earnings, openOrders, registrations, students, activity[] }` | Requires the vendor role |
-| `/vendor/store/toggle` | `{ open }` | `{ open }` | Audited |
-| `/vendor/team` | – | `Staff[]` (status: invited · requested · pending_kyc · active) | |
-| `/vendor/team/invite` | `{ userId, name, username, module, capabilities[] }` | `Staff` | 403 if any capability is owner-only; 409 if already on the team |
-| `/vendor/team/respond` | `{ id, accept }` | `{ message }` | Answers a user's request to join; accepted staff sit in `pending_kyc` until base KYC is approved |
-| `/vendor/team/capabilities` | `{ id, capabilities[] }` | `Staff` | Owner-only (payout account, delete, transfer, module off) can never be granted |
-| `/vendor/team/revoke` | `{ id }` | `{ message, returnedOrders }` | Open work returns to the owner |
-| `/vendor/audit` | `{ cursor? }` | `Page<AuditEntry>` | Every owner and staff action |
+| `GET /vendor/businesses/{id}/team` · `POST` same | – · `{ username, permissions[] }` | `Team{ members[], permissions[], max }` · `TeamMember` | Owner only. `Idempotency-Key` on invite. Members are invited, waiting (KYC) or active; up to `max` (20), invites included; an invite lasts 7 days |
+| `PATCH /vendor/businesses/{id}/team/{memberId}` · `DELETE` same | `{ permissions[] }` · – | `TeamMember` · `{ done }` | Delete removes a member or cancels an invite |
+| `GET /vendor/businesses/{id}/activity` | `?by=<userId>&cursor` | `Page<ActivityEntry{ id, at, who{ kind, id, name, username, avatar }, action, line, orderId }>` | Owner only, even on hold. `who.kind` is you, team, customer or ruxstar; customers and Ruxstar are never named, no IP |
+| `GET /employment` · `POST /employment/{id}/accept\|decline\|leave` | – | `Work{ invites[], places[], permissions[] }` · `WorkPlace` or `{ done }` | A place's `access` is on, verify (identity KYC not approved yet) or on_hold |
+| `GET /employment/{id}/orders` · `GET /employment/orders/{id}` | `?view&cursor` | `Page<TeamOrder>` · `TeamOrder` | `orders.view`. The shop's money is null without `earnings.view` |
+| `POST /employment/orders/{id}/status` · `/refund` · `GET .../files/{fileId}` | `{ status, reason? }` · `{ amount, reason }` | `TeamOrder` · `{ url, expiresAt }` | `orders.move`, `orders.reject` for rejecting, `orders.refund`; `Idempotency-Key` on money calls |
+| `GET\|PATCH /employment/{id}/shop` · `PATCH .../shop/pod` · `POST\|DELETE .../shop/photos` · `POST .../shop/open\|close` | `BusinessUpdate` (no GSTIN) · `PodSetupUpdate` · JPEG bytes | `Business` | `shop.details`, `shop.catalog`, `shop.open`. Publishing and deleting stay with the owner |
+| `GET\|POST /employment/{id}/coupons` · `PATCH .../coupons/{couponId}` | `?cursor` · `NewCoupon` (this shop only) · `CouponPatch` | `Page<ManagedCoupon>` · `ManagedCoupon` | `coupons.manage`. Coupons for several shops are listed but only the owner changes them |
+| `GET /ruxstar/businesses/{id}/team` · `POST .../team/{memberId}/remove` | – · `{ reason }` (5 to 300) | `Team` · `{ done }` | `businesses.view` · `businesses.manage`, `Idempotency-Key`. Both sides are told the reason |
 
-Capability keys per module live in `src/features/vendor/lib/capabilities.ts` — the backend should use the same keys. Types: `src/types/vendor.ts`. Service: `src/services/vendor-service.ts`.
+Every team call checks the place, the permission, approved identity KYC and the business hold. A member's business post is the usual `POST /social/posts` with the shop's `businessId` (`posts.create`) and goes out under the owner's name. Types: `src/types/team.ts`. Services: `src/services/team-service.ts` (`TeamService`, `WorkService`, `TeamShopService`, `TeamCouponService`), `TeamOrderService` in `order-service.ts`, `AdminService.businessTeam` and `removeFromTeam`.
 
 ## Payments, Discover, orders (all mocked — `src/services/mock/commerce.mocks.ts`)
 | Path | Request | Response | Notes |

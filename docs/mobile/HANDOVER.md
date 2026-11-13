@@ -21,7 +21,8 @@ Dev component gallery: open the deep link `<scheme>://gallery` (dev builds only)
 | Feed, posts, comments, search, notifications | **Mocked** |
 | Messages, groups, communities | **Mocked** (polling transport) |
 | Vendor portal home, businesses, payout method and payments | **Real** (DECISIONS 30) |
-| Vendor module screens (orders, events, coaching, stays), employment | **Mocked** |
+| Vendor team, Work and Activity for print shops | **Real** (DECISIONS 42) |
+| Vendor module screens (events, coaching, stays) | **Mocked** |
 | Ruxstar console, including its audit log | **Real** |
 | Print-on-demand, Events, Coaching, PG/hostel | **Mocked** |
 | Payments (Cashfree), ledger, payouts, coupons, cancel/refund | **Mocked** |
