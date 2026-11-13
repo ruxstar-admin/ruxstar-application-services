@@ -96,7 +96,7 @@ Types: `src/types/chat.ts`. Service: `src/services/chat-service.ts`.
 | `GET /ruxstar/reports/orders` · `GET /ruxstar/reports/orders/{id}` | `?status=open\|resolved&cursor` · – | `Page<StaffOrder>` · `StaffOrder` | `orders.view` |
 | `POST /ruxstar/reports/orders/{id}/settle` | `{ outcome: refund_full \| refund_partial \| dismiss, amount?, note }` | `StaffOrder` | `orders.manage`, `Idempotency-Key`. A full refund moves the order to `refunded` |
 
-Order clocks (`acceptBy` 6 h, `readyBy`, release 48 h after delivery, delivered 7 days after `readyBy`) run on the API: a scheduler calls `POST /v1/jobs/orders` every 10 minutes and order reads catch up too.
+Order clocks (`acceptBy` 6 h, `readyBy`, release 48 h after delivery, delivered 7 days after `readyBy`) run on the API: a scheduler calls `POST /jobs/orders` every 10 minutes and order reads catch up too.
 
 ## Vendor portal & employment (all mocked — `src/services/mock/vendor.mocks.ts`)
 | Path | Request | Response | Notes |
