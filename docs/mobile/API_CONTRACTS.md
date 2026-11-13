@@ -97,6 +97,9 @@ Types: `src/types/chat.ts`. Service: `src/services/chat-service.ts`.
 | `GET /vendor/payments/statement` | `?cursor&limit` | `StatementLine[]` `{ id, kind: paid\|available\|refund\|withdrawal\|returned, amount, at, module, order{ id, orderNo, business } \| null, payout{ id, to } \| null }`, `meta.nextCursor` | Newest first; amounts in paise, negative for refunds and withdrawals |
 | `GET /ruxstar/reports/orders` · `GET /ruxstar/reports/orders/{id}` | `?status=open\|resolved&cursor` · – | `Page<StaffOrder>` · `StaffOrder` | `orders.view` |
 | `POST /ruxstar/reports/orders/{id}/settle` | `{ outcome: refund_full \| refund_partial \| dismiss, amount?, note }` | `StaffOrder` | `orders.manage`, `Idempotency-Key`. A full refund moves the order to `refunded` |
+| `GET /ruxstar/payouts` · `POST /ruxstar/payouts/{id}/check` | `?status=pending\|failed\|paid&cursor` · – | `Page<StaffPayout>` · `StaffPayout` | `payouts.view` · `payouts.manage`. Check answers `CONFLICT` once paid or failed |
+| `GET /ruxstar/held-orders` · `POST /ruxstar/held-orders/{id}/release` | `?orderNo&cursor` · `{ reason }` (5 to 300) | `Page<HeldOrder>` · `{ id, orderNo, amount, releasedAt }` | `payouts.view` · `payouts.manage`, `Idempotency-Key`. `ORDER_STATE` while a problem is open or once released |
+| `PATCH /ruxstar/modules/ledger` | `{ payoutFee?, minPayout? }` (paise) | `ModuleSettings` with `payouts{ fee, minimum }` | `modules.manage`. The minimum must be at least ₹1 more than the fee |
 
 Order clocks (`acceptBy` 6 h, `readyBy`, release 48 h after delivery, delivered 7 days after `readyBy`) run on the API: a scheduler calls `POST /jobs/orders` every 10 minutes and order reads catch up too.
 

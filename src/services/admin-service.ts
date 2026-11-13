@@ -9,10 +9,12 @@ import type {
   BusinessCase,
   BusinessFilter,
   BusinessRow,
+  HeldOrder,
   ModuleName,
   ModulePatch,
   ModuleSettings,
   Overview,
+  PayoutStatus,
   Permission,
   PersonCase,
   ReportCase,
@@ -20,6 +22,7 @@ import type {
   ReviewCase,
   ReviewStatus,
   StaffMember,
+  StaffPayout,
 } from '@/types/admin';
 import type { StaffOrder } from '@/types/order';
 
@@ -72,6 +75,14 @@ export const AdminService = {
   saveStaff: (token: string, userId: string, title: string, permissions: Permission[], key: string) =>
     apiPut<StaffMember>(`/v1/ruxstar/staff/${userId}`, token, { title, permissions }, keyed(key)),
   removeStaff: (token: string, userId: string, key: string) => apiDelete<StaffMember>(`/v1/ruxstar/staff/${userId}`, token, undefined, keyed(key)),
+
+  payouts: (token: string, status: PayoutStatus, cursor?: string) => apiGetPage<StaffPayout>('/v1/ruxstar/payouts', token, { status, cursor }),
+  /** Asks Cashfree now; it is sent again only if Cashfree never got it. */
+  checkPayout: (token: string, id: string) => apiPost<StaffPayout>(`/v1/ruxstar/payouts/${id}/check`, undefined, token),
+  heldOrders: (token: string, orderNo?: number, cursor?: string) => apiGetPage<HeldOrder>('/v1/ruxstar/held-orders', token, { orderNo, cursor }),
+  /** The reason (5 to 300 characters) goes to the audit log; the vendor is told it was released early. */
+  releaseHeld: (token: string, id: string, reason: string, key: string) =>
+    apiPost<{ id: string; orderNo: number; amount: number; releasedAt: string }>(`/v1/ruxstar/held-orders/${id}/release`, { reason }, token, keyed(key)),
 
   modules: (token: string) => apiGet<ModuleSettings[]>('/v1/ruxstar/modules', token),
   updateModule: (token: string, module: ModuleName, patch: ModulePatch, key: string) =>
