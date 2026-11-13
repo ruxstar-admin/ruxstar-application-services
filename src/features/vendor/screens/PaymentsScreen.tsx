@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Badge } from '@/components/ui/Badge';
+import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
@@ -16,13 +17,14 @@ import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
+import { newIdempotencyKey } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
 import { money } from '@/features/vendor/lib/pod';
 import { BusinessService } from '@/services/business-service';
-import type { PayoutMethod, StatementLine } from '@/types/business';
+import type { Payments, PayoutMethod, StatementLine } from '@/types/business';
 
 const KINDS = [
   { key: 'bank', label: 'Bank account' },
@@ -125,28 +127,114 @@ function MethodForm({ onSaved, onCancel }: { onSaved: (method: PayoutMethod) => 
   );
 }
 
+/** Withdraws everything available once there is enough and no withdrawal is already on the way. */
+function Withdraw({ data, onDone }: { data: Payments; onDone: () => void }) {
+  const token = useAuthToken();
+  const [asking, setAsking] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [key, setKey] = useState(newIdempotencyKey);
+  const { available } = data.balance;
+  const { minimum, fee } = data.withdrawal;
+  const method = data.payoutMethod;
+  const blocked = !method
+    ? 'Add where you get paid below to withdraw.'
+    : data.payouts.some((p) => p.status === 'pending')
+      ? 'A withdrawal is on the way. You can withdraw again once it arrives.'
+      : available < minimum
+        ? `You can withdraw once ${rupees(minimum)} is available.`
+        : null;
+
+  const send = async () => {
+    setSending(true);
+    setFailure(null);
+    try {
+      await BusinessService.withdraw(token, key);
+      Feedback.success();
+      setKey(newIdempotencyKey());
+      onDone();
+    } catch (err) {
+      Feedback.error();
+      // Unsure whether it reached Ruxstar: trying again with the same key can't withdraw twice.
+      const unsure = !(err instanceof ApiError) || err.kind === 'network' || err.kind === 'timeout';
+      if (unsure) setFailure('Could not reach Ruxstar. Check your connection and try again.');
+      else {
+        setKey(newIdempotencyKey());
+        setFailure(err.message);
+        onDone();
+      }
+    } finally {
+      setSending(false);
+      setAsking(false);
+    }
+  };
+
+  return (
+    <>
+      {blocked || !method ? (
+        <Text style={styles.hint}>{blocked}</Text>
+      ) : (
+        <>
+          <PrimaryButton label={`Withdraw ${rupees(available)}`} onPress={() => setAsking(true)} />
+          <Text style={styles.hint}>
+            {rupees(available - fee)} reaches {method.label} after a {rupees(fee)} fee.
+          </Text>
+          <ConfirmSheet
+            visible={asking}
+            title={`Withdraw ${rupees(available)}?`}
+            message={`${rupees(available - fee)} goes to ${method.label} after a ${rupees(fee)} fee. Banks usually take a few minutes.`}
+            confirmLabel="Withdraw"
+            loading={sending}
+            onConfirm={send}
+            onCancel={() => setAsking(false)}
+          />
+        </>
+      )}
+      {failure ? <ErrorBanner message={failure} /> : null}
+    </>
+  );
+}
+
 const LINES: Record<StatementLine['kind'], { icon: keyof typeof Ionicons.glyphMap; title: string; note: string; color: string }> = {
   paid: { icon: 'arrow-down-circle-outline', title: 'paid', note: 'Pending', color: Brand.text },
   available: { icon: 'checkmark-circle-outline', title: 'available', note: 'Can be withdrawn', color: Brand.success },
   refund: { icon: 'arrow-undo-circle-outline', title: 'refund', note: 'Back to the customer', color: Brand.error },
+  withdrawal: { icon: 'arrow-up-circle-outline', title: 'Withdrawal', note: 'To your account', color: Brand.text },
+  returned: { icon: 'refresh-circle-outline', title: 'Withdrawal returned', note: "The bank couldn't complete it", color: Brand.success },
 };
 
 function Line({ line }: { line: StatementLine }) {
   const look = LINES[line.kind];
-  const amount = `${line.kind === 'paid' ? '+' : line.kind === 'refund' ? '−' : ''}${rupees(Math.abs(line.amount))}`;
+  const sign = line.kind === 'available' ? '' : line.amount > 0 ? '+' : line.amount < 0 ? '−' : '';
+  const amount = `${sign}${rupees(Math.abs(line.amount))}`;
+  const { order } = line;
+  if (!order) {
+    return (
+      <View accessible accessibilityLabel={`${look.title}, ${amount}`} style={styles.payout}>
+        <Ionicons name={look.icon} size={22} color={look.color} />
+        <View style={styles.flex}>
+          <Text style={styles.lineTitle}>{look.title}</Text>
+          <Text style={styles.muted} numberOfLines={1}>
+            {[line.payout?.to ?? look.note, timeAgo(line.at)].join(' · ')}
+          </Text>
+        </View>
+        <Text style={[styles.payoutAmount, { color: look.color }]}>{amount}</Text>
+      </View>
+    );
+  }
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Order ${line.order.orderNo} ${look.title}, ${amount}`}
-      onPress={() => router.push({ pathname: '/(vendor)/sale/[id]', params: { id: line.order.id } })}
+      accessibilityLabel={`Order ${order.orderNo} ${look.title}, ${amount}`}
+      onPress={() => router.push({ pathname: '/(vendor)/sale/[id]', params: { id: order.id } })}
       style={({ pressed }) => [styles.payout, pressed && styles.pressed]}>
       <Ionicons name={look.icon} size={22} color={look.color} />
       <View style={styles.flex}>
         <Text style={styles.lineTitle}>
-          Order #{line.order.orderNo} {look.title}
+          Order #{order.orderNo} {look.title}
         </Text>
         <Text style={styles.muted} numberOfLines={1}>
-          {[line.order.business?.name, look.note, timeAgo(line.at)].filter(Boolean).join(' · ')}
+          {[order.business?.name, look.note, timeAgo(line.at)].filter(Boolean).join(' · ')}
         </Text>
       </View>
       <Text style={[styles.payoutAmount, { color: look.color }]}>{amount}</Text>
@@ -203,6 +291,7 @@ export function PaymentsScreen() {
                 </View>
               </View>
               <Text style={styles.hint}>Pending is your share of paid orders. It becomes available 48 hours after delivery, or once Ruxstar settles a problem a customer reported.</Text>
+              <Withdraw data={data} onDone={refresh} />
             </View>
 
             {data.upcoming.length ? (
@@ -249,8 +338,9 @@ export function PaymentsScreen() {
                   <View style={styles.flex}>
                     <Text style={styles.payoutAmount}>{rupees(p.amount)}</Text>
                     <Text style={styles.muted}>
-                      {p.to} · {timeAgo(p.paidAt ?? p.createdAt)}
+                      {[p.to, p.fee ? `${rupees(p.fee)} fee` : null, timeAgo(p.paidAt ?? p.createdAt)].filter(Boolean).join(' · ')}
                     </Text>
+                    {p.status === 'failed' && p.failure ? <Text style={styles.failure}>{p.failure} The money is back in your balance.</Text> : null}
                   </View>
                   <Badge label={p.status === 'paid' ? 'Paid' : p.status === 'pending' ? 'On the way' : 'Failed'} tone={p.status === 'paid' ? 'success' : p.status === 'pending' ? 'warning' : 'error'} />
                 </View>
@@ -276,6 +366,7 @@ const styles = StyleSheet.create({
   statValue: { ...Typography.heading, color: Brand.text },
   muted: { ...Typography.caption, fontSize: 14, color: Brand.textMuted },
   hint: { ...Typography.caption, color: Brand.textFaint },
+  failure: { ...Typography.caption, color: Brand.error },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.three },
   methodHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   methodLabel: { ...Typography.bodyStrong, color: Brand.text, flex: 1 },

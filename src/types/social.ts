@@ -107,4 +107,6 @@ export interface AppNotification {
   shopOrderId?: string;
   /** A new follower: tapping opens their profile. */
   profileId?: string;
+  /** A withdrawal arrived or failed: tapping opens Payments in the vendor portal. */
+  payments?: boolean;
 }

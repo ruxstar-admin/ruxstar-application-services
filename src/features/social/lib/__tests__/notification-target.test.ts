@@ -6,6 +6,7 @@ describe('notificationHref', () => {
     expect(notificationHref({ profileId: 'u1' })).toEqual({ pathname: '/(customer)/user/[id]', params: { id: 'u1' } });
     expect(notificationHref({ shopOrderId: 'o1' })).toEqual({ pathname: '/(vendor)/sale/[id]', params: { id: 'o1' } });
     expect(notificationHref({ verification: true })).toBe('/(customer)/settings/verification');
+    expect(notificationHref({ payments: true })).toBe('/(vendor)/(tabs)/payments');
   });
 
   it('opens nothing when it points nowhere', () => {

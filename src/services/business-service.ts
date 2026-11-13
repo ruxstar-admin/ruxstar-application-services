@@ -5,6 +5,7 @@ import type {
   BusinessUpdate,
   NewBusiness,
   Payments,
+  Payout,
   PayoutMethod,
   PayoutMethodInput,
   PodSetupUpdate,
@@ -37,6 +38,8 @@ export const BusinessService = {
 
   payments: (token: string) => apiGet<Payments>('/v1/vendor/payments', token),
   statement: (token: string, cursor?: string) => apiGetPage<StatementLine>('/v1/vendor/payments/statement', token, { cursor }),
+  /** Everything available, less the fee, to the checked bank account or UPI ID. Pass the same key when retrying the same tap. */
+  withdraw: (token: string, idempotencyKey = newIdempotencyKey()) => apiPost<Payout>('/v1/vendor/payouts', undefined, token, { idempotencyKey }),
   /** Checked with Cashfree; it must be in the name on the vendor's Aadhaar. */
   setPayoutMethod: (token: string, method: PayoutMethodInput) => apiPut<PayoutMethod | null>('/v1/vendor/payout-method', token, { ...method }),
 };
