@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { Brand, Spacing, Typography } from '@/constants/theme';
 import { ContactPicker } from '@/features/chat/components/ContactPicker';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { ApiError } from '@/lib/api-error';
@@ -62,6 +64,7 @@ export function NewChatScreen() {
     });
 
   const multi = adding || mode === 'group';
+  const full = members.size >= room;
   const canCreate = members.size > 0 && (adding || groupName.trim().length > 0);
   const label = adding ? `Add ${members.size || ''}`.trim() : members.size > 0 ? `Create group (${members.size})` : 'Create group';
 
@@ -85,6 +88,12 @@ export function NewChatScreen() {
       {mode === 'group' && !adding ? (
         <InputField label="Group name" value={groupName} onChangeText={setGroupName} maxLength={TITLE_MAX} placeholder="e.g. Pottery batch 5" />
       ) : null}
+      {multi ? (
+        <View style={styles.hints}>
+          {full ? <Text style={styles.full}>{`A group holds up to ${GROUP_MAX} people.`}</Text> : null}
+          <Text style={styles.hint}>{"People who don't follow you get an invite in their Requests and join when they accept."}</Text>
+        </View>
+      ) : null}
       <ContactPicker
         selected={multi ? members : undefined}
         onSelect={multi ? toggle : (contact) => !busy && run(() => ChatService.startDm(token, contact.id))}
@@ -93,3 +102,9 @@ export function NewChatScreen() {
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  hints: { gap: Spacing.one },
+  full: { ...Typography.caption, color: Brand.warning },
+  hint: { ...Typography.caption, color: Brand.textMuted },
+});

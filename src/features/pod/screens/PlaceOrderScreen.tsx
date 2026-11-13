@@ -5,6 +5,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { ChoiceChips } from '@/components/ui/ChoiceChips';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
@@ -354,11 +355,19 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
 
 /** Ordering from a print shop: what to print, the file, where to deliver, then payment on Cashfree. */
 export function PlaceOrderScreen() {
+  const router = useRouter();
   const token = useAuthToken();
   const { shopId, product } = useLocalSearchParams<{ shopId: string; product?: string }>();
   const { data, loading, error, reload } = useAsyncResource(() => ShopService.get(token, shopId));
 
-  if (data) return <OrderForm shop={data} initialProduct={product} />;
+  if (data?.catalog.length) return <OrderForm shop={data} initialProduct={product} />;
+  if (data) {
+    return (
+      <ScreenContainer title="Place order">
+        <EmptyState icon="pricetags-outline" title="Nothing to order yet" message="This shop has not priced anything yet." actionLabel="Back to the shop" onAction={() => router.back()} />
+      </ScreenContainer>
+    );
+  }
   return (
     <ScreenContainer title="Place order">
       <AsyncBoundary loading={loading} error={error} hasData={false} onRetry={reload} skeletonRows={5}>

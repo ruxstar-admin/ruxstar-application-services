@@ -54,9 +54,7 @@ export function AccountDataScreen() {
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
       <BottomSheet visible={deleting} onClose={busy ? () => undefined : closeDelete} title="Delete your account?">
-        <Text style={styles.message}>
-          This schedules permanent deletion of your profile and posts. Open orders and payouts must be settled first.
-        </Text>
+        <Text style={styles.message}>This schedules permanent deletion of your profile and posts.</Text>
         <InputField
           label="Your password"
           value={password}
