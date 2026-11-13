@@ -1,7 +1,7 @@
 import { apiDelete, apiGet, apiGetPage, apiPatch, apiPost, apiPostBytes, newIdempotencyKey } from '@/lib/api-client';
 import type { Business, BusinessUpdate, PodSetupUpdate } from '@/types/business';
 import type { CouponPatch, ManagedCoupon, NewCoupon } from '@/types/coupon';
-import type { Team, TeamMember, TeamPermission, Work, WorkPlace } from '@/types/team';
+import type { ActivityEntry, Team, TeamMember, TeamPermission, Work, WorkPlace } from '@/types/team';
 
 type Done = { done: true };
 const team = (businessId: string) => `/v1/vendor/businesses/${encodeURIComponent(businessId)}/team`;
@@ -16,6 +16,9 @@ export const TeamService = {
     apiPatch<TeamMember>(`${team(businessId)}/${encodeURIComponent(memberId)}`, { permissions }, token),
   /** Removes a member or cancels an invite. */
   remove: (token: string, businessId: string, memberId: string) => apiDelete<Done>(`${team(businessId)}/${encodeURIComponent(memberId)}`, token),
+  /** What happened at the business, newest first; `by` is one person's (a user id). */
+  activity: (token: string, businessId: string, by?: string, cursor?: string) =>
+    apiGetPage<ActivityEntry>(`/v1/vendor/businesses/${encodeURIComponent(businessId)}/activity`, token, { by, cursor }),
 };
 
 /** The Work area (`/v1/employment`): team invites and the businesses you work at. */

@@ -74,6 +74,21 @@ export interface WorkPlace {
   access: WorkAccess;
 }
 
+/** `team` is someone who is or was on the team. Customers and the Ruxstar team stay unnamed. */
+export type ActivityWho = 'you' | 'team' | 'customer' | 'ruxstar';
+
+/** One thing that happened at a business, for its owner (GET /v1/vendor/businesses/:id/activity). */
+export interface ActivityEntry {
+  id: string;
+  at: string;
+  who: { kind: ActivityWho; id: string | null; name: string; username: string | null; avatar: string | null };
+  action: string;
+  /** What happened, without who: "Accepted order #1042". */
+  line: string;
+  /** The order it was about, to open it. */
+  orderId: string | null;
+}
+
 /** GET /v1/employment: your invites and the businesses you work at. */
 export interface Work {
   invites: WorkInvite[];

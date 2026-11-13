@@ -155,6 +155,14 @@ function Member({ businessId, team, member }: { businessId: string; team: Team; 
       <PermissionPicker catalog={team.permissions} value={permissions} onChange={setPermissions} />
       {permissions.length === 0 ? <Text style={styles.warn}>Pick at least one, or remove them from the team.</Text> : null}
       <View style={styles.remove}>
+        {invited ? null : (
+          <TextLink
+            label="See what they did"
+            onPress={() =>
+              router.push({ pathname: '/(vendor)/businesses/[id]/activity', params: { id: businessId, by: member.person.id, name: member.person.name } })
+            }
+          />
+        )}
         <TextLink label={invited ? 'Cancel this invite' : 'Remove from the team'} onPress={() => setConfirming(true)} />
       </View>
       <ConfirmSheet
@@ -196,5 +204,5 @@ const styles = StyleSheet.create({
   muted: { ...Typography.caption, fontSize: 14, color: Brand.textMuted },
   warn: { ...Typography.caption, color: Brand.warning },
   section: { ...Typography.bodyStrong, color: Brand.text, marginTop: Spacing.three },
-  remove: { alignItems: 'flex-start', marginTop: Spacing.three },
+  remove: { alignItems: 'flex-start', gap: Spacing.three, marginTop: Spacing.three },
 });

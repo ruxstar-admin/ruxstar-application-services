@@ -256,9 +256,9 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
               onRemove={(photoId) => run(photoId, () => desk.service.removePhoto(token, id, photoId))}
             />
 
-            {data.pod && !data.suspension && (catalogRows || !team) ? (
+            {catalogRows || !team ? (
               <View style={styles.steps}>
-                {catalogRows ? (
+                {catalogRows && data.pod ? (
                   <>
                     <SetupStep
                       title="Products & delivery"
@@ -281,12 +281,20 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                     />
                   </>
                 ) : null}
-                {team ? null : (
+                {!team && data.pod && !data.suspension ? (
                   <SetupStep
                     title="Team"
                     subtitle="Invite people to help with orders, the shop and posts"
                     icon="people-outline"
                     onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/team', params: { id } })}
+                  />
+                ) : null}
+                {team ? null : (
+                  <SetupStep
+                    title="Activity"
+                    subtitle="Who did what: you, your team, customers and Ruxstar"
+                    icon="time-outline"
+                    onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/activity', params: { id } })}
                   />
                 )}
               </View>
