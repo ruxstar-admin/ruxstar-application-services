@@ -1,5 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useRouter } from 'expo-router';
 import type { NotificationClickEvent, NotificationWillDisplayEvent } from 'react-native-onesignal';
@@ -63,6 +63,7 @@ export function initPushNotifications() {
   const os = getOneSignal();
   if (!os) return;
   try {
+    if (__DEV__) os.Debug.setLogLevel(5);
     os.initialize(APP_ID!);
     os.Notifications.addEventListener('foregroundWillDisplay', (event: NotificationWillDisplayEvent) => {
       const { chatId } = (event.getNotification().additionalData ?? {}) as Data;
@@ -72,12 +73,29 @@ export function initPushNotifications() {
       setTapped((event.notification.additionalData ?? {}) as Data),
     );
     os.User.pushSubscription.addEventListener('change', ({ current }) => {
+      log.info('Push subscription changed', { hasId: !!current.id, optedIn: current.optedIn });
       if (current.id) sendDevice(current.id).catch((err: unknown) => log.warn('Push registration failed', { message: (err as Error).message }));
+    });
+    // Allowed later, from the Settings switch or the phone's own settings: opt this install in and send its id.
+    os.Notifications.addEventListener('permissionChange', (granted: boolean) => {
+      if (granted) syncDevice(os).catch((err: unknown) => log.warn('Push registration failed', { message: (err as Error).message }));
     });
   } catch (err) {
     oneSignal = null;
     log.warn('OneSignal did not start', { message: (err as Error).message });
   }
+}
+
+/**
+ * Opts this install in once the phone allows notifications (an install that was denied earlier stays opted out
+ * until told otherwise), then tells the API its id. The id can still be null here: the change listener sends it later.
+ */
+async function syncDevice(os: OneSignal) {
+  const allowed = await os.Notifications.getPermissionAsync();
+  if (allowed && !(await os.User.pushSubscription.getOptedInAsync())) os.User.pushSubscription.optIn();
+  const id = await os.User.pushSubscription.getIdAsync();
+  log.info('Push status', { allowed, hasId: !!id });
+  if (id) await sendDevice(id);
 }
 
 /** Asks once, then tells the API which install this is. Says nothing if the person said no. */
@@ -86,8 +104,31 @@ async function register(os: OneSignal, userId: string) {
   if (!(await os.Notifications.getPermissionAsync()) && (await os.Notifications.canRequestPermission())) {
     await os.Notifications.requestPermission(false);
   }
-  const id = await os.User.pushSubscription.getIdAsync();
-  if (id) await sendDevice(id);
+  await syncDevice(os);
+}
+
+/** Whether the phone lets this app show notifications; null where push isn't available (Expo Go, web, no OneSignal id). */
+export async function pushAllowed(): Promise<boolean | null> {
+  const os = getOneSignal();
+  if (!os) return null;
+  try {
+    return await os.Notifications.getPermissionAsync();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The Settings switch. The system dialog can only be shown until it has been answered once, so after a "Don't allow"
+ * (or to turn them off) the person is sent to the phone's notification settings for this app instead.
+ */
+export async function changePushPermission(): Promise<void> {
+  const os = getOneSignal();
+  if (os && !(await os.Notifications.getPermissionAsync()) && (await os.Notifications.canRequestPermission())) {
+    await os.Notifications.requestPermission(false);
+    return;
+  }
+  await Linking.openSettings();
 }
 
 /** Registers for phone notifications once signed in, and opens what a tapped one is about. `ready` once navigation can run. */

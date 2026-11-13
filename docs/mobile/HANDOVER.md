@@ -51,7 +51,7 @@ The exact request/response of every mocked call is in `API_CONTRACTS.md` — tha
 | DM replies | the other person replies 1.5 s after you send |
 
 ## 5. Build and release (EAS)
-Profiles in `eas.json`: `development` (dev client, APK/simulator), `preview` (internal APK), `production` (app bundle / iOS). Secrets: `SENTRY_AUTH_TOKEN`, `EXPO_PUBLIC_SENTRY_DSN`. Push notifications use OneSignal: the OneSignal dashboard needs Firebase's FCM V1 key for Android and an APNs key for iOS, and the API needs `ONESIGNAL_APP_ID` and `ONESIGNAL_API_KEY`. OneSignal runs in development mode in `app.json` — switch to production as part of the release checklist, not silently.
+Profiles in `eas.json`: `development` (dev client, APK/simulator), `preview` (internal APK), `production` (app bundle / iOS). Secrets: `SENTRY_AUTH_TOKEN`, `EXPO_PUBLIC_SENTRY_DSN`. Push notifications use OneSignal (Settings → Push notifications shows the phone's permission; it asks if it still can, otherwise opens the phone's notification settings for the app): the OneSignal dashboard needs Firebase's FCM V1 key for Android and an APNs key for iOS, and the API needs `ONESIGNAL_APP_ID` and `ONESIGNAL_API_KEY`. OneSignal runs in development mode in `app.json` — switch to production as part of the release checklist, not silently.
 Release checklist: gates green → `npx expo-doctor` → bump version → `eas build --profile preview` and smoke test every flow in section 4 → `eas build --profile production` → store listing.
 
 ## 6. Known gaps and open decisions
