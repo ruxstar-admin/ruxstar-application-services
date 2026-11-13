@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost, apiPostBytes, apiPut, newIdempotencyKey } from '@/lib/api-client';
+import { apiDelete, apiGet, apiGetPage, apiPatch, apiPost, apiPostBytes, apiPut, newIdempotencyKey } from '@/lib/api-client';
 import type {
   Business,
   BusinessCatalog,
@@ -8,6 +8,7 @@ import type {
   PayoutMethod,
   PayoutMethodInput,
   PodSetupUpdate,
+  StatementLine,
 } from '@/types/business';
 
 const path = (id: string) => `/v1/vendor/businesses/${encodeURIComponent(id)}`;
@@ -35,6 +36,7 @@ export const BusinessService = {
   remove: (token: string, id: string) => apiDelete<{ done: true }>(path(id), token),
 
   payments: (token: string) => apiGet<Payments>('/v1/vendor/payments', token),
+  statement: (token: string, cursor?: string) => apiGetPage<StatementLine>('/v1/vendor/payments/statement', token, { cursor }),
   /** Checked with Cashfree; it must be in the name on the vendor's Aadhaar. */
   setPayoutMethod: (token: string, method: PayoutMethodInput) => apiPut<PayoutMethod | null>('/v1/vendor/payout-method', token, { ...method }),
 };

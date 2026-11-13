@@ -231,3 +231,16 @@ export interface Payments {
   payoutMethod: PayoutMethod | null;
   payouts: Payout[];
 }
+
+/**
+ * GET /v1/vendor/payments/statement, newest first. `paid` is an order's share arriving as pending, `available` its hold
+ * ending (the same money moving, not more), `refund` money going back out of the share. Paise; negative for refunds.
+ */
+export interface StatementLine {
+  id: string;
+  kind: 'paid' | 'available' | 'refund';
+  amount: number;
+  at: string;
+  module: 'pod' | 'events' | 'coaching' | 'stays' | 'delivery' | 'ledger';
+  order: { id: string; orderNo: number; business: { id: string; name: string } | null };
+}

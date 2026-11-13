@@ -93,6 +93,7 @@ Types: `src/types/chat.ts`. Service: `src/services/chat-service.ts`.
 | `POST /pod/orders/{id}/problem/photos` | image bytes | `Order` | `Idempotency-Key`; up to 3 while the problem is open; re-encoded to JPEG |
 | `POST /vendor/orders/{id}/refund` | `{ amount ≥ 100, reason }` | `ShopOrder` | `Idempotency-Key`; at most `refundable` (the shop's share left, before it is released) |
 | `GET /vendor/payments` | – | `Payments` with `upcoming[{ orderId, orderNo, amount, availableAt, held }]` | Releases shares that are due before answering |
+| `GET /vendor/payments/statement` | `?cursor&limit` | `StatementLine[]` `{ id, kind: paid\|available\|refund, amount, at, module, order{ id, orderNo, business } }`, `meta.nextCursor` | Newest first; amounts in paise, negative for refunds |
 | `GET /ruxstar/reports/orders` · `GET /ruxstar/reports/orders/{id}` | `?status=open\|resolved&cursor` · – | `Page<StaffOrder>` · `StaffOrder` | `orders.view` |
 | `POST /ruxstar/reports/orders/{id}/settle` | `{ outcome: refund_full \| refund_partial \| dismiss, amount?, note }` | `StaffOrder` | `orders.manage`, `Idempotency-Key`. A full refund moves the order to `refunded` |
 

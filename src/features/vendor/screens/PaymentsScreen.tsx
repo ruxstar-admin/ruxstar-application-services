@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Badge } from '@/components/ui/Badge';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -13,6 +14,7 @@ import { digitsOnly, isValidAccountNumber, isValidIfsc } from '@/features/kyc/li
 import { VendorTabScreen } from '@/features/vendor/components/VendorTabScreen';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { usePaginated } from '@/hooks/use-paginated';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { ApiError } from '@/lib/api-error';
 import { formatDateTime } from '@/lib/dates';
@@ -20,7 +22,7 @@ import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
 import { money } from '@/features/vendor/lib/pod';
 import { BusinessService } from '@/services/business-service';
-import type { PayoutMethod } from '@/types/business';
+import type { PayoutMethod, StatementLine } from '@/types/business';
 
 const KINDS = [
   { key: 'bank', label: 'Bank account' },
@@ -123,15 +125,65 @@ function MethodForm({ onSaved, onCancel }: { onSaved: (method: PayoutMethod) => 
   );
 }
 
-/** Balance, where the vendor is paid, and their payouts. */
+const LINES: Record<StatementLine['kind'], { icon: keyof typeof Ionicons.glyphMap; title: string; note: string; color: string }> = {
+  paid: { icon: 'arrow-down-circle-outline', title: 'paid', note: 'Pending', color: Brand.text },
+  available: { icon: 'checkmark-circle-outline', title: 'available', note: 'Can be withdrawn', color: Brand.success },
+  refund: { icon: 'arrow-undo-circle-outline', title: 'refund', note: 'Back to the customer', color: Brand.error },
+};
+
+function Line({ line }: { line: StatementLine }) {
+  const look = LINES[line.kind];
+  const amount = `${line.kind === 'paid' ? '+' : line.kind === 'refund' ? '−' : ''}${rupees(Math.abs(line.amount))}`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Order ${line.order.orderNo} ${look.title}, ${amount}`}
+      onPress={() => router.push({ pathname: '/(vendor)/sale/[id]', params: { id: line.order.id } })}
+      style={({ pressed }) => [styles.payout, pressed && styles.pressed]}>
+      <Ionicons name={look.icon} size={22} color={look.color} />
+      <View style={styles.flex}>
+        <Text style={styles.lineTitle}>
+          Order #{line.order.orderNo} {look.title}
+        </Text>
+        <Text style={styles.muted} numberOfLines={1}>
+          {[line.order.business?.name, look.note, timeAgo(line.at)].filter(Boolean).join(' · ')}
+        </Text>
+      </View>
+      <Text style={[styles.payoutAmount, { color: look.color }]}>{amount}</Text>
+    </Pressable>
+  );
+}
+
+/** Every change to the vendor's earnings, a page at a time. */
+function Statement({ list }: { list: ReturnType<typeof usePaginated<StatementLine>> }) {
+  if (list.loading) return <ActivityIndicator color={Brand.textMuted} style={styles.spinner} />;
+  if (list.error && !list.items.length) return <ErrorBanner message="Could not load your statement." onRetry={list.retry} />;
+  if (!list.items.length) return <Text style={styles.muted}>Nothing yet. Your share of each paid order shows here.</Text>;
+  return (
+    <>
+      {list.items.map((line) => (
+        <Line key={line.id} line={line} />
+      ))}
+      {list.hasMore ? <TextLink label={list.loadingMore ? 'Loading…' : 'Show more'} onPress={list.loadMore} /> : null}
+    </>
+  );
+}
+
+/** Balance, where the vendor is paid, their earnings statement and payouts. */
 export function PaymentsScreen() {
   const token = useAuthToken();
   const { data, loading, error, reload, setData } = useAsyncResource(() => BusinessService.payments(token));
-  useRefetchOnFocus(reload);
+  const statement = usePaginated((cursor) => BusinessService.statement(token, cursor));
+  const { refresh: refreshStatement } = statement;
+  const refresh = useCallback(() => {
+    reload();
+    refreshStatement();
+  }, [reload, refreshStatement]);
+  useRefetchOnFocus(refresh);
   const [changing, setChanging] = useState(false);
 
   return (
-    <VendorTabScreen title="Payments" onRefresh={reload}>
+    <VendorTabScreen title="Payments" onRefresh={refresh}>
       <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={4}>
         {data ? (
           <>
@@ -206,6 +258,9 @@ export function PaymentsScreen() {
             ) : (
               <Text style={styles.muted}>No payouts yet.</Text>
             )}
+
+            <Text style={styles.section}>Statement</Text>
+            <Statement list={statement} />
           </>
         ) : null}
       </AsyncBoundary>
@@ -227,4 +282,7 @@ const styles = StyleSheet.create({
   form: { gap: Spacing.two },
   payout: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.two },
   payoutAmount: { ...Typography.bodyStrong, color: Brand.text },
+  lineTitle: { ...Typography.body, color: Brand.text },
+  pressed: { opacity: 0.6 },
+  spinner: { paddingVertical: Spacing.three },
 });
