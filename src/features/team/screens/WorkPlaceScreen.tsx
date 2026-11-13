@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { ListRow } from '@/components/ui/ListRow';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
@@ -98,6 +99,16 @@ export function WorkPlaceScreen() {
             {access.note ? <Text style={styles.muted}>{access.note}</Text> : null}
             {place.access === 'verify' ? (
               <PrimaryButton label="Get verified" onPress={() => router.push('/(customer)/settings/verification')} />
+            ) : null}
+            {place.access === 'on' && place.permissions.includes('orders.view') ? (
+              <View style={styles.card}>
+                <ListRow
+                  icon="receipt-outline"
+                  title="Orders"
+                  subtitle="New orders, ones being made, and past ones"
+                  onPress={() => router.push({ pathname: '/(customer)/work/orders/[id]', params: { id: place.id, name: place.business.name } })}
+                />
+              </View>
             ) : null}
             <Text style={styles.section}>What you can do</Text>
             <Allowed catalog={data.permissions} permissions={place.permissions} />

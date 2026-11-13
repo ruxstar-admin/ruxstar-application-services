@@ -3,7 +3,7 @@ import type { AppNotification } from '@/types/social';
 
 type Target = Pick<
   AppNotification,
-  'postId' | 'businessId' | 'orderId' | 'shopOrderId' | 'profileId' | 'verification' | 'payments' | 'workId' | 'teamBusinessId'
+  'postId' | 'businessId' | 'orderId' | 'shopOrderId' | 'profileId' | 'verification' | 'payments' | 'workId' | 'teamBusinessId' | 'workOrderId'
 >;
 
 /** The screen a notification opens, from the notifications screen or a phone notification; undefined when it opens none. */
@@ -17,5 +17,6 @@ export function notificationHref(n: Target): Href | undefined {
   if (n.payments) return '/(vendor)/(tabs)/payments';
   if (n.workId) return { pathname: '/(customer)/work/[id]', params: { id: n.workId } };
   if (n.teamBusinessId) return { pathname: '/(vendor)/businesses/[id]/team', params: { id: n.teamBusinessId } };
+  if (n.workOrderId) return { pathname: '/(customer)/work/order/[id]', params: { id: n.workOrderId } };
   return undefined;
 }

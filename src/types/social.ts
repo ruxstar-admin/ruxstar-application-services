@@ -113,4 +113,6 @@ export interface AppNotification {
   workId?: string;
   /** Someone joined or left your team: tapping opens that business's team. */
   teamBusinessId?: string;
+  /** A new order at a shop you work at: tapping opens it in Work. */
+  workOrderId?: string;
 }

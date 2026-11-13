@@ -1,5 +1,6 @@
 import type { PodProduct } from './business';
 import type { AppliedCoupon, CouponOffer } from './coupon';
+import type { TeamPermission } from './team';
 
 /** POST /v1/pod/files: a file the customer uploaded to print. */
 export interface PrintFile {
@@ -139,6 +140,17 @@ export interface ShopOrder extends Omit<Order, 'price'> {
   releasedAt: string | null;
   /** Paise: the most the shop can refund now. */
   refundable: number;
+}
+
+/**
+ * A shop's order as someone on its team sees it. The shop's money is null without `earnings.view`,
+ * and `refundable` is 0 without `orders.refund`.
+ */
+export interface TeamOrder extends Omit<ShopOrder, 'price'> {
+  price: OrderPrice & { commissionBps: number | null; commission: number | null; payout: number | null; payoutLeft: number | null };
+  /** The place at the shop it was opened through. */
+  placeId: string;
+  permissions: TeamPermission[];
 }
 
 /** An order with a reported problem, as the Ruxstar console sees it. */

@@ -52,7 +52,7 @@ interface ApiNotification {
   kind: 'social' | 'account';
   title: string;
   body: string;
-  link: { screen: 'post' | 'verification' | 'business' | 'order' | 'shop_order' | 'profile' | 'payments' | 'work' | 'team'; id: string };
+  link: { screen: 'post' | 'verification' | 'business' | 'order' | 'shop_order' | 'profile' | 'payments' | 'work' | 'team' | 'work_order'; id: string };
   read: boolean;
   createdAt: string;
 }
@@ -98,6 +98,7 @@ const LINKS: Record<ApiNotification['link']['screen'], (id: string) => Partial<A
   payments: () => ({ payments: true }),
   work: (id) => ({ workId: id }),
   team: (id) => ({ teamBusinessId: id }),
+  work_order: (id) => ({ workOrderId: id }),
 };
 
 /** What a phone notification's `screen` and `id` point at, in the notifications screen's terms. Unknown screens point nowhere. */

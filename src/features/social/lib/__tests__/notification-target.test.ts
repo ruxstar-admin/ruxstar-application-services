@@ -12,6 +12,7 @@ describe('notificationHref', () => {
   it('opens Work for team invites and the team for its owner', () => {
     expect(notificationHref({ workId: 'e1' })).toEqual({ pathname: '/(customer)/work/[id]', params: { id: 'e1' } });
     expect(notificationHref({ teamBusinessId: 'b1' })).toEqual({ pathname: '/(vendor)/businesses/[id]/team', params: { id: 'b1' } });
+    expect(notificationHref({ workOrderId: 'o2' })).toEqual({ pathname: '/(customer)/work/order/[id]', params: { id: 'o2' } });
   });
 
   it('opens nothing when it points nowhere', () => {

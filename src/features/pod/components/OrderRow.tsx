@@ -12,7 +12,8 @@ interface OrderRowProps {
   order: Pick<Order, 'orderNo' | 'productLabel' | 'pricing' | 'quantity' | 'status' | 'createdAt'>;
   /** The shop for a customer, the customer's city for a shop. */
   subtitle: string;
-  amount: number;
+  /** Left out when null, as for someone on a team who can't see the shop's earnings. */
+  amount: number | null;
   statusLabel: Record<OrderStatus, string>;
   onPress: () => void;
 }
@@ -38,7 +39,7 @@ export function OrderRow({ order, subtitle, amount, statusLabel, onPress }: Orde
         <Text style={styles.subtitle} numberOfLines={1}>{`#${order.orderNo} · ${subtitle} · ${timeAgo(order.createdAt)}`}</Text>
       </View>
       <View style={styles.right}>
-        <Text style={styles.amount}>{money(amount)}</Text>
+        {amount === null ? null : <Text style={styles.amount}>{money(amount)}</Text>}
         <Badge label={statusLabel[order.status]} tone={STATUS_TONE[order.status]} />
       </View>
     </Pressable>

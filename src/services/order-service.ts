@@ -1,6 +1,6 @@
 import { File } from 'expo-file-system';
 import { apiGet, apiGetPage, apiPost, apiPostBytes, type WriteOptions } from '@/lib/api-client';
-import type { Order, OrderAddress, OrderChoice, PrintFile, ProblemKind, Quote, ShopOrder, ShopOrderView, ShopStatus } from '@/types/order';
+import type { Order, OrderAddress, OrderChoice, PrintFile, ProblemKind, Quote, ShopOrder, ShopOrderView, ShopStatus, TeamOrder } from '@/types/order';
 
 const UPLOAD_TIMEOUT_MS = 3 * 60_000;
 const id = (value: string) => encodeURIComponent(value);
@@ -51,4 +51,19 @@ export const ShopOrderService = {
   /** Paise, out of the shop's share, up to `refundable`. The order carries on. */
   refund: (token: string, orderId: string, amount: number, reason: string, options: WriteOptions) =>
     apiPost<ShopOrder>(`/v1/vendor/orders/${id(orderId)}/refund`, { amount, reason }, token, options),
+};
+
+/** `/v1/employment`: a shop's orders for the people on its team, each action behind its permission. */
+export const TeamOrderService = {
+  /** `placeId` is the place at the shop from the Work area. */
+  list: (token: string, placeId: string, filters: { view?: ShopOrderView }, cursor?: string) =>
+    apiGetPage<TeamOrder>(`/v1/employment/${id(placeId)}/orders`, token, { ...filters, cursor }),
+  get: (token: string, orderId: string) => apiGet<TeamOrder>(`/v1/employment/orders/${id(orderId)}`, token),
+  /** `orders.move`, or `orders.reject` to turn it down. */
+  move: (token: string, orderId: string, status: ShopStatus, reason: string | undefined, options: WriteOptions) =>
+    apiPost<TeamOrder>(`/v1/employment/orders/${id(orderId)}/status`, { status, ...(reason ? { reason } : {}) }, token, options),
+  fileLink: (token: string, orderId: string, fileId: string) =>
+    apiGet<{ url: string; expiresAt: string }>(`/v1/employment/orders/${id(orderId)}/files/${id(fileId)}`, token),
+  refund: (token: string, orderId: string, amount: number, reason: string, options: WriteOptions) =>
+    apiPost<TeamOrder>(`/v1/employment/orders/${id(orderId)}/refund`, { amount, reason }, token, options),
 };
