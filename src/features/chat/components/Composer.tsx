@@ -1,20 +1,23 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import Animated, { ZoomIn, ZoomOut } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { Motion } from '@/constants/motion';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { Feedback } from '@/lib/haptics';
 
 interface ComposerProps {
   onSend: (text: string) => void;
   onPhoto: () => void;
+  onCamera: () => void;
   /** Shown instead of the input when you can't send, e.g. while a request waits. */
   notice?: string | null;
 }
 
 const MAX_LENGTH = 1000;
 
-/** Message input pinned above the keyboard, with a photo button; replaced by a notice when you can't send. */
-export function Composer({ onSend, onPhoto, notice }: ComposerProps) {
+/** Message input pinned above the keyboard: camera on the left, gallery while empty, send once you type. */
+export function Composer({ onSend, onPhoto, onCamera, notice }: ComposerProps) {
   const [draft, setDraft] = useState('');
   const ready = draft.trim().length > 0;
 
@@ -35,51 +38,79 @@ export function Composer({ onSend, onPhoto, notice }: ComposerProps) {
 
   return (
     <View style={styles.bar}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Send a photo" hitSlop={8} onPress={onPhoto} style={styles.icon}>
-        <Ionicons name="image-outline" size={22} color={Brand.textMuted} />
-      </Pressable>
-      <TextInput
-        style={styles.input}
-        value={draft}
-        onChangeText={setDraft}
-        placeholder="Message"
-        placeholderTextColor={Brand.textFaint}
-        maxLength={MAX_LENGTH}
-        multiline
-        accessibilityLabel="Message"
-      />
-      <Pressable accessibilityRole="button" accessibilityLabel="Send message" disabled={!ready} hitSlop={8} onPress={send} style={[styles.send, ready && styles.sendReady]}>
-        <Ionicons name="arrow-up" size={20} color={ready ? Brand.onAction : Brand.textFaint} />
-      </Pressable>
+      <View style={styles.field}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Take a photo"
+          hitSlop={6}
+          onPress={onCamera}
+          style={({ pressed }) => [styles.camera, pressed && styles.pressed]}
+        >
+          <Ionicons name="camera" size={18} color={Brand.text} />
+        </Pressable>
+        <TextInput
+          style={styles.input}
+          value={draft}
+          onChangeText={setDraft}
+          placeholder="Message…"
+          placeholderTextColor={Brand.textFaint}
+          maxLength={MAX_LENGTH}
+          multiline
+          accessibilityLabel="Message"
+        />
+        {ready ? (
+          <Animated.View key="send" entering={ZoomIn.duration(Motion.duration.fast)} exiting={ZoomOut.duration(Motion.duration.fast)}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
+              hitSlop={8}
+              onPress={send}
+              style={({ pressed }) => [styles.send, pressed && styles.pressed]}
+            >
+              <Ionicons name="arrow-up" size={20} color={Brand.onAction} />
+            </Pressable>
+          </Animated.View>
+        ) : (
+          <Animated.View key="photo" entering={ZoomIn.duration(Motion.duration.fast)}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Send a photo from your gallery" hitSlop={8} onPress={onPhoto} style={styles.icon}>
+              <Ionicons name="image-outline" size={22} color={Brand.text} />
+            </Pressable>
+          </Animated.View>
+        )}
+      </View>
     </View>
   );
 }
 
+const SIDE = 36;
+
 const styles = StyleSheet.create({
   bar: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    backgroundColor: Brand.bg,
+  },
+  field: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Brand.border,
-    backgroundColor: Brand.surface,
+    minHeight: SIDE + Spacing.two * 2,
+    padding: Spacing.one + 2,
+    borderRadius: Radius.xl,
+    backgroundColor: Brand.surfaceAlt,
   },
-  icon: { width: 36, height: 44, alignItems: 'center', justifyContent: 'center' },
+  camera: { width: SIDE, height: SIDE, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: Brand.primaryDeep },
+  icon: { width: SIDE, height: SIDE, alignItems: 'center', justifyContent: 'center' },
   input: {
     flex: 1,
     ...Typography.body,
     color: Brand.text,
-    minHeight: 44,
+    minHeight: SIDE,
     maxHeight: 120,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two + 2,
-    paddingBottom: Spacing.two + 2,
-    borderRadius: Radius.lg,
-    backgroundColor: Brand.surfaceAlt,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
   },
-  send: { width: 44, height: 44, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: Brand.surfaceAlt },
-  sendReady: { backgroundColor: Brand.action },
-  notice: { ...Typography.caption, flex: 1, textAlign: 'center', color: Brand.textMuted, paddingVertical: Spacing.two },
+  send: { width: SIDE, height: SIDE, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: Brand.action },
+  pressed: { opacity: 0.7, transform: [{ scale: 0.94 }] },
+  notice: { ...Typography.caption, textAlign: 'center', color: Brand.textMuted, paddingVertical: Spacing.two },
 });

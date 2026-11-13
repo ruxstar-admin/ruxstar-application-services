@@ -108,8 +108,8 @@
       [
         "expo-image-picker",
         {
-        "photosPermission": "Allow Ruxstar to use your photos for your profile picture and posts.",
-        "cameraPermission": "Allow Ruxstar to use your camera to take photos for posts and to verify your identity."
+          "photosPermission": "Allow Ruxstar to use your photos for your profile picture and posts.",
+          "cameraPermission": "Allow Ruxstar to use your camera to take photos for posts and to verify your identity."
         }
       ],
       [
@@ -137,7 +137,13 @@
           "project": "ruxstar-rn"
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Ruxstar to use your microphone to record voice messages in chats."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false,

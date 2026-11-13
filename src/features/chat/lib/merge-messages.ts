@@ -22,8 +22,9 @@ export const mergeOlder = (current: PendingMessage[], olderNewestFirst: ChatMess
 
 /** Swaps an optimistic message for the server's version, dropping the copy if a poll already delivered it. */
 export const confirmSent = (current: PendingMessage[], tempId: string, saved: ChatMessage): PendingMessage[] => {
+  const temp = current.find((m) => m.id === tempId);
   const withoutTemp = current.filter((m) => m.id !== tempId);
-  return withoutTemp.some((m) => m.id === saved.id) ? withoutTemp : [...withoutTemp, saved];
+  return withoutTemp.some((m) => m.id === saved.id) ? withoutTemp : [...withoutTemp, { ...saved, idempotencyKey: temp?.idempotencyKey }];
 };
 
 /** Removes messages their senders unsent. */

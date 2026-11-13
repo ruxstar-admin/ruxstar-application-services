@@ -40,6 +40,11 @@ describe('confirmSent', () => {
     expect(confirmSent(current, 'tmp', make('9', { mine: true })).map((m) => m.id)).toEqual(['1', '9']);
   });
 
+  it('keeps the send key so the row stays the same on screen', () => {
+    const current = [make('tmp', { sendState: 'sending', mine: true, idempotencyKey: 'k' })];
+    expect(confirmSent(current, 'tmp', make('9', { mine: true }))[0].idempotencyKey).toBe('k');
+  });
+
   it('drops the copy when a poll already delivered it', () => {
     const current = [make('1'), make('9', { mine: true }), make('tmp', { sendState: 'sending', mine: true })];
     expect(confirmSent(current, 'tmp', make('9', { mine: true })).map((m) => m.id)).toEqual(['1', '9']);
