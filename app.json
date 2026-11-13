@@ -122,12 +122,6 @@
       "expo-secure-store",
       "expo-video",
       "expo-web-browser",
-      [
-        "onesignal-expo-plugin",
-        {
-          "mode": "development"
-        }
-      ],
       "expo-image",
       "expo-status-bar",
       [
@@ -147,6 +141,7 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/images/notification-icon.png",
           "color": "#B45CF2"
         }
       ]
