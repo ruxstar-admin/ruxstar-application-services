@@ -122,7 +122,7 @@ export const PostCard = memo(function PostCard({ post, onLike, onSave, onOpenCom
       </View>
 
       {post.text ? <Text style={styles.text}>{post.text}</Text> : null}
-      <PostImages photos={post.photos} />
+      <PostImages photos={post.photos} onDoubleTap={() => !post.likedByMe && onLike(post)} />
       {post.business ? <BusinessLine business={post.business} /> : null}
 
       <View style={styles.actions}>

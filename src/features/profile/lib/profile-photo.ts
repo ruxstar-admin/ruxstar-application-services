@@ -11,11 +11,20 @@ export async function pickSquarePhoto(): Promise<ImagePicker.ImagePickerAsset | 
   return result.canceled ? null : (result.assets[0] ?? null);
 }
 
-/** Shrinks the photo and re-saves it as JPEG, which also turns iPhone HEIC photos into something the API reads. */
-export async function toUploadJpeg(asset: ImagePicker.ImagePickerAsset, maxSide = MAX_SIDE): Promise<Uint8Array<ArrayBuffer>> {
+/**
+ * Shrinks the photo and re-saves it as JPEG, which also turns iPhone HEIC photos into something the API reads.
+ * With `aspect` (width / height) the middle of the photo is cut to that shape first.
+ */
+export async function toUploadJpeg(asset: ImagePicker.ImagePickerAsset, maxSide = MAX_SIDE, aspect?: number): Promise<Uint8Array<ArrayBuffer>> {
   const context = ImageManipulator.manipulate(asset.uri);
-  if (Math.max(asset.width, asset.height) > maxSide) {
-    context.resize(asset.width >= asset.height ? { width: maxSide, height: null } : { width: null, height: maxSide });
+  let { width, height } = asset;
+  if (aspect && width > 0 && height > 0 && Math.abs(width / height - aspect) > 0.01) {
+    const cut = width / height > aspect ? { width: Math.round(height * aspect), height } : { width, height: Math.round(width / aspect) };
+    context.crop({ originX: Math.round((width - cut.width) / 2), originY: Math.round((height - cut.height) / 2), ...cut });
+    ({ width, height } = cut);
+  }
+  if (Math.max(width, height) > maxSide) {
+    context.resize(width >= height ? { width: maxSide, height: null } : { width: null, height: maxSide });
   }
   const image = await context.renderAsync();
   const saved = await image.saveAsync({ compress: 0.85, format: SaveFormat.JPEG });
