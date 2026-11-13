@@ -19,6 +19,7 @@ import { activeLabel, layoutThread, type ThreadRow } from '@/features/chat/lib/t
 import { PhotoViewer } from '@/features/social/components/PhotoViewer';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { Feedback } from '@/lib/haptics';
+import { useOpenChat } from '@/lib/open-chat';
 import { ChatService } from '@/services/chat-service';
 import type { ChatDetail, ChatPhoto, PendingMessage } from '@/types/chat';
 
@@ -45,6 +46,7 @@ export function ThreadScreen() {
   const token = useAuthToken();
   const { id, title: titleParam } = useLocalSearchParams<{ id: string; title?: string }>();
   const thread = useThread(id);
+  useOpenChat(id);
   const { chat } = thread;
   const [menuFor, setMenuFor] = useState<PendingMessage | null>(null);
   const [viewing, setViewing] = useState<number | null>(null);

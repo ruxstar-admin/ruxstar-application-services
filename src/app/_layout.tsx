@@ -16,9 +16,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { STACK_SCREEN_OPTIONS } from '@/constants/motion';
 import { Brand } from '@/constants/theme';
 import { initMonitoring, wrapRoot } from '@/lib/monitoring';
+import { initPushNotifications, usePushNotifications } from '@/lib/push-notifications';
 import { ErrorFallback } from '@/components/ui/ErrorFallback';
 
 initMonitoring();
+initPushNotifications();
 
 /** Expo Router renders this when any screen under the root throws during render. */
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
@@ -87,6 +89,9 @@ function AuthGuard() {
     if (isAuthenticated && inVendorGroup && !roles.includes(ROLES.VENDOR)) router.replace(HOME as never);
     if (isAuthenticated && inPartnerGroup && !roles.includes(ROLES.DELIVERY)) router.replace(HOME as never);
   }, [navState?.key, _hasHydrated, isAuthenticated, roles, segments, router]);
+
+  // After the redirects above, so a tapped notification's screen opens on top of home.
+  usePushNotifications(!!navState?.key && _hasHydrated);
 
   return null;
 }

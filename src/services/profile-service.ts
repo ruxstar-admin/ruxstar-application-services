@@ -114,6 +114,8 @@ export const ProfileService = {
       lastActive: lastActive(s),
       current: s.current,
     })),
+  /** Sends phone notifications to this install. Signing out stops them; another account signing in here takes them over. */
+  registerDevice: (token: string, pushToken: string) => apiPost<{ done: true }>('/v1/account/devices', { pushToken }, token),
   endSession: (token: string, id: string) => apiDelete<{ done: true }>(`/v1/account/sessions/${encodeURIComponent(id)}`, token),
   deleteAccount: (token: string, password: string) => apiDelete<{ done: true }>('/v1/account/me', token, { password }),
 };

@@ -97,6 +97,10 @@ const LINKS: Record<ApiNotification['link']['screen'], (id: string) => Partial<A
   profile: (id) => ({ profileId: id }),
 };
 
+/** What a phone notification's `screen` and `id` point at, in the notifications screen's terms. Unknown screens point nowhere. */
+export const notificationLink = (screen: string, id: string): Partial<AppNotification> =>
+  Object.hasOwn(LINKS, screen) ? LINKS[screen as ApiNotification['link']['screen']](id) : {};
+
 interface ApiPerson extends ApiAuthor {
   followedByMe: boolean;
   me: boolean;

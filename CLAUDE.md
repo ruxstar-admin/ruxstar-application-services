@@ -71,7 +71,7 @@ Booking/Commerce/Creator notes below are historical backend model names.
 
 Payments run through **Cashfree** (`react-native-cashfree-pg-sdk`, `payment.service.js`,
 `payout.service.js`, `withdrawal.service.js`, `refund.service.js`). Push notifications run
-through **OneSignal** (`react-native-onesignal`, `notification.service.js`).
+through **Expo push** (`expo-notifications`, `src/lib/push-notifications.ts`).
 
 ---
 
@@ -411,9 +411,11 @@ stops in each screen.
 - `expo/tsconfig.base` is extended; strict mode is on — keep it on.
 - Payment flows go through Cashfree's SDK, not a custom checkout — check
   `react-native-cashfree-pg-sdk` docs before touching payment screens.
-- Push notification device registration goes through OneSignal (`onesignal-expo-plugin` is
-  already configured in `app.json`, mode: development — switch to production mode as part of
-  the release build checklist, not silently).
+- Push notifications use Expo push. After sign-in, `src/lib/push-notifications.ts` asks for
+  permission and sends the Expo push token to `POST /v1/account/devices`. The API sends to
+  `exp.host` on the Android channels `messages` and `activity`. Expo Go on Android can't
+  receive them, so test on a development build. Android builds need the Firebase
+  `google-services.json` and an FCM V1 key in EAS credentials.
 
 ---
 

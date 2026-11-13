@@ -7,6 +7,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Spacing } from '@/constants/theme';
 import { NotificationRow } from '@/features/social/components/NotificationRow';
+import { notificationHref } from '@/features/social/lib/notification-target';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { SocialService } from '@/services/social-service';
@@ -24,13 +25,8 @@ export function NotificationsScreen() {
   }, [loading, error, token]);
 
   const openerFor = (n: AppNotification): (() => void) | undefined => {
-    if (n.postId) return () => router.push({ pathname: '/(customer)/post/[id]', params: { id: n.postId! } });
-    if (n.businessId) return () => router.push({ pathname: '/(vendor)/businesses/[id]', params: { id: n.businessId! } });
-    if (n.orderId) return () => router.push({ pathname: '/(customer)/pod/order/[id]', params: { id: n.orderId! } });
-    if (n.shopOrderId) return () => router.push({ pathname: '/(vendor)/sale/[id]', params: { id: n.shopOrderId! } });
-    if (n.profileId) return () => router.push({ pathname: '/(customer)/user/[id]', params: { id: n.profileId! } });
-    if (n.verification) return () => router.push('/(customer)/settings/verification');
-    return undefined;
+    const href = notificationHref(n);
+    return href ? () => router.push(href) : undefined;
   };
 
   return (

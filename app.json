@@ -143,6 +143,12 @@
         {
           "microphonePermission": "Allow Ruxstar to use your microphone to record voice messages in chats."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#B45CF2"
+        }
       ]
     ],
     "experiments": {
