@@ -13,6 +13,8 @@ export type Permission =
   | 'modules.manage'
   | 'businesses.view'
   | 'businesses.manage'
+  | 'orders.view'
+  | 'orders.manage'
   | 'audit.view';
 
 export interface Access {
@@ -31,6 +33,8 @@ export interface Overview {
   users: { total: number; newThisWeek: number; suspended: number } | null;
   businesses: { total: number; live: number; suspended: number } | null;
   modules: { module: ModuleName; live: boolean }[] | null;
+  /** Order problems waiting for a decision. */
+  orders: { problems: number } | null;
   staff: { active: number } | null;
 }
 

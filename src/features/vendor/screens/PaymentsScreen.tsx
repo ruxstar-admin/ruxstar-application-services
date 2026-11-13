@@ -15,6 +15,7 @@ import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { ApiError } from '@/lib/api-error';
+import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
 import { formatRupees } from '@/lib/money';
 import { timeAgo } from '@/lib/time';
@@ -149,8 +150,23 @@ export function PaymentsScreen() {
                   <Text style={styles.muted}>Paid out</Text>
                 </View>
               </View>
-              <Text style={styles.hint}>Your balance fills in once your businesses take orders and bookings.</Text>
+              <Text style={styles.hint}>Pending is your share of paid orders. It becomes available 48 hours after delivery, or once Ruxstar settles a problem a customer reported.</Text>
             </View>
+
+            {data.upcoming.length ? (
+              <>
+                <Text style={styles.section}>Coming up</Text>
+                {data.upcoming.map((u) => (
+                  <View key={u.orderId} style={styles.payout}>
+                    <View style={styles.flex}>
+                      <Text style={styles.payoutAmount}>{rupees(u.amount)}</Text>
+                      <Text style={styles.muted}>{u.held ? `Order #${u.orderNo} · held for a reported problem` : `Order #${u.orderNo} · available ${formatDateTime(u.availableAt)}`}</Text>
+                    </View>
+                    <Badge label={u.held ? 'Held' : 'Waiting'} tone={u.held ? 'warning' : 'neutral'} />
+                  </View>
+                ))}
+              </>
+            ) : null}
 
             <Text style={styles.section}>Where you get paid</Text>
             {data.payoutMethod && !changing ? (

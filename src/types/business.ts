@@ -226,6 +226,8 @@ export interface Payout {
 /** GET /v1/vendor/payments. Amounts are paise. */
 export interface Payments {
   balance: { available: number; pending: number; paidOut: number };
+  /** Delivered orders whose share is still on hold, soonest first. `held` waits for Ruxstar to settle a problem. */
+  upcoming: { orderId: string; orderNo: number; amount: number; availableAt: string; held: boolean }[];
   payoutMethod: PayoutMethod | null;
   payouts: Payout[];
 }

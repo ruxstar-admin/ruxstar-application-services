@@ -86,6 +86,18 @@ Types: `src/types/social.ts`. Service: `src/services/social-service.ts`.
 
 Types: `src/types/chat.ts`. Service: `src/services/chat-service.ts`.
 
+## Print order problems and refunds (real API — `/v1`, decision 38)
+| Path | Request | Response | Notes |
+|---|---|---|---|
+| `POST /pod/orders/{id}/problem` | `{ kind: not_received \| wrong_item \| poor_quality \| damaged \| other, note }` | `Order` | `Idempotency-Key`. Only while `canReport` (48 h after delivery, or a late order not yet delivered); `REPORT_CLOSED` after, `CONFLICT` if one exists. Holds the shop's share |
+| `POST /pod/orders/{id}/problem/photos` | image bytes | `Order` | `Idempotency-Key`; up to 3 while the problem is open; re-encoded to JPEG |
+| `POST /vendor/orders/{id}/refund` | `{ amount ≥ 100, reason }` | `ShopOrder` | `Idempotency-Key`; at most `refundable` (the shop's share left, before it is released) |
+| `GET /vendor/payments` | – | `Payments` with `upcoming[{ orderId, orderNo, amount, availableAt, held }]` | Releases shares that are due before answering |
+| `GET /ruxstar/reports/orders` · `GET /ruxstar/reports/orders/{id}` | `?status=open\|resolved&cursor` · – | `Page<StaffOrder>` · `StaffOrder` | `orders.view` |
+| `POST /ruxstar/reports/orders/{id}/settle` | `{ outcome: refund_full \| refund_partial \| dismiss, amount?, note }` | `StaffOrder` | `orders.manage`, `Idempotency-Key`. A full refund moves the order to `refunded` |
+
+Order clocks (`acceptBy` 6 h, `readyBy`, release 48 h after delivery, delivered 7 days after `readyBy`) run on the API: a scheduler calls `POST /v1/jobs/orders` every 10 minutes and order reads catch up too.
+
 ## Vendor portal & employment (all mocked — `src/services/mock/vendor.mocks.ts`)
 | Path | Request | Response | Notes |
 |---|---|---|---|

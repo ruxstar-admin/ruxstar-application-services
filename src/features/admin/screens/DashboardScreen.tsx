@@ -81,6 +81,15 @@ export function DashboardScreen() {
                   href="/(admin)/(tabs)/reports"
                 />
               ) : null}
+              {data.orders ? (
+                <Tile
+                  icon="receipt-outline"
+                  label="Print order problems"
+                  value={data.orders.problems}
+                  caption={data.orders.problems === 0 ? 'Nothing waiting.' : "Shop payouts held until you settle them"}
+                  href="/(admin)/(tabs)/reports"
+                />
+              ) : null}
               {data.users ? (
                 <Tile
                   icon="people-outline"

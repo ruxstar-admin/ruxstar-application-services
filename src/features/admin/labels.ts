@@ -57,6 +57,10 @@ export const ACTION_LABEL: Record<string, string> = {
   'business.suspend': 'Put a business on hold',
   'business.restore': 'Lifted a hold on a business',
   'payout_method.set': 'Set where they get paid',
+  'pod_order.status': 'Moved a print order on',
+  'pod_order.problem': 'Reported a problem with a print order',
+  'pod_order.refund': 'Refunded part of a print order',
+  'pod_order.settle': 'Settled a print order problem',
 };
 
 export const BUSINESS_STATE_LABEL: Record<'draft' | 'live' | 'suspended', string> = {
@@ -80,6 +84,7 @@ export const PERMISSION_AREA: Record<string, string> = {
   users: 'People',
   modules: 'Modules',
   businesses: 'Businesses',
+  orders: 'Print orders',
   audit: 'Audit log',
 };
 

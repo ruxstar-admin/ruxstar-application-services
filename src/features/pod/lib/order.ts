@@ -1,7 +1,7 @@
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { money, OPTION_LABELS } from '@/features/vendor/lib/pod';
-import type { Order, OrderPrice, OrderStatus, ShopOrder, ShopStatus } from '@/types/order';
+import type { Order, OrderPrice, OrderProblem, OrderRefund, OrderStatus, ProblemKind, ShopOrder, ShopStatus } from '@/types/order';
 import type { ShopProduct } from '@/types/shop';
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -14,6 +14,7 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
   delivered: 'Delivered',
   rejected: 'Turned down',
   cancelled: 'Cancelled',
+  refunded: 'Refunded',
 };
 
 /** The vendor's words for the same steps. */
@@ -29,9 +30,36 @@ export const STATUS_TONE: Record<OrderStatus, 'neutral' | 'accent' | 'success' |
   delivered: 'success',
   rejected: 'error',
   cancelled: 'neutral',
+  refunded: 'neutral',
 };
 
-export const isFinished = (status: OrderStatus) => status === 'delivered' || status === 'rejected' || status === 'cancelled';
+export const isFinished = (status: OrderStatus) => ['delivered', 'rejected', 'cancelled', 'refunded'].includes(status);
+/** Turned down, cancelled or refunded in full: nothing left to make. */
+export const isClosed = (status: OrderStatus) => status === 'rejected' || status === 'cancelled' || status === 'refunded';
+
+export const PROBLEM_LABEL: Record<ProblemKind, string> = {
+  not_received: "It didn't arrive",
+  wrong_item: 'Wrong print',
+  poor_quality: 'Poor print quality',
+  damaged: 'Arrived damaged',
+  other: 'Something else',
+};
+export const PROBLEM_KINDS = Object.keys(PROBLEM_LABEL) as ProblemKind[];
+export const PROBLEM_PHOTOS_MAX = 3;
+
+/** "Thu, 14 Nov" */
+export const dayLabel = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+
+export const refundLine = (refund: OrderRefund) =>
+  refund.status === 'done' ? `${money(refund.amount)} refunded to how you paid. Banks take up to 7 days to show it.` : `Refunding ${money(refund.amount)}…`;
+
+/** What Ruxstar decided, in the customer's words or the shop's. */
+export function resolutionLine(problem: OrderProblem, forShop: boolean): string {
+  const r = problem.resolution;
+  if (!r) return forShop ? 'Ruxstar is looking into it. Your share is held until then.' : 'Ruxstar is looking into it and will reply here.';
+  if (r.outcome === 'dismissed') return `Closed without a refund: ${r.note}`;
+  return `${money(r.amount)} refunded${forShop && r.outcome === 'partial' ? ' from your share' : ''}: ${r.note}`;
+}
 
 const PATH: OrderStatus[] = ['placed', 'accepted', 'printing', 'ready', 'out_for_delivery', 'delivered'];
 

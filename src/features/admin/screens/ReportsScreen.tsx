@@ -17,6 +17,7 @@ import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
 import type { PersonCase, PersonReportReason, ReportCase, ReportReason, ReportStatus } from '@/types/admin';
 import { useCan } from '../access';
+import { OrderProblemsQueue } from '../components/OrderProblems';
 import { Card, ConsoleScreen, Fact, Facts, Note, ReasonSheet, Row, consoleStyles, errorText } from '../components/parts';
 import { PERSON_REASON_LABEL, REASON_LABEL, shortDate } from '../labels';
 
@@ -302,23 +303,33 @@ function PeopleQueue({ status }: { status: ReportStatus }) {
   );
 }
 
-type Subject = 'posts' | 'people';
+type Subject = 'posts' | 'people' | 'orders';
 
 const SUBJECTS = [
   { key: 'posts', label: 'Posts' },
   { key: 'people', label: 'People' },
+  { key: 'orders', label: 'Orders' },
 ] as const satisfies readonly { key: Subject; label: string }[];
 
 export function ReportsScreen() {
-  const [subject, setSubject] = useState<Subject>('posts');
+  const canReports = useCan('reports.view');
+  const canOrders = useCan('orders.view');
+  const subjects = SUBJECTS.filter((s) => (s.key === 'orders' ? canOrders : canReports));
+  const [subject, setSubject] = useState<Subject>(canReports ? 'posts' : 'orders');
   const [status, setStatus] = useState<ReportStatus>('open');
   return (
     <ConsoleScreen title="Reports">
       <View style={styles.tabs}>
-        <SegmentedTabs options={SUBJECTS} value={subject} onChange={setSubject} />
+        {subjects.length > 1 ? <SegmentedTabs options={subjects} value={subject} onChange={setSubject} /> : null}
         <SegmentedTabs options={TABS} value={status} onChange={setStatus} />
       </View>
-      {subject === 'posts' ? <Queue key={`posts-${status}`} status={status} /> : <PeopleQueue key={`people-${status}`} status={status} />}
+      {subject === 'posts' ? (
+        <Queue key={`posts-${status}`} status={status} />
+      ) : subject === 'people' ? (
+        <PeopleQueue key={`people-${status}`} status={status} />
+      ) : (
+        <OrderProblemsQueue key={`orders-${status}`} status={status === 'open' ? 'open' : 'resolved'} />
+      )}
     </ConsoleScreen>
   );
 }

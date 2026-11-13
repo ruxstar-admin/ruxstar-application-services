@@ -1,6 +1,6 @@
 import { File } from 'expo-file-system';
 import { apiGet, apiGetPage, apiPost, apiPostBytes, type WriteOptions } from '@/lib/api-client';
-import type { Order, OrderAddress, OrderChoice, PrintFile, Quote, ShopOrder, ShopOrderView, ShopStatus } from '@/types/order';
+import type { Order, OrderAddress, OrderChoice, PrintFile, ProblemKind, Quote, ShopOrder, ShopOrderView, ShopStatus } from '@/types/order';
 
 const UPLOAD_TIMEOUT_MS = 3 * 60_000;
 const id = (value: string) => encodeURIComponent(value);
@@ -28,6 +28,15 @@ export const OrderService = {
   cancel: (token: string, orderId: string, options: WriteOptions) => apiPost<Order>(`/v1/pod/orders/${id(orderId)}/cancel`, undefined, token, options),
   fileLink: (token: string, orderId: string, fileId: string) =>
     apiGet<{ url: string; expiresAt: string }>(`/v1/pod/orders/${id(orderId)}/files/${id(fileId)}`, token),
+  /** Within 48 hours of delivery, or once the order is late. One report per order. */
+  reportProblem: (token: string, orderId: string, body: { kind: ProblemKind; note: string }, options: WriteOptions) =>
+    apiPost<Order>(`/v1/pod/orders/${id(orderId)}/problem`, { ...body }, token, options),
+  /** Up to 3, while Ruxstar hasn't settled it. */
+  addProblemPhoto: (token: string, orderId: string, jpeg: Uint8Array<ArrayBuffer>, idempotencyKey: string) =>
+    apiPostBytes<Order>(`/v1/pod/orders/${id(orderId)}/problem/photos`, { data: jpeg, type: 'image/jpeg' }, token, {
+      headers: { 'Idempotency-Key': idempotencyKey },
+      timeoutMs: UPLOAD_TIMEOUT_MS,
+    }),
 };
 
 /** `/v1/vendor/orders`: orders to a vendor's shops, once paid. */
@@ -39,4 +48,7 @@ export const ShopOrderService = {
     apiPost<ShopOrder>(`/v1/vendor/orders/${id(orderId)}/status`, { status, ...(reason ? { reason } : {}) }, token, options),
   fileLink: (token: string, orderId: string, fileId: string) =>
     apiGet<{ url: string; expiresAt: string }>(`/v1/vendor/orders/${id(orderId)}/files/${id(fileId)}`, token),
+  /** Paise, out of the shop's share, up to `refundable`. The order carries on. */
+  refund: (token: string, orderId: string, amount: number, reason: string, options: WriteOptions) =>
+    apiPost<ShopOrder>(`/v1/vendor/orders/${id(orderId)}/refund`, { amount, reason }, token, options),
 };

@@ -21,6 +21,9 @@ import type {
   ReviewStatus,
   StaffMember,
 } from '@/types/admin';
+import type { StaffOrder } from '@/types/order';
+
+export type SettleOutcome = 'refund_full' | 'refund_partial' | 'dismiss';
 
 const keyed = (idempotencyKey: string) => ({ idempotencyKey });
 
@@ -48,6 +51,13 @@ export const AdminService = {
   /** To act on the account instead, put it on hold; that closes these too. */
   dismissPerson: (token: string, userId: string, key: string) =>
     apiPost<PersonCase>(`/v1/ruxstar/reports/people/${userId}/dismiss`, undefined, token, keyed(key)),
+
+  /** Print orders with a reported problem; `open` ones hold the shop's share. */
+  orderProblems: (token: string, status: 'open' | 'resolved', cursor?: string) =>
+    apiGetPage<StaffOrder>('/v1/ruxstar/reports/orders', token, { status, cursor }),
+  /** `amount` (paise) is for `refund_partial` only. The note is shown to the customer and the shop. */
+  settleOrder: (token: string, orderId: string, body: { outcome: SettleOutcome; amount?: number; note: string }, key: string) =>
+    apiPost<StaffOrder>(`/v1/ruxstar/reports/orders/${orderId}/settle`, { ...body }, token, keyed(key)),
 
   findAccounts: (token: string, q: string, status?: AccountStatus, cursor?: string) =>
     apiGetPage<AccountRow>('/v1/ruxstar/users', token, { q: q.trim() || undefined, status, cursor }),

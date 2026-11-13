@@ -10,8 +10,42 @@ export interface PrintFile {
   pages: number;
 }
 
-/** `placed` is paid and waiting for the shop. `rejected`, and `cancelled` after payment, are refunded in full. */
-export type OrderStatus = 'awaiting_payment' | 'placed' | 'accepted' | 'printing' | 'ready' | 'out_for_delivery' | 'delivered' | 'rejected' | 'cancelled';
+/**
+ * `placed` is paid and waiting for the shop. `rejected`, and `cancelled` after payment, are refunded in full.
+ * `refunded` is an accepted order Ruxstar refunded in full.
+ */
+export type OrderStatus =
+  | 'awaiting_payment'
+  | 'placed'
+  | 'accepted'
+  | 'printing'
+  | 'ready'
+  | 'out_for_delivery'
+  | 'delivered'
+  | 'rejected'
+  | 'cancelled'
+  | 'refunded';
+
+/** Paise. Partial refunds come out of the shop's share and the order carries on. */
+export interface OrderRefund {
+  amount: number;
+  kind: 'full' | 'partial';
+  reason: string | null;
+  status: 'pending' | 'done';
+  at: string;
+}
+
+export type ProblemKind = 'not_received' | 'wrong_item' | 'poor_quality' | 'damaged' | 'other';
+
+/** What a customer reported. Photo links work for 10 minutes. */
+export interface OrderProblem {
+  kind: ProblemKind;
+  note: string;
+  photos: { id: string; url: string }[];
+  status: 'open' | 'resolved';
+  reportedAt: string;
+  resolution: { outcome: 'refunded' | 'partial' | 'dismissed'; amount: number; note: string; at: string } | null;
+}
 
 export interface OrderAddress {
   name: string;
@@ -64,8 +98,21 @@ export interface Order {
   status: OrderStatus;
   timeline: { status: OrderStatus; at: string }[];
   paidAt: string | null;
-  refund: { amount: number; status: 'pending' | 'done' } | null;
+  /** Oldest first. */
+  refunds: OrderRefund[];
+  /** Paise, all refunds added up. */
+  refunded: number;
+  /** Why the shop turned it down, or why it was cancelled. */
   reason: string | null;
+  /** While placed: cancelled and refunded if the shop hasn't accepted by then. */
+  acceptBy: string | null;
+  /** When the shop promised it ready: accepted plus the ready-in days. */
+  readyBy: string | null;
+  deliveredAt: string | null;
+  /** The customer can report a problem now: within 48 hours of delivery, or once it is late. */
+  canReport: boolean;
+  reportUntil: string | null;
+  problem: OrderProblem | null;
   createdAt: string;
   updatedAt: string;
   price: OrderPrice;
@@ -73,7 +120,19 @@ export interface Order {
 
 /** The same order as the shop sees it, with Ruxstar's commission and the shop's payout. */
 export interface ShopOrder extends Omit<Order, 'price'> {
-  price: OrderPrice & { commissionBps: number; commission: number; payout: number };
+  /** `payoutLeft` is the payout less partial refunds. */
+  price: OrderPrice & { commissionBps: number; commission: number; payout: number; payoutLeft: number };
+  /** When the shop's share becomes available: 48 hours after delivery, later while a problem is open. */
+  releaseAt: string | null;
+  releasedAt: string | null;
+  /** Paise: the most the shop can refund now. */
+  refundable: number;
+}
+
+/** An order with a reported problem, as the Ruxstar console sees it. */
+export interface StaffOrder extends ShopOrder {
+  customer: { id: string; name: string; username: string | null };
+  vendor: { id: string; name: string };
 }
 
 export type ShopOrderView = 'new' | 'active' | 'past';

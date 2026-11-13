@@ -6,7 +6,9 @@ import { Feedback } from '@/lib/haptics';
 
 export default function AdminTabs() {
   const kyc = useCan('kyc.view');
-  const reports = useCan('reports.view');
+  const postReports = useCan('reports.view');
+  const orderProblems = useCan('orders.view');
+  const reports = postReports || orderProblems;
   const people = useCan('users.view');
 
   return (
