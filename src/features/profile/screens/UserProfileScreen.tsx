@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ListRow } from '@/components/ui/ListRow';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
@@ -16,6 +17,7 @@ import { ProfilePosts } from '@/features/social/components/ProfilePosts';
 import { useFeedStore } from '@/features/social/stores/feed-store';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { ChatService } from '@/services/chat-service';
 import { ProfileService } from '@/services/profile-service';
@@ -97,10 +99,13 @@ export function UserProfileScreen() {
   };
 
   const profile = data && rel ? { ...data, followers: rel.counts.followers, following: rel.counts.following } : data;
+  // Deleted accounts and people who blocked you both answer NOT_FOUND; it isn't a connection problem.
+  const unavailable = error instanceof ApiError && error.code === 'NOT_FOUND';
 
   return (
     <ScreenContainer title={data ? `@${data.username}` : 'Profile'}>
-      <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={3}>
+      {unavailable ? <EmptyState icon="person-remove-outline" title="This account isn't available" message="It may have been deleted, or it isn't available to you." /> : null}
+      <AsyncBoundary loading={loading} error={unavailable ? null : error} hasData={!!data || unavailable} onRetry={reload} skeletonRows={3}>
         {data && profile ? (
           <>
             <ProfileHeader

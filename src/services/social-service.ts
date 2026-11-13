@@ -11,8 +11,6 @@ import type {
   PostKind,
   PostPhoto,
   Relation,
-  SearchResult,
-  SearchScope,
   UserReportReason,
 } from '@/types/social';
 import type { ReportReason } from '@/types/profile';
@@ -87,7 +85,6 @@ const toNotification = (n: ApiNotification): AppNotification => ({
   body: n.body,
   createdAt: n.createdAt,
   read: n.read,
-  actionable: false,
   ...LINKS[n.link.screen](n.link.id),
 });
 
@@ -158,12 +155,9 @@ export const SocialService = {
   blocked: (token: string, cursor?: string) => mapPage(apiGetPage<ApiPerson>('/v1/social/blocks', token, { cursor }), toPerson),
   reportUser: (token: string, id: string, reason: UserReportReason) => apiPost<Done>(`${user(id)}/report`, { reason }, token),
 
-  search: (token: string, q: string, scope: SearchScope) => apiPost<SearchResult[]>('/search', { q, scope }, token),
-
   notifications: (token: string, cursor?: string) =>
     mapPage(apiGetPage<ApiNotification>('/v1/notifications', token, { cursor }), toNotification),
   unreadCount: (token: string) => apiGet<{ count: number }>('/v1/notifications/unread-count', token),
   /** One notification, or all of them without an id. */
   markRead: (token: string, id?: string) => apiPost<Done>('/v1/notifications/read', { id }, token),
-  respond: (token: string, id: string, accept: boolean) => apiPost<{ message: string }>('/notifications/respond', { id, accept }, token),
 };

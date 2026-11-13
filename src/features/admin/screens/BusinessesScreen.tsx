@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Badge } from '@/components/ui/Badge';
+import { ChoiceChips } from '@/components/ui/ChoiceChips';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InputField } from '@/components/ui/InputField';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -15,6 +16,7 @@ import { usePaginated } from '@/hooks/use-paginated';
 import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
 import type { BusinessFilter, BusinessState } from '@/types/admin';
+import type { BusinessModule } from '@/types/business';
 import { Card, Row, consoleStyles, errorText } from '../components/parts';
 
 const STATES = [
@@ -23,6 +25,11 @@ const STATES = [
   { key: 'draft', label: 'Drafts' },
   { key: 'suspended', label: 'On hold' },
 ] as const satisfies readonly { key: BusinessState | 'all'; label: string }[];
+
+const MODULES: readonly { key: BusinessModule | 'all'; label: string }[] = [
+  { key: 'all', label: 'Every module' },
+  ...(['pod', 'events', 'coaching', 'stays'] as const).map((key) => ({ key, label: BUSINESS_MODULES[key].label })),
+];
 
 /** Waits this long after the last keystroke before searching. */
 const SEARCH_DELAY_MS = 350;
@@ -81,13 +88,14 @@ export function BusinessesScreen() {
   const [text, setText] = useState('');
   const [q, setQ] = useState('');
   const [state, setState] = useState<BusinessState | 'all'>('all');
+  const [module, setModule] = useState<BusinessModule | 'all'>('all');
 
   useEffect(() => {
     const t = setTimeout(() => setQ(text.trim()), SEARCH_DELAY_MS);
     return () => clearTimeout(t);
   }, [text]);
 
-  const filter: BusinessFilter = { ...(q ? { q } : {}), ...(state === 'all' ? {} : { state }) };
+  const filter: BusinessFilter = { ...(q ? { q } : {}), ...(state === 'all' ? {} : { state }), ...(module === 'all' ? {} : { module }) };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -97,8 +105,9 @@ export function BusinessesScreen() {
       <View style={styles.controls}>
         <InputField value={text} onChangeText={setText} placeholder="Business name or id" autoCapitalize="none" autoCorrect={false} returnKeyType="search" accessibilityLabel="Search businesses" />
         <SegmentedTabs options={STATES} value={state} onChange={setState} />
+        <ChoiceChips options={MODULES} value={module} onChange={setModule} secondary />
       </View>
-      <Results key={`${q}|${state}`} filter={filter} />
+      <Results key={`${q}|${state}|${module}`} filter={filter} />
     </SafeAreaView>
   );
 }

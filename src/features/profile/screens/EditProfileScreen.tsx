@@ -31,10 +31,21 @@ const GENDERS = [
   { key: 'other', label: 'Other' },
 ] as const;
 
-const SAVE_ERRORS: Record<string, string> = {
-  USERNAME_TAKEN: 'That username is taken. Try another.',
-  VALIDATION_FAILED: 'Some details are not valid. Check them and try again.',
-};
+const SAVE_FAILED = 'Could not save your changes. Please try again.';
+
+/** The API's own reason, like the website; schema wording ("must match…") falls back to a plain line. */
+function saveError(err: unknown): string {
+  if (!(err instanceof ApiError)) return SAVE_FAILED;
+  if (err.kind === 'network') return 'No internet connection. Check your network and try again.';
+  if (err.kind === 'timeout') return 'This is taking longer than usual. Please try again.';
+  if (err.code === 'USERNAME_TAKEN') return 'That username is taken. Try another.';
+  if (err.code === 'EMAIL_TAKEN') return 'This email is on another account.';
+  if (err.code === 'VALIDATION_FAILED') {
+    const written = err.details.find((d) => d.message && !/^must /.test(d.message) && !d.message.startsWith('Unknown field'));
+    return written?.message ?? 'Some details are not valid. Check them and try again.';
+  }
+  return err.code !== 'INTERNAL' && err.message ? err.message : SAVE_FAILED;
+}
 
 /** `focus` opens the screen with that field active, for the Profile tab's "Add a bio" and "Add your city". */
 export type EditProfileFocus = 'bio' | 'city';
@@ -108,7 +119,7 @@ function EditProfileForm({ profile, focus }: { profile: Profile; focus?: EditPro
       router.back();
     } catch (err) {
       Feedback.error();
-      setFailure((err instanceof ApiError && SAVE_ERRORS[err.code]) || 'Could not save your changes. Please try again.');
+      setFailure(saveError(err));
     } finally {
       setSaving(false);
     }

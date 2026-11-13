@@ -48,14 +48,6 @@ export interface Session {
   current: boolean;
 }
 
-export interface NotificationPrefs {
-  orders: boolean;
-  messages: boolean;
-  social: boolean;
-  work: boolean;
-  digest: boolean;
-}
-
 export const REPORT_REASONS = [
   { key: 'spam', label: 'Spam or scam' },
   { key: 'fake', label: 'Fake store or listing' },

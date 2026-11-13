@@ -11,7 +11,7 @@ import { MISSING_LABEL, listOf } from '@/features/vendor/lib/business-modules';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
-import { formatRupees } from '@/lib/money';
+import { money } from '@/features/vendor/lib/pod';
 import { BusinessService } from '@/services/business-service';
 
 function Stat({ value, label }: { value: string; label: string }) {
@@ -80,8 +80,8 @@ export function VendorDashboardScreen() {
             <Ionicons name="chevron-forward" size={18} color={Brand.textMuted} />
           </View>
           <View style={styles.stats}>
-            <Stat value={formatRupees(payments.data.balance.available / 100)} label="Available" />
-            <Stat value={formatRupees(payments.data.balance.paidOut / 100)} label="Paid out" />
+            <Stat value={money(payments.data.balance.available)} label="Available" />
+            <Stat value={money(payments.data.balance.paidOut)} label="Paid out" />
           </View>
           {!payments.data.payoutMethod ? (
             <View style={styles.method}>

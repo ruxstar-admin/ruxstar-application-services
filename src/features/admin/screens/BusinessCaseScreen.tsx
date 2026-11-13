@@ -10,7 +10,8 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { BUSINESS_MODULES, MISSING_LABEL, listOf, statusOf } from '@/features/vendor/lib/business-modules';
-import { addressOf, areaLine } from '@/features/vendor/lib/pod';
+import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
+import { addressOf, areaLine, money, priceLine } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey } from '@/lib/api-client';
@@ -18,9 +19,30 @@ import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
 import type { BusinessCase } from '@/types/admin';
+import type { PodProduct, PodProductInfo, PodSetup } from '@/types/business';
 import { useCan } from '../access';
 import { Card, Fact, Facts, Note, ReasonSheet, consoleStyles, errorText } from '../components/parts';
 import { shortDate } from '../labels';
+
+/** What a print business makes, where, and its starting prices. */
+function PodFacts({ pod, products }: { pod: PodSetup; products: PodProductInfo[] | undefined }) {
+  const label = (id: PodProduct) => products?.find((p) => p.id === id)?.label ?? id;
+  return (
+    <Card>
+      <Facts>
+        <Fact label="Prints" value={pod.products.length ? pod.products.map(label).join(', ') : 'Nothing yet'} warn={!pod.products.length} />
+        <Fact label="Serves" value={areaLine(pod)} warn={!pod.serveAll && !pod.cities.length} />
+        <Fact label="Turnaround" value={`${pod.turnaroundDays} ${pod.turnaroundDays === 1 ? 'day' : 'days'}`} />
+        <Fact label="Minimum order" value={pod.minOrder ? money(pod.minOrder) : 'None'} />
+        {pod.notes ? <Fact label="Notes" value={pod.notes} /> : null}
+        {pod.prices.map((p) => (
+          <Fact key={p.product} label={label(p.product)} value={priceLine(p) ?? 'No price'} />
+        ))}
+        {pod.unpriced.length ? <Fact label="Without a price" value={pod.unpriced.map(label).join(', ')} warn /> : null}
+      </Facts>
+    </Card>
+  );
+}
 
 function Actions({ c, onChanged }: { c: BusinessCase; onChanged: (next: BusinessCase, message: string) => void }) {
   const token = useAuthToken();
@@ -78,6 +100,7 @@ export function BusinessCaseScreen({ id }: { id: string }) {
   const canSeePeople = useCan('users.view');
   const canAudit = useCan('audit.view');
   const { data, loading, error, reload, setData } = useAsyncResource(() => AdminService.getBusiness(token, id), id);
+  const catalog = useBusinessCatalog();
   const [done, setDone] = useState<string | null>(null);
 
   return (
@@ -88,7 +111,10 @@ export function BusinessCaseScreen({ id }: { id: string }) {
             <View style={styles.head}>
               <View style={styles.flex}>
                 <Text style={styles.name}>{data.business.name}</Text>
-                <Text style={consoleStyles.muted}>{BUSINESS_MODULES[data.business.module].label}</Text>
+                <Text style={consoleStyles.muted}>
+                  {BUSINESS_MODULES[data.business.module].label}
+                  {catalog.data ? ` · ${catalog.data.categories.flatMap((c) => c.types).find((t) => t.id === data.business.type)?.label ?? data.business.type}` : ''}
+                </Text>
               </View>
               <Badge {...statusOf(data.business)} />
             </View>
@@ -114,17 +140,11 @@ export function BusinessCaseScreen({ id }: { id: string }) {
                 <Fact label="About" value={data.business.description ?? '—'} />
                 <Fact label="Phone" value={data.business.phone ?? '—'} />
                 <Fact label="Location" value={addressOf(data.business.location)?.replace(/\n/g, ', ') ?? '—'} />
-                {data.business.pod ? (
-                  <>
-                    <Fact label="Products" value={data.business.pod.products.length ? `${data.business.pod.products.length}, ${data.business.pod.unpriced.length} without a price` : 'None yet'} />
-                    <Fact label="Delivers to" value={areaLine(data.business.pod)} />
-                    <Fact label="Ready in" value={`${data.business.pod.turnaroundDays} days`} />
-                  </>
-                ) : null}
                 <Fact
                   label="GSTIN"
                   value={data.business.gstin ? `${data.business.gstin.number}${data.business.gstin.status ? ` (${data.business.gstin.status})` : ''}` : 'Not given'}
                 />
+                {data.business.gstin?.legalName ? <Fact label="GST legal name" value={data.business.gstin.legalName} /> : null}
                 {data.business.status === 'draft' && data.business.missing.length ? (
                   <Fact label="Missing to publish" value={listOf(data.business.missing.map((m) => MISSING_LABEL[m]))} warn />
                 ) : null}
@@ -133,6 +153,8 @@ export function BusinessCaseScreen({ id }: { id: string }) {
                 <Fact label="Business id" value={data.business.id} />
               </Facts>
             </Card>
+
+            {data.business.pod ? <PodFacts pod={data.business.pod} products={catalog.data?.podProducts} /> : null}
 
             <Card>
               <Facts>

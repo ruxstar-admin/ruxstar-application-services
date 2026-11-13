@@ -1,5 +1,3 @@
-import './profile.mocks';
-import './social.mocks';
 import './vendor.mocks';
 import './commerce.mocks';
 import './money.mocks';

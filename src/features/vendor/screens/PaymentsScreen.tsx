@@ -17,8 +17,8 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { ApiError } from '@/lib/api-error';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
-import { formatRupees } from '@/lib/money';
 import { timeAgo } from '@/lib/time';
+import { money } from '@/features/vendor/lib/pod';
 import { BusinessService } from '@/services/business-service';
 import type { PayoutMethod } from '@/types/business';
 
@@ -27,7 +27,7 @@ const KINDS = [
   { key: 'upi', label: 'UPI ID' },
 ] as const;
 const VPA = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,64}$/;
-const rupees = (paise: number) => formatRupees(paise / 100);
+const rupees = money;
 
 type Field = 'accountNumber' | 'confirm' | 'ifsc' | 'vpa';
 

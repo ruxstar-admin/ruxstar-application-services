@@ -93,8 +93,6 @@ export interface AppNotification {
   body: string;
   createdAt: string;
   read: boolean;
-  /** True for offers that still need Accept / Decline. */
-  actionable: boolean;
   /** Where tapping it goes. */
   postId?: string;
   /** A verification decision: tapping opens the Verification screen. */
@@ -107,23 +105,4 @@ export interface AppNotification {
   shopOrderId?: string;
   /** A new follower: tapping opens their profile. */
   profileId?: string;
-}
-
-export const SEARCH_SCOPES = [
-  { key: 'people', label: 'People' },
-  { key: 'businesses', label: 'Businesses' },
-  { key: 'events', label: 'Events' },
-  { key: 'courses', label: 'Courses' },
-  { key: 'stays', label: 'Stays' },
-] as const;
-
-export type SearchScope = (typeof SEARCH_SCOPES)[number]['key'];
-
-export interface SearchResult {
-  id: string;
-  scope: SearchScope;
-  title: string;
-  subtitle: string;
-  /** People only: shown in place of the scope icon. */
-  avatarUrl?: string;
 }

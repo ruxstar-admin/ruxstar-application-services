@@ -1,9 +1,7 @@
 import { apiDelete, apiGet, apiPatch, apiPost, apiPutBytes } from '@/lib/api-client';
 import { timeAgo } from '@/lib/time';
 import type { AuthUser } from '@/types/auth';
-import type { NotificationPrefs, Profile, ProfileBadge, ProfileUpdate, PublicProfileResponse, Session } from '@/types/profile';
-
-type Message = { message: string };
+import type { Profile, ProfileBadge, ProfileUpdate, PublicProfileResponse, Session } from '@/types/profile';
 
 interface ApiSession {
   id: string;
@@ -78,7 +76,7 @@ const lastActive = (session: ApiSession) => {
 
 /**
  * Profiles, photos and devices are `/v1/account`; following, blocking and reporting people are in
- * SocialService. Notification settings, export and pause have no backend yet and are mocked (profile.mocks.ts).
+ * SocialService.
  */
 export const ProfileService = {
   getMe: async (token: string) => toProfile(await apiGet<AuthUser>('/v1/account/me', token)),
@@ -114,12 +112,5 @@ export const ProfileService = {
       current: s.current,
     })),
   endSession: (token: string, id: string) => apiDelete<{ done: true }>(`/v1/account/sessions/${encodeURIComponent(id)}`, token),
-
-  getNotificationPrefs: (token: string) => apiGet<NotificationPrefs>('/settings/notifications', token),
-  setNotificationPrefs: (token: string, prefs: Partial<NotificationPrefs>) =>
-    apiPost<NotificationPrefs>('/settings/notifications', prefs, token),
-
-  exportData: (token: string) => apiPost<Message>('/account/export', undefined, token),
-  pauseAccount: (token: string) => apiPost<Message>('/account/pause', undefined, token),
   deleteAccount: (token: string, password: string) => apiDelete<{ done: true }>('/v1/account/me', token, { password }),
 };

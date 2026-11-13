@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,7 +9,6 @@ import { Brand, Spacing } from '@/constants/theme';
 import { NotificationRow } from '@/features/social/components/NotificationRow';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
-import { Feedback } from '@/lib/haptics';
 import { SocialService } from '@/services/social-service';
 import type { AppNotification } from '@/types/social';
 
@@ -17,8 +16,7 @@ export function NotificationsScreen() {
   const router = useRouter();
   const token = useAuthToken();
   const list = usePaginated((cursor) => SocialService.notifications(token, cursor));
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const { loading, error, setItems } = list;
+  const { loading, error } = list;
 
   // Opening the centre marks everything read on the server; the dots stay for this visit so new items are easy to spot.
   useEffect(() => {
@@ -33,19 +31,6 @@ export function NotificationsScreen() {
     if (n.profileId) return () => router.push({ pathname: '/(customer)/user/[id]', params: { id: n.profileId! } });
     if (n.verification) return () => router.push('/(customer)/settings/verification');
     return undefined;
-  };
-
-  const respond = async (id: string, accept: boolean) => {
-    setBusyId(id);
-    try {
-      await SocialService.respond(token, id, accept);
-      Feedback.success();
-      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, actionable: false, read: true } : n)));
-    } catch {
-      Feedback.error();
-    } finally {
-      setBusyId(null);
-    }
   };
 
   return (
@@ -67,12 +52,7 @@ export function NotificationsScreen() {
           data={list.items}
           keyExtractor={(n) => n.id}
           renderItem={({ item }) => (
-            <NotificationRow
-              notification={item}
-              busy={busyId === item.id}
-              onRespond={(n, accept) => respond(n.id, accept)}
-              onOpen={openerFor(item)}
-            />
+            <NotificationRow notification={item} onOpen={openerFor(item)} />
           )}
           refreshControl={<RefreshControl refreshing={list.refreshing} onRefresh={list.refresh} tintColor={Brand.primarySoft} />}
           contentContainerStyle={styles.list}

@@ -74,6 +74,7 @@ export const AREA_LABEL: Record<string, string> = {
   kyc: 'Verification',
   social: 'Posts',
   ruxstar: 'Staff',
+  vendor: 'Vendor',
   ...MODULE_LABEL,
 };
 

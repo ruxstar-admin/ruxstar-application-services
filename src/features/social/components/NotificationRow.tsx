@@ -1,6 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Chip } from '@/components/ui/Chip';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { timeAgo } from '@/lib/time';
 import type { AppNotification, NotificationKind } from '@/types/social';
@@ -15,14 +14,11 @@ const ICONS: Record<NotificationKind, keyof typeof Ionicons.glyphMap> = {
 
 interface NotificationRowProps {
   notification: AppNotification;
-  /** Which action is currently in flight for this row, to disable the buttons. */
-  busy: boolean;
-  onRespond: (notification: AppNotification, accept: boolean) => void;
   onOpen?: (notification: AppNotification) => void;
 }
 
-/** One notification: icon, text, time, an unread dot, and Accept / Decline for employment offers. */
-export function NotificationRow({ notification, busy, onRespond, onOpen }: NotificationRowProps) {
+/** One notification: icon, text, time and an unread dot. */
+export function NotificationRow({ notification, onOpen }: NotificationRowProps) {
   return (
     <Pressable
       accessibilityRole={onOpen ? 'button' : undefined}
@@ -39,12 +35,6 @@ export function NotificationRow({ notification, busy, onRespond, onOpen }: Notif
           <Text style={styles.time}>{timeAgo(notification.createdAt)}</Text>
         </View>
         <Text style={styles.text}>{notification.body}</Text>
-        {notification.actionable ? (
-          <View style={styles.actions}>
-            <Chip label="Accept" disabled={busy} onPress={() => onRespond(notification, true)} />
-            <Chip label="Decline" disabled={busy} onPress={() => onRespond(notification, false)} />
-          </View>
-        ) : null}
       </View>
       {!notification.read ? <View style={styles.dot} accessibilityLabel="Unread" /> : null}
     </Pressable>
@@ -60,6 +50,5 @@ const styles = StyleSheet.create({
   title: { ...Typography.bodyStrong, color: Brand.text },
   time: { ...Typography.caption, color: Brand.textFaint },
   text: { ...Typography.body, color: Brand.textMuted },
-  actions: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.two },
   dot: { width: 8, height: 8, borderRadius: Radius.pill, backgroundColor: Brand.primary, marginTop: Spacing.two },
 });
