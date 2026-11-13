@@ -25,6 +25,8 @@ export interface AuthUser {
   card: { id: string } | null;
   /** Posts that are up, and likes plus comments they have received. */
   stats: { posts: number; engagements: number; followers: number; following: number };
+  /** Activity status: people you chat with see when you were last active. Off, you don't see theirs either. Missing from older APIs. */
+  showActivity?: boolean;
   createdAt: string;
 }
 

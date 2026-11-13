@@ -83,6 +83,9 @@ export const ProfileService = {
   /** The account itself, with the phone number, for forms that fill in contact details. */
   account: (token: string) => apiGet<AuthUser>('/v1/account/me', token),
   update: async (token: string, changes: ProfileUpdate) => toProfile(await apiPatch<AuthUser>('/v1/account/me', toPatch(changes), token)),
+  /** Off forgets when you were last active and hides everyone else's from you, as on Instagram. */
+  setActivityStatus: async (token: string, show: boolean) =>
+    (await apiPatch<AuthUser>('/v1/account/me', { showActivity: show }, token)).showActivity ?? show,
   /** Someone's public profile, by username or user id. */
   getUser: async (token: string, ref: string) =>
     fromPublic(await apiGet<PublicProfileResponse>(`/v1/account/profiles/${encodeURIComponent(ref)}`, token)),
