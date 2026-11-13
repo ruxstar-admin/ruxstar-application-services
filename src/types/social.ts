@@ -115,4 +115,8 @@ export interface AppNotification {
   teamBusinessId?: string;
   /** A new order at a shop you work at: tapping opens it in Work. */
   workOrderId?: string;
+  /** A new review of your shop: tapping opens its reviews in the vendor portal. */
+  reviewsBusinessId?: string;
+  /** A new review at a shop you work at: tapping opens its reviews in Work (the id is your place there). */
+  workReviewsId?: string;
 }

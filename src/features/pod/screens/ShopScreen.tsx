@@ -10,11 +10,14 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { ShopCover } from '@/features/pod/components/ShopCover';
 import { deliveryLine, fromLine, placeLine, productPrice, readyLine } from '@/features/pod/lib/shop';
+import { ReviewItem } from '@/features/reviews/components/ReviewItem';
+import { ratingLine } from '@/features/reviews/lib/review';
 import { money, OPTION_LABELS } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
+import { ReviewService } from '@/services/review-service';
 import { ShopService } from '@/services/shop-service';
 import type { Shop, ShopProduct } from '@/types/shop';
 
@@ -93,6 +96,32 @@ function ProductCard({ product, shopDays }: { product: ShopProduct; shopDays: nu
   );
 }
 
+const PREVIEW_REVIEWS = 3;
+
+/** The newest few reviews, and the way to all of them. */
+function ReviewsPreview({ shop }: { shop: Shop }) {
+  const router = useRouter();
+  const token = useAuthToken();
+  const { data } = useAsyncResource(() => ReviewService.forShop(token, shop.id), shop.id);
+  const reviews = data?.items.slice(0, PREVIEW_REVIEWS) ?? [];
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.overline}>Reviews</Text>
+      {reviews.map((r) => (
+        <ReviewItem key={r.id} review={r} />
+      ))}
+      {shop.rating.count > reviews.length ? (
+        <PrimaryButton
+          label={`See all ${shop.rating.count} reviews`}
+          variant="outline"
+          onPress={() => router.push({ pathname: '/(customer)/pod/reviews/[id]', params: { id: shop.id, name: shop.name } })}
+        />
+      ) : null}
+    </View>
+  );
+}
+
 function ShopBody({ shop }: { shop: Shop }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -112,6 +141,7 @@ function ShopBody({ shop }: { shop: Shop }) {
           <Text style={styles.muted}>{[shop.typeLabel, place].filter(Boolean).join(' · ')}</Text>
 
           <View style={styles.facts}>
+            <Fact icon="star-outline" text={ratingLine(shop.rating)} />
             <Fact icon="time-outline" text={readyLine(shop.turnaroundDays)} />
             <Fact icon="bicycle-outline" text={deliveryLine(shop)} />
             {shop.minOrder > 0 ? <Fact icon="wallet-outline" text={`Minimum order ${money(shop.minOrder)}`} /> : null}
@@ -137,6 +167,8 @@ function ShopBody({ shop }: { shop: Shop }) {
               <Text style={styles.text}>{shop.notes}</Text>
             </View>
           ) : null}
+
+          {shop.rating.count ? <ReviewsPreview shop={shop} /> : null}
         </View>
       </ScrollView>
 

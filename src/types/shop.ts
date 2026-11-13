@@ -1,4 +1,5 @@
 import type { BusinessType, PodProduct } from './business';
+import type { Rating } from './review';
 
 export interface ShopPhotoFile {
   url: string;
@@ -27,6 +28,7 @@ export interface ShopCard {
   fromUnit: 'unit' | 'page' | null;
   turnaroundDays: number;
   products: PodProduct[];
+  rating: Rating;
 }
 
 export interface ShopProduct {

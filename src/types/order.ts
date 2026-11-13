@@ -122,6 +122,8 @@ export interface Order {
   /** The customer can report a problem now: within 48 hours of delivery, or once it is late. */
   canReport: boolean;
   reportUntil: string | null;
+  /** The customer can write or change a review until then: 30 days after delivery. Null when it can't be reviewed now. */
+  reviewUntil: string | null;
   problem: OrderProblem | null;
   createdAt: string;
   updatedAt: string;

@@ -33,6 +33,7 @@ import {
   STATUS_TONE,
 } from '@/features/pod/lib/order';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
+import { RateOrderCard } from '@/features/reviews/components/RateOrderCard';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -241,6 +242,8 @@ function OrderDetails({ order, onChanged }: { order: Order; onChanged: (order?: 
           </Text>
         </View>
       ) : null}
+
+      {order.deliveredAt ? <RateOrderCard order={order} /> : null}
 
       {partials.length ? (
         <>

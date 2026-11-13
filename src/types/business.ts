@@ -1,3 +1,5 @@
+import type { Rating } from './review';
+
 /** The modules a business can be opened in. Each business is in exactly one. */
 export type BusinessModule = 'pod' | 'events' | 'coaching' | 'stays';
 
@@ -107,6 +109,7 @@ export interface Business {
   missing: BusinessMissing[];
   /** Set while the Ruxstar team has the business on hold. */
   suspension: { reason: string; at: string } | null;
+  rating: Rating;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;

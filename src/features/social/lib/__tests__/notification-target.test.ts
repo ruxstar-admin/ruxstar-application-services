@@ -15,6 +15,11 @@ describe('notificationHref', () => {
     expect(notificationHref({ workOrderId: 'o2' })).toEqual({ pathname: '/(customer)/work/order/[id]', params: { id: 'o2' } });
   });
 
+  it("opens a shop's reviews for its owner, and in Work for its team", () => {
+    expect(notificationHref({ reviewsBusinessId: 'b2' })).toEqual({ pathname: '/(vendor)/businesses/[id]/reviews', params: { id: 'b2' } });
+    expect(notificationHref({ workReviewsId: 'e2' })).toEqual({ pathname: '/(customer)/work/reviews/[id]', params: { id: 'e2' } });
+  });
+
   it('opens nothing when it points nowhere', () => {
     expect(notificationHref({})).toBeUndefined();
   });

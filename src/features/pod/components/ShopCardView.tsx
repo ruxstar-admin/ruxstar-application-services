@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { ShopCover } from '@/features/pod/components/ShopCover';
 import { deliveryLine, fromLine, placeLine, readyLine } from '@/features/pod/lib/shop';
+import { ratingLine, ratingShort } from '@/features/reviews/lib/review';
 import { Feedback } from '@/lib/haptics';
 import type { ShopCard } from '@/types/shop';
 
@@ -25,7 +26,7 @@ export function ShopCardView({ shop, onPress }: { shop: ShopCard; onPress: () =>
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={[shop.name, shop.open ? 'open' : 'closed', place, price].filter(Boolean).join(', ')}
+      accessibilityLabel={[shop.name, shop.open ? 'open' : 'closed', ratingLine(shop.rating), place, price].filter(Boolean).join(', ')}
       onPress={() => {
         Feedback.tap();
         onPress();
@@ -49,6 +50,10 @@ export function ShopCardView({ shop, onPress }: { shop: ShopCard; onPress: () =>
           {[shop.typeLabel, place].filter(Boolean).join(' · ')}
         </Text>
         <View style={styles.facts}>
+          <View style={styles.fact}>
+            <Ionicons name="star" size={14} color={shop.rating.average === null ? Brand.textMuted : Brand.warning} />
+            <Text style={styles.factText}>{ratingShort(shop.rating)}</Text>
+          </View>
           <View style={styles.fact}>
             <Ionicons name="time-outline" size={14} color={Brand.textMuted} />
             <Text style={styles.factText}>{readyLine(shop.turnaroundDays)}</Text>
