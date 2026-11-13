@@ -24,6 +24,7 @@ import type {
   StaffMember,
   StaffPayout,
 } from '@/types/admin';
+import type { CouponFunder, CouponPatch, ManagedCoupon, NewCoupon } from '@/types/coupon';
 import type { StaffOrder } from '@/types/order';
 
 export type SettleOutcome = 'refund_full' | 'refund_partial' | 'dismiss';
@@ -83,6 +84,14 @@ export const AdminService = {
   /** The reason (5 to 300 characters) goes to the audit log; the vendor is told it was released early. */
   releaseHeld: (token: string, id: string, reason: string, key: string) =>
     apiPost<{ id: string; orderNo: number; amount: number; releasedAt: string }>(`/v1/ruxstar/held-orders/${id}/release`, { reason }, token, keyed(key)),
+
+  /** Ruxstar's coupons (the default) or vendors', or the one with this code. */
+  coupons: (token: string, funder: CouponFunder, code?: string, cursor?: string) =>
+    apiGetPage<ManagedCoupon>('/v1/ruxstar/coupons', token, { funder, code, cursor }),
+  /** Ruxstar pays for the discount; it works at every print shop. The code and discount can't change later. */
+  createCoupon: (token: string, body: NewCoupon, key: string) => apiPost<ManagedCoupon>('/v1/ruxstar/coupons', { ...body }, token, keyed(key)),
+  /** On a vendor's coupon only `active` can change. */
+  updateCoupon: (token: string, id: string, patch: CouponPatch) => apiPatch<ManagedCoupon>(`/v1/ruxstar/coupons/${id}`, { ...patch }, token),
 
   modules: (token: string) => apiGet<ModuleSettings[]>('/v1/ruxstar/modules', token),
   updateModule: (token: string, module: ModuleName, patch: ModulePatch, key: string) =>

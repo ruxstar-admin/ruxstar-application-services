@@ -17,6 +17,8 @@ export type Permission =
   | 'orders.manage'
   | 'payouts.view'
   | 'payouts.manage'
+  | 'coupons.view'
+  | 'coupons.manage'
   | 'audit.view';
 
 export interface Access {

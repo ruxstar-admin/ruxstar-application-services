@@ -101,6 +101,15 @@ Types: `src/types/chat.ts`. Service: `src/services/chat-service.ts`.
 | `GET /ruxstar/held-orders` · `POST /ruxstar/held-orders/{id}/release` | `?orderNo&cursor` · `{ reason }` (5 to 300) | `Page<HeldOrder>` · `{ id, orderNo, amount, releasedAt }` | `payouts.view` · `payouts.manage`, `Idempotency-Key`. `ORDER_STATE` while a problem is open or once released |
 | `PATCH /ruxstar/modules/ledger` | `{ payoutFee?, minPayout? }` (paise) | `ModuleSettings` with `payouts{ fee, minimum }` | `modules.manage`. The minimum must be at least ₹1 more than the fee |
 
+## Coupons (real API — `/v1`, decision 41)
+| Path | Request | Response | Notes |
+|---|---|---|---|
+| `POST /pod/quote` · `POST /pod/orders` | adds `couponCode?` | `Quote` adds `discount`, `coupon{ code, fundedBy, label } \| null`, `couponProblem`, `offers[{ code, fundedBy, label, terms, discount, problem }]` | The discount comes off the items only. Placing with a code that no longer works answers `COUPON_INVALID` |
+| `GET /vendor/coupons` · `POST /vendor/coupons` · `PATCH /vendor/coupons/{id}` | `?cursor` · `NewCoupon` with `businessIds[]` (1 to 20) · `CouponPatch` | `Page<ManagedCoupon>` · `ManagedCoupon` | `Idempotency-Key` on create. `CONFLICT` when the code is taken; `FORBIDDEN` switching on a coupon Ruxstar switched off |
+| `GET /ruxstar/coupons` · `POST /ruxstar/coupons` · `PATCH /ruxstar/coupons/{id}` | `?funder=ruxstar\|vendor&code&cursor` · `NewCoupon` · `CouponPatch` | `Page<ManagedCoupon>` · `ManagedCoupon` | `coupons.view` · `coupons.manage`, `Idempotency-Key` on create. On a vendor's coupon only `active` can change |
+
+Types: `src/types/coupon.ts`. Services: `src/services/coupon-service.ts` (vendor), `AdminService.coupons`, `createCoupon`, `updateCoupon`.
+
 Order clocks (`acceptBy` 6 h, `readyBy`, release 48 h after delivery, delivered 7 days after `readyBy`) run on the API: a scheduler calls `POST /jobs/orders` every 10 minutes and order reads catch up too.
 
 ## Vendor portal & employment (all mocked — `src/services/mock/vendor.mocks.ts`)

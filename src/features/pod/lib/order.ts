@@ -85,11 +85,14 @@ export function choiceLine(order: Pick<Order, 'options' | 'colour'>): string {
 export const quantityLine = (order: Pick<Order, 'pricing' | 'quantity' | 'productLabel'>) =>
   order.pricing === 'per_page' ? `${order.quantity} ${order.quantity === 1 ? 'copy' : 'copies'}` : `${order.productLabel} × ${order.quantity}`;
 
-/** Itemised lines for a price, in paise. */
+/** Itemised lines for a price, in paise. A coupon's line is `negative`: it comes off the items. */
 export function priceLines(price: OrderPrice, pricing: 'per_unit' | 'per_page') {
   const unit = pricing === 'per_page' ? (price.units === 1 ? 'page' : 'pages') : price.units === 1 ? 'piece' : 'pieces';
-  const lines = [{ label: `${price.units} ${unit} × ${money(price.unitPrice)}`, amount: price.units * price.unitPrice }];
+  const lines: { label: string; amount: number; negative?: boolean }[] = [
+    { label: `${price.units} ${unit} × ${money(price.unitPrice)}`, amount: price.units * price.unitPrice },
+  ];
   if (price.extrasPerUnit) lines.push({ label: `Extras, ${money(price.extrasPerUnit)} each`, amount: price.units * price.extrasPerUnit });
+  if (price.discount && price.coupon) lines.push({ label: `Coupon ${price.coupon.code} · ${price.coupon.label}`, amount: price.discount, negative: true });
   if (price.platformFee) lines.push({ label: 'Platform fee', amount: price.platformFee });
   return lines;
 }

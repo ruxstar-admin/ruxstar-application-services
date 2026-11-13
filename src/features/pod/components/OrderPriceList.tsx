@@ -18,7 +18,7 @@ export function OrderPriceList({ price, pricing, after = [] }: OrderPriceListPro
       {priceLines(price, pricing).map((line) => (
         <View key={line.label} style={styles.row}>
           <Text style={styles.label}>{line.label}</Text>
-          <Text style={styles.amount}>{money(line.amount)}</Text>
+          <Text style={styles.amount}>{`${line.negative ? '-' : ''}${money(line.amount)}`}</Text>
         </View>
       ))}
       <View style={[styles.row, styles.totalRow]}>

@@ -1,4 +1,5 @@
 import type { PodProduct } from './business';
+import type { AppliedCoupon, CouponOffer } from './coupon';
 
 /** POST /v1/pod/files: a file the customer uploaded to print. */
 export interface PrintFile {
@@ -64,14 +65,18 @@ export interface OrderChoice {
   colour?: 'bw' | 'color';
   quantity: number;
   fileIds: string[];
+  /** Any case. The API checks it and takes it off the items. */
+  couponCode?: string;
 }
 
-/** Paise. `units` is pieces, or pages times copies for documents. */
+/** Paise. `units` is pieces, or pages times copies for documents. `total` is items less the discount, plus the platform fee. */
 export interface OrderPrice {
   units: number;
   unitPrice: number;
   extrasPerUnit: number;
   items: number;
+  discount: number;
+  coupon: AppliedCoupon | null;
   platformFee: number;
   total: number;
 }
@@ -80,6 +85,10 @@ export interface Quote extends OrderPrice {
   pages: number;
   minOrder: number;
   turnaroundDays: number;
+  /** Why `couponCode` can't be used; the price is then without it. */
+  couponProblem: string | null;
+  /** Coupons the customer can pick, best first. */
+  offers: CouponOffer[];
 }
 
 export interface Order {
@@ -120,7 +129,10 @@ export interface Order {
 
 /** The same order as the shop sees it, with Ruxstar's commission and the shop's payout. */
 export interface ShopOrder extends Omit<Order, 'price'> {
-  /** `payoutLeft` is the payout less partial refunds. */
+  /**
+   * `payoutLeft` is the payout less partial refunds. With the shop's own coupon, commission is on the items
+   * less the discount and the discount comes out of the payout; with Ruxstar's, the payout is as if there were none.
+   */
   price: OrderPrice & { commissionBps: number; commission: number; payout: number; payoutLeft: number };
   /** When the shop's share becomes available: 48 hours after delivery, later while a problem is open. */
   releaseAt: string | null;
