@@ -23,6 +23,8 @@ export interface PostPhoto {
   url: string;
   width: number;
   height: number;
+  /** Narrower copies of the same photo, for small tiles. */
+  smaller?: { url: string; width: number; height: number }[];
 }
 
 /** The business a business post is for. `orderable` when it is a live print shop taking orders. */
