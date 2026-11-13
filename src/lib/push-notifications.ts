@@ -1,10 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
-import { isRunningInExpoGo } from 'expo';
-import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useRouter } from 'expo-router';
-import { Brand } from '@/constants/theme';
+import type { NotificationClickEvent, NotificationWillDisplayEvent } from 'react-native-onesignal';
 import { notificationHref } from '@/features/social/lib/notification-target';
 import { createLogger } from '@/lib/logger';
 import { openChat } from '@/lib/open-chat';
@@ -12,65 +10,110 @@ import { ProfileService } from '@/services/profile-service';
 import { notificationLink, SocialService } from '@/services/social-service';
 import { useAuthStore } from '@/stores/auth-store';
 
+type OneSignalModule = typeof import('react-native-onesignal');
+type OneSignal = OneSignalModule['OneSignal'];
+type Data = Record<string, unknown>;
+
+const APP_ID = process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID;
 const log = createLogger('push');
 
-/** Expo Go on Android can't receive remote notifications since SDK 53, and the web has none. */
-const canReceive = Platform.OS !== 'web' && !(Platform.OS === 'android' && isRunningInExpoGo());
+let oneSignal: OneSignal | null | undefined;
 
-/** New messages show even with the app open, except those for the chat on screen. */
+/**
+ * OneSignal has a native module, which Expo Go doesn't ship, and the web gets no phone notifications. It is
+ * therefore loaded lazily, never in Expo Go, and any failure leaves notifications off rather than breaking the app.
+ */
+const getOneSignal = (): OneSignal | null => {
+  if (oneSignal !== undefined) return oneSignal;
+  oneSignal = null;
+  if (!APP_ID || Platform.OS === 'web' || Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    oneSignal = (require('react-native-onesignal') as OneSignalModule).OneSignal;
+  } catch {
+    oneSignal = null;
+  }
+  return oneSignal;
+};
+
+/** A tapped notification waits here until navigation is ready and someone is signed in. */
+let tapped: Data | null = null;
+const tapListeners = new Set<() => void>();
+const setTapped = (data: Data | null) => {
+  tapped = data;
+  tapListeners.forEach((listener) => listener());
+};
+const subscribeToTaps = (listener: () => void) => {
+  tapListeners.add(listener);
+  return () => tapListeners.delete(listener);
+};
+
+/** The install id last sent to the API, per account, so it is sent once. */
+let sent: string | null = null;
+
+const sendDevice = async (subscriptionId: string) => {
+  const { token, userId } = useAuthStore.getState();
+  if (!token || !userId || sent === `${userId}:${subscriptionId}`) return;
+  await ProfileService.registerDevice(token, subscriptionId);
+  sent = `${userId}:${subscriptionId}`;
+};
+
+/** Starts OneSignal. New messages show even with the app open, except those for the chat on screen. */
 export function initPushNotifications() {
-  Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
-      const { chatId } = notification.request.content.data ?? {};
-      const show = !(typeof chatId === 'string' && chatId === openChat());
-      return { shouldShowBanner: show, shouldShowList: show, shouldPlaySound: show, shouldSetBadge: false };
-    },
-  });
+  const os = getOneSignal();
+  if (!os) return;
+  try {
+    os.initialize(APP_ID!);
+    os.Notifications.addEventListener('foregroundWillDisplay', (event: NotificationWillDisplayEvent) => {
+      const { chatId } = (event.getNotification().additionalData ?? {}) as Data;
+      if (typeof chatId === 'string' && chatId === openChat()) event.preventDefault();
+    });
+    os.Notifications.addEventListener('click', (event: NotificationClickEvent) =>
+      setTapped((event.notification.additionalData ?? {}) as Data),
+    );
+    os.User.pushSubscription.addEventListener('change', ({ current }) => {
+      if (current.id) sendDevice(current.id).catch((err: unknown) => log.warn('Push registration failed', { message: (err as Error).message }));
+    });
+  } catch (err) {
+    oneSignal = null;
+    log.warn('OneSignal did not start', { message: (err as Error).message });
+  }
 }
 
-/** The channel ids must match what the API sends; people can silence each one in Android's settings. */
-async function createChannels() {
-  if (Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync('messages', {
-    name: 'Messages',
-    importance: Notifications.AndroidImportance.HIGH,
-    lightColor: Brand.primary,
-  });
-  await Notifications.setNotificationChannelAsync('activity', {
-    name: 'Likes, follows and orders',
-    importance: Notifications.AndroidImportance.DEFAULT,
-    lightColor: Brand.primary,
-  });
-}
-
-/** Asks once, then sends this install's token to the API. Says nothing if the person said no. */
-async function register() {
-  await createChannels();
-  let { granted, canAskAgain } = await Notifications.getPermissionsAsync();
-  if (!granted && canAskAgain) ({ granted } = await Notifications.requestPermissionsAsync());
-  if (!granted) return;
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-  const { data: pushToken } = await Notifications.getExpoPushTokenAsync({ projectId });
-  const token = useAuthStore.getState().token;
-  if (token) await ProfileService.registerDevice(token, pushToken);
+/** Asks once, then tells the API which install this is. Says nothing if the person said no. */
+async function register(os: OneSignal, userId: string) {
+  os.login(userId);
+  if (!(await os.Notifications.getPermissionAsync()) && (await os.Notifications.canRequestPermission())) {
+    await os.Notifications.requestPermission(false);
+  }
+  const id = await os.User.pushSubscription.getIdAsync();
+  if (id) await sendDevice(id);
 }
 
 /** Registers for phone notifications once signed in, and opens what a tapped one is about. `ready` once navigation can run. */
 export function usePushNotifications(ready: boolean) {
   const router = useRouter();
   const userId = useAuthStore((s) => (s.isAuthenticated ? s.userId : null));
-  const tapped = Notifications.useLastNotificationResponse();
+  const tap = useSyncExternalStore(subscribeToTaps, () => tapped);
+  const signedIn = useRef(false);
 
   useEffect(() => {
-    if (!canReceive || !ready || !userId) return;
-    register().catch((err: unknown) => log.warn('Push registration failed', { message: (err as Error).message }));
+    const os = getOneSignal();
+    if (!os || !ready) return;
+    if (!userId) {
+      if (signedIn.current) os.logout();
+      signedIn.current = false;
+      sent = null;
+      return;
+    }
+    signedIn.current = true;
+    register(os, userId).catch((err: unknown) => log.warn('Push registration failed', { message: (err as Error).message }));
   }, [ready, userId]);
 
   useEffect(() => {
-    if (!ready || !userId || !tapped || tapped.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
-    Notifications.clearLastNotificationResponse();
-    const data = tapped.notification.request.content.data ?? {};
-    const text = (key: string) => (typeof data[key] === 'string' ? (data[key] as string) : undefined);
+    if (!ready || !userId || !tap) return;
+    setTapped(null);
+    const text = (key: string) => (typeof tap[key] === 'string' ? (tap[key] as string) : undefined);
 
     const chatId = text('chatId');
     if (chatId) {
@@ -84,5 +127,5 @@ export function usePushNotifications(ready: boolean) {
     if (notificationId && token) SocialService.markRead(token, notificationId).catch(() => undefined);
     const href = screen && id ? notificationHref(notificationLink(screen, id)) : undefined;
     router.push(href ?? '/(customer)/notifications');
-  }, [ready, userId, tapped, router]);
+  }, [ready, userId, tap, router]);
 }

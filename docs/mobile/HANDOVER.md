@@ -5,7 +5,7 @@ Everything a new developer, QA engineer or the backend team needs. Keep it curre
 ## 1. Run it
 ```bash
 npm install
-cp .env.example .env              # EXPO_PUBLIC_API_URL, _APP_SCHEME, _SENTRY_DSN
+cp .env.example .env              # EXPO_PUBLIC_API_URL, _APP_SCHEME, _ONESIGNAL_APP_ID, _SENTRY_DSN
 npx expo start -c                 # -c clears Metro's cache; always use it after pulling or renaming files
 ```
 Quality gates (all must be green before merging): `npm run typecheck` · `npx jest` · `npx expo lint` · `npx expo-doctor`.
@@ -51,7 +51,7 @@ The exact request/response of every mocked call is in `API_CONTRACTS.md` — tha
 | DM replies | the other person replies 1.5 s after you send |
 
 ## 5. Build and release (EAS)
-Profiles in `eas.json`: `development` (dev client, APK/simulator), `preview` (internal APK), `production` (app bundle / iOS). Secrets: `SENTRY_AUTH_TOKEN`, `EXPO_PUBLIC_SENTRY_DSN`. Push notifications use Expo push: Android builds need the Firebase `google-services.json` and an FCM V1 key in EAS credentials, and iOS builds need an APNs key, which EAS can create.
+Profiles in `eas.json`: `development` (dev client, APK/simulator), `preview` (internal APK), `production` (app bundle / iOS). Secrets: `SENTRY_AUTH_TOKEN`, `EXPO_PUBLIC_SENTRY_DSN`. Push notifications use OneSignal: the OneSignal dashboard needs Firebase's FCM V1 key for Android and an APNs key for iOS, and the API needs `ONESIGNAL_APP_ID` and `ONESIGNAL_API_KEY`. OneSignal runs in development mode in `app.json` — switch to production as part of the release checklist, not silently.
 Release checklist: gates green → `npx expo-doctor` → bump version → `eas build --profile preview` and smoke test every flow in section 4 → `eas build --profile production` → store listing.
 
 ## 6. Known gaps and open decisions

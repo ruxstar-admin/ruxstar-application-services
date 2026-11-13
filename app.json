@@ -139,10 +139,11 @@
         }
       ],
       [
-        "expo-notifications",
+        "onesignal-expo-plugin",
         {
-          "icon": "./assets/images/notification-icon.png",
-          "color": "#B45CF2"
+          "mode": "development",
+          "smallIcons": ["./assets/images/ic_stat_onesignal_default.png"],
+          "smallIconAccentColor": "#B45CF2"
         }
       ]
     ],
