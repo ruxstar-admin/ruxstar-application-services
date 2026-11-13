@@ -33,7 +33,8 @@ export interface Access {
 /** A section is null when this person may not see it. */
 export interface Overview {
   kyc: { waiting: number } | null;
-  reports: { posts: number; reports: number; people: number } | null;
+  /** `people` and `reviews` count those with open reports. */
+  reports: { posts: number; reports: number; people: number; reviews: number } | null;
   users: { total: number; newThisWeek: number; suspended: number } | null;
   businesses: { total: number; live: number; suspended: number } | null;
   modules: { module: ModuleName; live: boolean }[] | null;

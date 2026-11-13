@@ -55,6 +55,13 @@ const WORK_AREAS: {
     href: (p) => ({ pathname: '/(customer)/work/coupons/[id]', params: { id: p.id } }),
   },
   {
+    title: 'Reviews',
+    subtitle: 'What customers said, and the shop’s replies',
+    icon: 'star-outline',
+    allowed: has('reviews.reply'),
+    href: (p) => ({ pathname: '/(customer)/work/reviews/[id]', params: { id: p.id, name: p.business.name } }),
+  },
+  {
     title: 'Post as the business',
     subtitle: 'It goes out under the owner’s name',
     icon: 'create-outline',

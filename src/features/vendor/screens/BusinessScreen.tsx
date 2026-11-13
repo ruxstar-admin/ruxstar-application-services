@@ -14,6 +14,7 @@ import { TextLink } from '@/components/ui/TextLink';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
+import { ratingLine } from '@/features/reviews/lib/review';
 import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
 import { canOpen } from '@/features/vendor/hooks/use-vendor-businesses';
 import { BUSINESS_MODULES, MISSING_LABEL, listOf, statusOf } from '@/features/vendor/lib/business-modules';
@@ -287,6 +288,14 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                     subtitle="Invite people to help with orders, the shop and posts"
                     icon="people-outline"
                     onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/team', params: { id } })}
+                  />
+                ) : null}
+                {!team && data.pod && data.status === 'live' ? (
+                  <SetupStep
+                    title="Reviews"
+                    subtitle={ratingLine(data.rating)}
+                    icon="star-outline"
+                    onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/reviews', params: { id } })}
                   />
                 ) : null}
                 {team ? null : (

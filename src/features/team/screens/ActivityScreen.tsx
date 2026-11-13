@@ -36,7 +36,7 @@ export function ActivityScreen() {
 
   return (
     <ScreenContainer title={name ? `${name}’s activity` : 'Activity'}>
-      {by ? null : <Text style={styles.muted}>Orders, shop and coupon changes, posts and the team, by you, your team, customers and Ruxstar.</Text>}
+      {by ? null : <Text style={styles.muted}>Orders, reviews, shop and coupon changes, posts and the team, by you, your team, customers and Ruxstar.</Text>}
       {list.loading ? (
         <View style={styles.skeletons}>
           {[0, 1, 2, 3].map((i) => (

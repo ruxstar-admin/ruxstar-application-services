@@ -12,6 +12,12 @@ import { useAccess } from '../access';
 import { Card, ConsoleScreen, Section, consoleStyles } from '../components/parts';
 import { MODULE_LABEL } from '../labels';
 
+/** "2 people and 1 review", or empty when only posts are reported. */
+const alsoReported = ({ people, reviews }: { people: number; reviews: number }) =>
+  [people > 0 ? (people === 1 ? '1 person' : `${people} people`) : null, reviews > 0 ? (reviews === 1 ? '1 review' : `${reviews} reviews`) : null]
+    .filter(Boolean)
+    .join(' and ');
+
 function Tile({ icon, label, value, caption, href }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: number; caption: string; href: Href }) {
   const router = useRouter();
   return (
@@ -72,8 +78,8 @@ export function DashboardScreen() {
                   label="Reported posts"
                   value={data.reports.posts}
                   caption={
-                    data.reports.people > 0
-                      ? `${data.reports.people === 1 ? '1 person' : `${data.reports.people} people`} reported too`
+                    alsoReported(data.reports)
+                      ? `${alsoReported(data.reports)} reported too`
                       : data.reports.posts === 0
                         ? 'No open reports.'
                         : `${data.reports.reports} reports in all`

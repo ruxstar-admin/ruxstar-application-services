@@ -11,7 +11,8 @@ export type TeamPermission =
   | 'shop.catalog'
   | 'shop.details'
   | 'coupons.manage'
-  | 'posts.create';
+  | 'posts.create'
+  | 'reviews.reply';
 
 /** One permission as the API describes it. `needs` is given along with it. */
 export interface PermissionInfo {

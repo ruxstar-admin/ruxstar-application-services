@@ -18,6 +18,7 @@ import { AdminService } from '@/services/admin-service';
 import type { PersonCase, PersonReportReason, ReportCase, ReportReason, ReportStatus } from '@/types/admin';
 import { useCan } from '../access';
 import { OrderProblemsQueue } from '../components/OrderProblems';
+import { ReviewReportsQueue } from '../components/ReviewReports';
 import { Card, ConsoleScreen, Fact, Facts, Note, ReasonSheet, Row, consoleStyles, errorText } from '../components/parts';
 import { PERSON_REASON_LABEL, REASON_LABEL, shortDate } from '../labels';
 
@@ -303,11 +304,12 @@ function PeopleQueue({ status }: { status: ReportStatus }) {
   );
 }
 
-type Subject = 'posts' | 'people' | 'orders';
+type Subject = 'posts' | 'people' | 'reviews' | 'orders';
 
 const SUBJECTS = [
   { key: 'posts', label: 'Posts' },
   { key: 'people', label: 'People' },
+  { key: 'reviews', label: 'Reviews' },
   { key: 'orders', label: 'Orders' },
 ] as const satisfies readonly { key: Subject; label: string }[];
 
@@ -327,6 +329,8 @@ export function ReportsScreen() {
         <Queue key={`posts-${status}`} status={status} />
       ) : subject === 'people' ? (
         <PeopleQueue key={`people-${status}`} status={status} />
+      ) : subject === 'reviews' ? (
+        <ReviewReportsQueue key={`reviews-${status}`} status={status} />
       ) : (
         <OrderProblemsQueue key={`orders-${status}`} status={status === 'open' ? 'open' : 'resolved'} />
       )}
