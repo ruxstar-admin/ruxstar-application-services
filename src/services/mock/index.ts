@@ -1,4 +1,3 @@
-import './vendor.mocks';
 import './commerce.mocks';
 import './money.mocks';
 import './delivery.mocks';

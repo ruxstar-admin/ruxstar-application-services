@@ -11,6 +11,7 @@ import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { CheckoutCoupons } from '@/features/coupons/components/CheckoutCoupons';
 import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
 import { checkoutReturn, fileSize, requiredOption } from '@/features/pod/lib/order';
 import { readyLine } from '@/features/pod/lib/shop';
@@ -91,6 +92,7 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
   const [uploading, setUploading] = useState(false);
   const [address, setAddress] = useState<OrderAddress>({ name: '', phone: '', line: '', city: shop.city, pincode: '' });
   const [note, setNote] = useState('');
+  const [couponCode, setCouponCode] = useState<string | null>(null);
   const [priced, setPriced] = useState<{ key: string; quote: Quote | null; error: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
@@ -118,17 +120,19 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
     };
   }, [token, shop.city]);
 
-  const choiceKey = JSON.stringify([productId, options, colour, qty, fileIds]);
+  const choiceKey = JSON.stringify([productId, options, colour, qty, fileIds, couponCode]);
   const priceable = !missing && qty >= 1 && !(perPage && !colour);
   const current = priceable && priced?.key === choiceKey ? priced : null;
   const quote = current?.quote ?? null;
   const quoteError = current?.error ?? null;
+  /** The offers stay on screen while a new price loads, so the list doesn't jump. */
+  const offers = priceable ? (priced?.quote?.offers ?? null) : null;
   useEffect(() => {
     attempt.current = newIdempotencyKey();
     if (!priceable) return;
     let live = true;
     const timer = setTimeout(() => {
-      OrderService.quote(token, { shopId: shop.id, product: productId, options, colour, quantity: qty, fileIds })
+      OrderService.quote(token, { shopId: shop.id, product: productId, options, colour, quantity: qty, fileIds, couponCode: couponCode ?? undefined })
         .then((q) => live && setPriced({ key: choiceKey, quote: q, error: null }))
         .catch((err) => live && setPriced({ key: choiceKey, quote: null, error: messageOf(err) }));
     }, QUOTE_DELAY_MS);
@@ -198,6 +202,7 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
           fileIds,
           address: { ...address, name: address.name.trim(), line: address.line.trim(), city: address.city.trim() },
           note: note.trim() || undefined,
+          couponCode: quote?.coupon?.code,
           returnTo: checkoutReturn(),
         },
         { idempotencyKey: attempt.current },
@@ -340,6 +345,20 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
         </View>
       </View>
       <InputField label="Note for the shop" value={note} onChangeText={setNote} maxLength={500} multiline showCount placeholder="Optional: colours, placement, deadline…" />
+
+      {priceable ? (
+        <>
+          <Text style={styles.overline}>Offers</Text>
+          <CheckoutCoupons
+            offers={offers}
+            applied={quote?.coupon ?? null}
+            discount={quote?.discount ?? 0}
+            problem={quote?.couponProblem ?? null}
+            onApply={setCouponCode}
+            onRemove={() => setCouponCode(null)}
+          />
+        </>
+      ) : null}
 
       <Text style={styles.overline}>Price</Text>
       <View style={styles.card}>

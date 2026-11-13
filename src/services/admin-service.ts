@@ -9,10 +9,12 @@ import type {
   BusinessCase,
   BusinessFilter,
   BusinessRow,
+  HeldOrder,
   ModuleName,
   ModulePatch,
   ModuleSettings,
   Overview,
+  PayoutStatus,
   Permission,
   PersonCase,
   ReportCase,
@@ -20,8 +22,11 @@ import type {
   ReviewCase,
   ReviewStatus,
   StaffMember,
+  StaffPayout,
 } from '@/types/admin';
+import type { CouponFunder, CouponPatch, ManagedCoupon, NewCoupon } from '@/types/coupon';
 import type { StaffOrder } from '@/types/order';
+import type { Team } from '@/types/team';
 
 export type SettleOutcome = 'refund_full' | 'refund_partial' | 'dismiss';
 
@@ -73,6 +78,22 @@ export const AdminService = {
     apiPut<StaffMember>(`/v1/ruxstar/staff/${userId}`, token, { title, permissions }, keyed(key)),
   removeStaff: (token: string, userId: string, key: string) => apiDelete<StaffMember>(`/v1/ruxstar/staff/${userId}`, token, undefined, keyed(key)),
 
+  payouts: (token: string, status: PayoutStatus, cursor?: string) => apiGetPage<StaffPayout>('/v1/ruxstar/payouts', token, { status, cursor }),
+  /** Asks Cashfree now; it is sent again only if Cashfree never got it. */
+  checkPayout: (token: string, id: string) => apiPost<StaffPayout>(`/v1/ruxstar/payouts/${id}/check`, undefined, token),
+  heldOrders: (token: string, orderNo?: number, cursor?: string) => apiGetPage<HeldOrder>('/v1/ruxstar/held-orders', token, { orderNo, cursor }),
+  /** The reason (5 to 300 characters) goes to the audit log; the vendor is told it was released early. */
+  releaseHeld: (token: string, id: string, reason: string, key: string) =>
+    apiPost<{ id: string; orderNo: number; amount: number; releasedAt: string }>(`/v1/ruxstar/held-orders/${id}/release`, { reason }, token, keyed(key)),
+
+  /** Ruxstar's coupons (the default) or vendors', or the one with this code. */
+  coupons: (token: string, funder: CouponFunder, code?: string, cursor?: string) =>
+    apiGetPage<ManagedCoupon>('/v1/ruxstar/coupons', token, { funder, code, cursor }),
+  /** Ruxstar pays for the discount; it works at every print shop. The code and discount can't change later. */
+  createCoupon: (token: string, body: NewCoupon, key: string) => apiPost<ManagedCoupon>('/v1/ruxstar/coupons', { ...body }, token, keyed(key)),
+  /** On a vendor's coupon only `active` can change. */
+  updateCoupon: (token: string, id: string, patch: CouponPatch) => apiPatch<ManagedCoupon>(`/v1/ruxstar/coupons/${id}`, { ...patch }, token),
+
   modules: (token: string) => apiGet<ModuleSettings[]>('/v1/ruxstar/modules', token),
   updateModule: (token: string, module: ModuleName, patch: ModulePatch, key: string) =>
     apiPatch<ModuleSettings>(`/v1/ruxstar/modules/${module}`, { ...patch }, token, keyed(key)),
@@ -84,6 +105,10 @@ export const AdminService = {
   holdBusiness: (token: string, id: string, reason: string, key: string) =>
     apiPost<BusinessCase>(`/v1/ruxstar/businesses/${id}/suspend`, { reason }, token, keyed(key)),
   restoreBusiness: (token: string, id: string, key: string) => apiPost<BusinessCase>(`/v1/ruxstar/businesses/${id}/restore`, undefined, token, keyed(key)),
+  businessTeam: (token: string, id: string) => apiGet<Team>(`/v1/ruxstar/businesses/${id}/team`, token),
+  /** The person and the owner both see the reason. */
+  removeFromTeam: (token: string, id: string, memberId: string, reason: string, key: string) =>
+    apiPost<{ done: true }>(`/v1/ruxstar/businesses/${id}/team/${memberId}/remove`, { reason }, token, keyed(key)),
 
   audit: (token: string, filter: AuditFilter, cursor?: string) => apiGetPage<AuditEntry>('/v1/ruxstar/audit', token, { ...filter, cursor }),
 };

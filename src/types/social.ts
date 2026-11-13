@@ -107,4 +107,12 @@ export interface AppNotification {
   shopOrderId?: string;
   /** A new follower: tapping opens their profile. */
   profileId?: string;
+  /** A withdrawal arrived or failed: tapping opens Payments in the vendor portal. */
+  payments?: boolean;
+  /** A team invite, or news about a team you're on: tapping opens it in Work. */
+  workId?: string;
+  /** Someone joined or left your team: tapping opens that business's team. */
+  teamBusinessId?: string;
+  /** A new order at a shop you work at: tapping opens it in Work. */
+  workOrderId?: string;
 }

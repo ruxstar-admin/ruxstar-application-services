@@ -20,15 +20,29 @@ import { FileRow } from '@/features/pod/components/FileRow';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { newIdempotencyKey, type WriteOptions } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
 import { ShopOrderService } from '@/services/order-service';
-import type { PrintFile, ShopOrder, ShopStatus } from '@/types/order';
+import type { PrintFile, ShopOrder, ShopStatus, TeamOrder } from '@/types/order';
+import type { TeamPermission } from '@/types/team';
 
-function ShopOrderDetails({ order, onChanged }: { order: ShopOrder; onChanged: (order: ShopOrder) => void }) {
+/** The owner's `ShopOrderService` or the team's `TeamOrderService`. */
+export interface OrderDesk<T extends ShopOrder | TeamOrder> {
+  move: (token: string, orderId: string, status: ShopStatus, reason: string | undefined, options: WriteOptions) => Promise<T>;
+  fileLink: (token: string, orderId: string, fileId: string) => Promise<{ url: string }>;
+  refund: (token: string, orderId: string, amount: number, reason: string, options: WriteOptions) => Promise<T>;
+}
+
+const teamOf = (order: ShopOrder | TeamOrder) => ('placeId' in order ? order : null);
+
+/** A shop order for its owner, or for someone on its team with only what their permissions allow. */
+export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk, onChanged }: { order: T; desk: OrderDesk<T>; onChanged: (order: T) => void }) {
   const token = useAuthToken();
+  const team = teamOf(order);
+  const can = (permission: TeamPermission) => !team || team.permissions.includes(permission);
+  const { price } = order;
   const [moving, setMoving] = useState<ShopStatus | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
@@ -45,7 +59,7 @@ function ShopOrderDetails({ order, onChanged }: { order: ShopOrder; onChanged: (
     setError(null);
     keys.current[status] ??= newIdempotencyKey();
     try {
-      const next = await ShopOrderService.move(token, order.id, status, status === 'rejected' ? reason.trim() : undefined, { idempotencyKey: keys.current[status] });
+      const next = await desk.move(token, order.id, status, status === 'rejected' ? reason.trim() : undefined, { idempotencyKey: keys.current[status] });
       Feedback.success();
       setRejecting(false);
       keys.current = {};
@@ -61,7 +75,7 @@ function ShopOrderDetails({ order, onChanged }: { order: ShopOrder; onChanged: (
   const openFile = async (file: PrintFile) => {
     setError(null);
     try {
-      const { url } = await ShopOrderService.fileLink(token, order.id, file.id);
+      const { url } = await desk.fileLink(token, order.id, file.id);
       await WebBrowser.openBrowserAsync(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not open the file.');
@@ -72,7 +86,7 @@ function ShopOrderDetails({ order, onChanged }: { order: ShopOrder; onChanged: (
     setRefunding(true);
     setError(null);
     try {
-      const next = await ShopOrderService.refund(token, order.id, refundPaise, refundReason.trim(), { idempotencyKey: refundKey.current });
+      const next = await desk.refund(token, order.id, refundPaise, refundReason.trim(), { idempotencyKey: refundKey.current });
       Feedback.success();
       refundKey.current = newIdempotencyKey();
       setRefundOpen(false);
@@ -88,22 +102,35 @@ function ShopOrderDetails({ order, onChanged }: { order: ShopOrder; onChanged: (
     }
   };
 
-  const steps = nextSteps(order);
+  const steps = nextSteps(order).filter((status) => can(status === 'rejected' ? 'orders.reject' : 'orders.move'));
   const closed = isClosed(order.status);
   const { address } = order;
   const refundPaise = Math.round(Number(refundAmount || '0') * 100);
   const refundValid = refundPaise >= 100 && refundPaise <= order.refundable && refundReason.trim().length >= 5;
   const partials = order.refunds.filter((r) => r.kind === 'partial');
+  const balance = team ? "the shop's available balance" : 'your available balance';
   const moneyNote =
-    order.status === 'refunded'
-      ? 'Ruxstar refunded the customer in full, so there is no payout for this order.'
-      : order.releasedAt
-        ? `${money(order.price.payoutLeft)} is in your available balance.`
-        : order.problem?.status === 'open'
-          ? 'Held while Ruxstar looks into the customer’s problem.'
-          : order.releaseAt
-            ? `Moves to your available balance on ${formatDateTime(order.releaseAt)}, 48 hours after delivery.`
-            : 'Moves to your available balance 48 hours after you mark it delivered.';
+    price.payoutLeft === null
+      ? 'The owner hasn’t let you see what the shop earns.'
+      : order.status === 'refunded'
+        ? 'Ruxstar refunded the customer in full, so there is no payout for this order.'
+        : order.releasedAt
+          ? `${money(price.payoutLeft)} is in ${balance}.`
+          : order.problem?.status === 'open'
+            ? 'Held while Ruxstar looks into the customer’s problem.'
+            : order.releaseAt
+              ? `Moves to ${balance} on ${formatDateTime(order.releaseAt)}, 48 hours after delivery.`
+              : `Moves to ${balance} 48 hours after it is marked delivered.`;
+  const shopMoney =
+    price.payoutLeft === null || price.commission === null || price.commissionBps === null
+      ? []
+      : [
+          ...(price.platformFee ? [{ label: 'Platform fee, to Ruxstar', amount: price.platformFee, negative: true }] : []),
+          { label: `Ruxstar commission, ${price.commissionBps / 100}%`, amount: price.commission, negative: true },
+          ...(price.coupon?.fundedBy === 'ruxstar' && price.discount ? [{ label: 'Coupon, paid by Ruxstar', amount: price.discount }] : []),
+          ...partials.map((r) => ({ label: `Refunded: ${r.reason ?? 'partial refund'}`, amount: r.amount, negative: true })),
+          { label: team ? 'The shop gets' : 'You get', amount: price.payoutLeft },
+        ];
 
   return (
     <>
@@ -117,7 +144,7 @@ function ShopOrderDetails({ order, onChanged }: { order: ShopOrder; onChanged: (
 
       {order.status === 'rejected' ? (
         <View style={styles.news}>
-          <Text style={styles.strong}>You turned this order down</Text>
+          <Text style={styles.strong}>{team ? 'The shop turned this order down' : 'You turned this order down'}</Text>
           {order.reason ? <Text style={styles.muted}>{order.reason}</Text> : null}
           <Text style={styles.muted}>The customer was refunded in full.</Text>
         </View>
@@ -187,22 +214,13 @@ function ShopOrderDetails({ order, onChanged }: { order: ShopOrder; onChanged: (
 
       <Text style={styles.section}>Money</Text>
       <View style={styles.card}>
-        <OrderPriceList
-          price={order.price}
-          pricing={order.pricing}
-          after={[
-            ...(order.price.platformFee ? [{ label: 'Platform fee, to Ruxstar', amount: order.price.platformFee, negative: true }] : []),
-            { label: `Ruxstar commission, ${order.price.commissionBps / 100}%`, amount: order.price.commission, negative: true },
-            ...partials.map((r) => ({ label: `Refunded: ${r.reason ?? 'partial refund'}`, amount: r.amount, negative: true })),
-            { label: 'You get', amount: order.price.payoutLeft },
-          ]}
-        />
+        <OrderPriceList price={price} pricing={order.pricing} after={shopMoney} />
         <Text style={styles.faint}>{moneyNote}</Text>
         {order.refundable >= 100 ? <TextLink label="Refund part of this order" onPress={() => setRefundOpen(true)} /> : null}
       </View>
 
       <BottomSheet visible={refundOpen} onClose={() => setRefundOpen(false)} title="Refund part of this order">
-        <Text style={styles.muted}>{`It comes out of your share, up to ${money(order.refundable)}. The customer sees your reason and the order carries on.`}</Text>
+        <Text style={styles.muted}>{`It comes out of ${team ? "the shop's" : 'your'} share, up to ${money(order.refundable)}. The customer sees your reason and the order carries on.`}</Text>
         <InputField
           label="Amount in rupees"
           value={refundAmount}
@@ -235,7 +253,7 @@ export function ShopOrderScreen() {
   return (
     <ScreenContainer title="Order">
       <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={4}>
-        {data ? <ShopOrderDetails order={data} onChanged={setData} /> : null}
+        {data ? <ShopOrderDetails order={data} desk={ShopOrderService} onChanged={setData} /> : null}
       </AsyncBoundary>
     </ScreenContainer>
   );

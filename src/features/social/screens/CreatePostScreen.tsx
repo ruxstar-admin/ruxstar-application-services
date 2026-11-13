@@ -63,14 +63,17 @@ export function CreatePostScreen() {
     text: initialText,
     kind: kindParam,
     businessId: businessParam,
-  } = useLocalSearchParams<{ id?: string; text?: string; kind?: PostKind; businessId?: string }>();
+    teamOf,
+  } = useLocalSearchParams<{ id?: string; text?: string; kind?: PostKind; businessId?: string; teamOf?: string }>();
   const editing = !!id;
   const kind: PostKind = kindParam === 'business' ? 'business' : 'personal';
+  // From Work, `teamOf` names the business someone posts for; it goes out as the owner's.
+  const forTeam = kind === 'business' && !!teamOf && !!businessParam;
   // A new post starts with photos, so only editing opens the keyboard.
   const inputRef = useDelayedFocus<TextInput>(undefined, editing);
 
   const [text, setText] = useState(initialText ?? '');
-  const businesses = useAsyncResource(() => (kind === 'business' && !editing ? BusinessService.list(token) : Promise.resolve([])));
+  const businesses = useAsyncResource(() => (kind === 'business' && !editing && !forTeam ? BusinessService.list(token) : Promise.resolve([])));
   const [picked, setPicked] = useState<string | null>(businessParam ?? null);
   const businessId = picked ?? businesses.data?.[0]?.id;
   const [drafts, setDrafts] = useState<Draft[]>([]);
@@ -174,7 +177,13 @@ export function CreatePostScreen() {
       router.back();
     } catch (err) {
       Feedback.error();
-      setFailure(err instanceof ApiError && err.status === 403 ? 'Only vendors can post to a business page.' : 'Could not post. Please try again.');
+      setFailure(
+        forTeam && err instanceof ApiError && err.status >= 400 && err.status < 500
+          ? err.message
+          : err instanceof ApiError && err.status === 403
+            ? 'Only vendors can post to a business page.'
+            : 'Could not post. Please try again.',
+      );
     } finally {
       setSaving(false);
     }
@@ -189,7 +198,9 @@ export function CreatePostScreen() {
         <PrimaryButton label={editing ? 'Save' : uploading ? 'Uploading photos…' : 'Post'} onPress={submit} disabled={!canSubmit} loading={saving} />
       }
     >
-      {kind === 'business' && !editing ? <Badge label="Shows on your Business tab" tone="accent" /> : null}
+      {kind === 'business' && !editing ? (
+        <Badge label={forTeam ? `Posts for ${teamOf}, under the owner’s name` : 'Shows on your Business tab'} tone="accent" />
+      ) : null}
       {kind === 'business' && !editing && (businesses.data?.length ?? 0) > 1 ? (
         <View style={styles.picker}>
           <Text style={styles.pickerLabel}>Posting for</Text>

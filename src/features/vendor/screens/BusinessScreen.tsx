@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -23,8 +23,11 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
+import { shopDesk } from '@/features/vendor/lib/shop-desk';
 import { BusinessService } from '@/services/business-service';
+import { WorkService } from '@/services/team-service';
 import type { Business } from '@/types/business';
+import type { TeamPermission } from '@/types/team';
 
 /** Matches the API's cap. */
 const MAX_PHOTOS = 3;
@@ -47,11 +50,27 @@ function Detail({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-function SetupStep({ title, subtitle, done, disabled, onPress }: { title: string; subtitle: string; done: boolean; disabled?: boolean; onPress: () => void }) {
+function SetupStep({
+  title,
+  subtitle,
+  done,
+  icon,
+  disabled,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  /** A setup step; rows without it show `icon`. */
+  done?: boolean;
+  icon?: keyof typeof Ionicons.glyphMap;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const step = done !== undefined;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${done ? 'done' : 'to do'}`}
+      accessibilityLabel={step ? `${title}, ${done ? 'done' : 'to do'}` : title}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={() => {
@@ -60,7 +79,11 @@ function SetupStep({ title, subtitle, done, disabled, onPress }: { title: string
       }}
       style={({ pressed }) => [styles.step, disabled && styles.stepDisabled, pressed && styles.pressed]}
     >
-      <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={done ? Brand.success : Brand.textMuted} />
+      <Ionicons
+        name={step ? (done ? 'checkmark-circle' : 'ellipse-outline') : (icon ?? 'ellipse-outline')}
+        size={22}
+        color={done ? Brand.success : step ? Brand.textMuted : Brand.text}
+      />
       <View style={styles.stepText}>
         <Text style={styles.stepTitle}>{title}</Text>
         <Text style={styles.muted}>{subtitle}</Text>
@@ -70,8 +93,19 @@ function SetupStep({ title, subtitle, done, disabled, onPress }: { title: string
   );
 }
 
-function Photos({ business, busy, onAdd, onRemove }: { business: Business; busy: string | null; onAdd: () => void; onRemove: (id: string) => void }) {
-  const editable = !business.suspension;
+function Photos({
+  business,
+  editable,
+  busy,
+  onAdd,
+  onRemove,
+}: {
+  business: Business;
+  editable: boolean;
+  busy: string | null;
+  onAdd: () => void;
+  onRemove: (id: string) => void;
+}) {
   return (
     <View style={styles.photos}>
       {business.photos.map((photo, i) => (
@@ -100,13 +134,25 @@ function Photos({ business, busy, onAdd, onRemove }: { business: Business; busy:
   );
 }
 
-/** One business: photos, details, publishing, and whether it is open. */
-export function BusinessScreen() {
+/**
+ * One business: photos, details, publishing, and whether it is open. `team` opens it from Work, where `id` is the place there
+ * and only what the owner allowed shows; publishing, deleting and the team stay with the owner.
+ */
+export function BusinessScreen({ team = false }: { team?: boolean }) {
   const router = useRouter();
   const token = useAuthToken();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data, loading, error, reload, setData } = useAsyncResource(() => BusinessService.get(token, id), id);
-  useRefetchOnFocus(reload);
+  const desk = shopDesk(team);
+  const { data, loading, error, reload, setData } = useAsyncResource(() => desk.service.get(token, id), id);
+  const place = useAsyncResource(() => (team ? WorkService.get(token).then((w) => w.places.find((p) => p.id === id) ?? null) : Promise.resolve(null)), id);
+  const reloadPlace = place.reload;
+  useRefetchOnFocus(
+    useCallback(() => {
+      reload();
+      reloadPlace();
+    }, [reload, reloadPlace]),
+  );
+  const can = (permission: TeamPermission) => !team || !!place.data?.permissions.includes(permission);
   const catalog = useBusinessCatalog();
   const typeLabel = (b: Business) => {
     const category = catalog.data?.categories.find((c) => c.module === b.module);
@@ -136,7 +182,7 @@ export function BusinessScreen() {
     const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
     const asset = picked.canceled ? null : picked.assets[0];
     if (!asset) return;
-    void run('photo', async () => BusinessService.addPhoto(token, id, await toUploadJpeg(asset, UPLOAD_SIDE)));
+    void run('photo', async () => desk.service.addPhoto(token, id, await toUploadJpeg(asset, UPLOAD_SIDE)));
   };
 
   const remove = async () => {
@@ -155,9 +201,10 @@ export function BusinessScreen() {
     }
   };
 
+  const catalogRows = !!data?.pod && !data.suspension && can('shop.catalog');
   return (
-    <ScreenContainer title="Business">
-      <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={5}>
+    <ScreenContainer title={team ? 'Shop' : 'Business'}>
+      <AsyncBoundary loading={loading || place.loading} error={error ?? place.error} hasData={!!data} onRetry={reload} skeletonRows={5}>
         {data ? (
           <>
             <View style={styles.head}>
@@ -185,7 +232,7 @@ export function BusinessScreen() {
               </View>
             ) : null}
 
-            {canOpen(data) ? (
+            {canOpen(data) && can('shop.open') ? (
               <View style={[styles.openCard, data.open && styles.openCardOn]}>
                 <SegmentedTabs
                   options={OPEN_OPTIONS}
@@ -194,36 +241,62 @@ export function BusinessScreen() {
                     if (busy || (next === 'open') === data.open) return;
                     const open = next === 'open';
                     setData({ ...data, open });
-                    void run('open', () => BusinessService.setOpen(token, id, open));
+                    void run('open', () => desk.service.setOpen(token, id, open));
                   }}
                 />
                 <Text style={styles.muted}>{data.open ? 'Customers can order and book now.' : 'Customers still see it, marked closed.'}</Text>
               </View>
             ) : null}
 
-            <Photos business={data} busy={busy} onAdd={addPhoto} onRemove={(photoId) => run(photoId, () => BusinessService.removePhoto(token, id, photoId))} />
+            <Photos
+              business={data}
+              editable={!data.suspension && can('shop.details')}
+              busy={busy}
+              onAdd={addPhoto}
+              onRemove={(photoId) => run(photoId, () => desk.service.removePhoto(token, id, photoId))}
+            />
 
-            {data.pod && !data.suspension ? (
+            {catalogRows || !team ? (
               <View style={styles.steps}>
-                <SetupStep
-                  title="Products & delivery"
-                  subtitle={data.pod.products.length ? `${data.pod.products.length} products · ${areaLine(data.pod)}` : 'Choose what you print and where you deliver'}
-                  done={!data.missing.includes('products') && !data.missing.includes('area')}
-                  onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/products', params: { id } })}
-                />
-                <SetupStep
-                  title="Prices"
-                  subtitle={
-                    !data.pod.products.length
-                      ? 'After you choose products'
-                      : data.pod.unpriced.length
-                        ? `${data.pod.unpriced.length} product${data.pod.unpriced.length === 1 ? '' : 's'} need a price`
-                        : 'Every product has a price'
-                  }
-                  done={data.pod.products.length > 0 && !data.missing.includes('pricing')}
-                  disabled={!data.pod.products.length}
-                  onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/prices', params: { id } })}
-                />
+                {catalogRows && data.pod ? (
+                  <>
+                    <SetupStep
+                      title="Products & delivery"
+                      subtitle={data.pod.products.length ? `${data.pod.products.length} products · ${areaLine(data.pod)}` : 'Choose what you print and where you deliver'}
+                      done={!data.missing.includes('products') && !data.missing.includes('area')}
+                      onPress={() => router.push({ pathname: desk.routes.products, params: { id } })}
+                    />
+                    <SetupStep
+                      title="Prices"
+                      subtitle={
+                        !data.pod.products.length
+                          ? 'After you choose products'
+                          : data.pod.unpriced.length
+                            ? `${data.pod.unpriced.length} product${data.pod.unpriced.length === 1 ? '' : 's'} need a price`
+                            : 'Every product has a price'
+                      }
+                      done={data.pod.products.length > 0 && !data.missing.includes('pricing')}
+                      disabled={!data.pod.products.length}
+                      onPress={() => router.push({ pathname: desk.routes.prices, params: { id } })}
+                    />
+                  </>
+                ) : null}
+                {!team && data.pod && !data.suspension ? (
+                  <SetupStep
+                    title="Team"
+                    subtitle="Invite people to help with orders, the shop and posts"
+                    icon="people-outline"
+                    onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/team', params: { id } })}
+                  />
+                ) : null}
+                {team ? null : (
+                  <SetupStep
+                    title="Activity"
+                    subtitle="Who did what: you, your team, customers and Ruxstar"
+                    icon="time-outline"
+                    onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/activity', params: { id } })}
+                  />
+                )}
               </View>
             ) : null}
 
@@ -232,16 +305,12 @@ export function BusinessScreen() {
               <Detail label="Phone" value={data.phone} />
               <Detail label="Location" value={addressOf(data.location)} />
               <Detail label="GSTIN" value={data.gstin ? `${data.gstin.number}${data.gstin.legalName ? ` · ${data.gstin.legalName}` : ''}` : null} />
-              {!data.suspension ? (
-                <PrimaryButton
-                  label="Edit details"
-                  variant="outline"
-                  onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/details', params: { id } })}
-                />
+              {!data.suspension && can('shop.details') ? (
+                <PrimaryButton label="Edit details" variant="outline" onPress={() => router.push({ pathname: desk.routes.details, params: { id } })} />
               ) : null}
             </View>
 
-            {data.status === 'draft' && !data.suspension ? (
+            {data.status === 'draft' && !data.suspension && !team ? (
               <View style={styles.publish}>
                 <Text style={styles.muted}>
                   {data.missing.length

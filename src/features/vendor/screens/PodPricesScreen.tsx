@@ -11,14 +11,15 @@ import { priceLine } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
-import { BusinessService } from '@/services/business-service';
+import { shopDesk } from '@/features/vendor/lib/shop-desk';
 
-/** Every product the shop prints, with its price or a "Set price" badge. */
-export function PodPricesScreen() {
+/** Every product the shop prints, with its price or a "Set price" badge. `team` opens it from Work, by place id. */
+export function PodPricesScreen({ team = false }: { team?: boolean }) {
   const router = useRouter();
   const token = useAuthToken();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const business = useAsyncResource(() => BusinessService.get(token, id), id);
+  const desk = shopDesk(team);
+  const business = useAsyncResource(() => desk.service.get(token, id), id);
   useRefetchOnFocus(business.reload);
   const catalog = useBusinessCatalog();
   const pod = business.data?.pod;
@@ -53,7 +54,7 @@ export function PodPricesScreen() {
                         title={info.label}
                         subtitle={line ?? (info.pricing === 'per_page' ? 'Priced per page' : 'Priced per unit')}
                         right={pod.unpriced.includes(info.id) ? <Badge label="Set price" tone="warning" /> : undefined}
-                        onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/prices/[product]', params: { id, product: info.id } })}
+                        onPress={() => router.push({ pathname: desk.routes.price, params: { id, product: info.id } })}
                       />
                     );
                   })}
@@ -65,7 +66,7 @@ export function PodPricesScreen() {
               title="No products yet"
               message="Choose what you print first, then set a price for each."
               actionLabel="Choose products"
-              onAction={() => router.replace({ pathname: '/(vendor)/businesses/[id]/products', params: { id } })}
+              onAction={() => router.replace({ pathname: desk.routes.products, params: { id } })}
             />
           )
         ) : null}

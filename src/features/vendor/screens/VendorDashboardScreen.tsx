@@ -91,6 +91,13 @@ export function VendorDashboardScreen() {
           ) : null}
         </Pressable>
       ) : null}
+
+      <View style={styles.listCard}>
+        {list.some((b) => b.module === 'pod') ? (
+          <ListRow icon="pricetag-outline" title="Coupons" subtitle="Discounts for your print shops" onPress={() => router.push('/(vendor)/coupons')} />
+        ) : null}
+        <ListRow icon="card-outline" title="Ruxstar Card" subtitle="Your verified member card" onPress={() => router.push('/(vendor)/card')} />
+      </View>
     </VendorTabScreen>
   );
 }

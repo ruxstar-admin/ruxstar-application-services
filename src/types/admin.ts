@@ -15,6 +15,10 @@ export type Permission =
   | 'businesses.manage'
   | 'orders.view'
   | 'orders.manage'
+  | 'payouts.view'
+  | 'payouts.manage'
+  | 'coupons.view'
+  | 'coupons.manage'
   | 'audit.view';
 
 export interface Access {
@@ -195,11 +199,56 @@ export interface ModuleSettings {
   commissionBps: number;
   /** Paise the customer pays Ruxstar on each order, on top of the price. */
   platformFee: number;
+  /** Ledger only: paise taken from each withdrawal, and the least a vendor can withdraw. */
+  payouts: { fee: number; minimum: number } | null;
   deliveryEnabled: boolean;
   updatedAt: string;
 }
 
-export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 'commissionBps' | 'platformFee' | 'deliveryEnabled'>>;
+export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 'commissionBps' | 'platformFee' | 'deliveryEnabled'>> & {
+  /** Ledger only, paise. The minimum must be at least ₹1 more than the fee. */
+  payoutFee?: number;
+  minPayout?: number;
+};
+
+// Payouts and held money.
+
+export type PayoutStatus = 'pending' | 'failed' | 'paid';
+
+export interface StaffPayout {
+  id: string;
+  vendor: { id: string; name: string };
+  /** Paise taken from the vendor's balance; the bank gets `amount - fee`. */
+  amount: number;
+  fee: number;
+  status: PayoutStatus;
+  to: string;
+  /** Cashfree's transfer_id. */
+  transferId: string;
+  utr: string | null;
+  /** `text` is what the vendor was told. */
+  failure: { code: string; text: string } | null;
+  /** Times it was sent to Cashfree. */
+  attempts: number;
+  checkedAt: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+/** A delivered order whose share is still on hold. */
+export interface HeldOrder {
+  id: string;
+  orderNo: number;
+  module: ModuleName;
+  business: { id: string; name: string } | null;
+  vendor: { id: string; name: string };
+  /** Paise: the shop's share left after partial refunds. */
+  amount: number;
+  deliveredAt: string | null;
+  releaseAt: string;
+  /** A reported problem waits for a decision; it can't be released until then. */
+  problemOpen: boolean;
+}
 
 // Audit log.
 

@@ -14,10 +14,10 @@ import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
-import { BusinessService } from '@/services/business-service';
+import { shopDesk } from '@/features/vendor/lib/shop-desk';
 import type { Business, BusinessCatalog } from '@/types/business';
 
-function Form({ business, catalog, onSaved }: { business: Business; catalog: BusinessCatalog; onSaved: () => void }) {
+function Form({ id, team, business, catalog, onSaved }: { id: string; team: boolean; business: Business; catalog: BusinessCatalog; onSaved: () => void }) {
   const token = useAuthToken();
   const [values, setValues] = useState<ProfileValues>(() => profileOf(business));
   const [gstin, setGstin] = useState(business.gstin?.number ?? '');
@@ -39,13 +39,13 @@ function Form({ business, catalog, onSaved }: { business: Business; catalog: Bus
     if (Object.keys(found).length) return Feedback.error();
     setSaving(true);
     try {
-      await BusinessService.update(token, business.id, {
+      await shopDesk(team).service.update(token, id, {
         name: values.name.trim(),
         description: values.description.trim() || null,
         phone: values.phone,
         location: locationOf(values),
         // Only sent when changed: the API checks it with the GST network each time.
-        ...(gstin !== (business.gstin?.number ?? '') ? { gstin: gstin || null } : {}),
+        ...(!team && gstin !== (business.gstin?.number ?? '') ? { gstin: gstin || null } : {}),
       });
       Feedback.success();
       onSaved();
@@ -73,31 +73,35 @@ function Form({ business, catalog, onSaved }: { business: Business; catalog: Bus
         namePlaceholder={typeInfo?.namePlaceholder}
         detailHint={typeInfo?.detailHint}
       />
-      <InputField
-        label="GSTIN (optional)"
-        value={gstin}
-        onChangeText={(text) => {
-          setGstin(text.toUpperCase().replace(/\s/g, '').slice(0, 15));
-          setErrors((e) => ({ ...e, gstin: undefined }));
-        }}
-        error={errors.gstin}
-        autoCapitalize="characters"
-        autoCorrect={false}
-        maxLength={15}
-      />
-      <Text style={styles.hint}>We check a GSTIN with the GST network when you save.</Text>
+      {team ? null : (
+        <>
+          <InputField
+            label="GSTIN (optional)"
+            value={gstin}
+            onChangeText={(text) => {
+              setGstin(text.toUpperCase().replace(/\s/g, '').slice(0, 15));
+              setErrors((e) => ({ ...e, gstin: undefined }));
+            }}
+            error={errors.gstin}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            maxLength={15}
+          />
+          <Text style={styles.hint}>We check a GSTIN with the GST network when you save.</Text>
+        </>
+      )}
       {failure ? <ErrorBanner message={failure} onRetry={save} /> : null}
       <PrimaryButton label="Save details" loading={saving} onPress={save} />
     </>
   );
 }
 
-/** Everything customers read about a business. */
-export function BusinessDetailsScreen() {
+/** Everything customers read about a business. `team` opens it from Work, where `id` is the place there. */
+export function BusinessDetailsScreen({ team = false }: { team?: boolean }) {
   const router = useRouter();
   const token = useAuthToken();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const business = useAsyncResource(() => BusinessService.get(token, id), id);
+  const business = useAsyncResource(() => shopDesk(team).service.get(token, id), id);
   const catalog = useBusinessCatalog();
   const retry = () => {
     if (business.error) business.reload();
@@ -113,7 +117,7 @@ export function BusinessDetailsScreen() {
         onRetry={retry}
         skeletonRows={6}
       >
-        {business.data && catalog.data ? <Form business={business.data} catalog={catalog.data} onSaved={() => router.back()} /> : null}
+        {business.data && catalog.data ? <Form id={id} team={team} business={business.data} catalog={catalog.data} onSaved={() => router.back()} /> : null}
       </AsyncBoundary>
     </ScreenContainer>
   );

@@ -17,7 +17,7 @@ import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
-import { BusinessService } from '@/services/business-service';
+import { shopDesk } from '@/features/vendor/lib/shop-desk';
 import type { Business, PodExtra, PodProduct, PodProductInfo } from '@/types/business';
 
 const extraKey = (option: string, value: string) => `${option}|${value}`;
@@ -29,7 +29,23 @@ interface TierRow {
 
 type Errors = Partial<Record<'base' | 'page' | 'minQuantity' | 'turnaround' | 'tiers' | 'extras', string>>;
 
-function Form({ business, info, maxTiers, maxDays, onSaved }: { business: Business; info: PodProductInfo; maxTiers: number; maxDays: number; onSaved: () => void }) {
+function Form({
+  id,
+  team,
+  business,
+  info,
+  maxTiers,
+  maxDays,
+  onSaved,
+}: {
+  id: string;
+  team: boolean;
+  business: Business;
+  info: PodProductInfo;
+  maxTiers: number;
+  maxDays: number;
+  onSaved: () => void;
+}) {
   const token = useAuthToken();
   const current = business.pod?.prices.find((p) => p.product === info.id);
   const perPage = info.pricing === 'per_page';
@@ -74,7 +90,7 @@ function Form({ business, info, maxTiers, maxDays, onSaved }: { business: Busine
     });
     setSaving(true);
     try {
-      await BusinessService.updatePod(token, business.id, {
+      await shopDesk(team).service.updatePod(token, id, {
         prices: [
           {
             product: info.id,
@@ -212,12 +228,12 @@ function Form({ business, info, maxTiers, maxDays, onSaved }: { business: Busine
   );
 }
 
-/** Prices for one print product: per unit (or per page for documents), extras by option and bulk tiers. */
-export function PodPriceScreen() {
+/** Prices for one print product: per unit (or per page for documents), extras by option and bulk tiers. `team` opens it from Work. */
+export function PodPriceScreen({ team = false }: { team?: boolean }) {
   const router = useRouter();
   const token = useAuthToken();
   const { id, product } = useLocalSearchParams<{ id: string; product: PodProduct }>();
-  const business = useAsyncResource(() => BusinessService.get(token, id), id);
+  const business = useAsyncResource(() => shopDesk(team).service.get(token, id), id);
   const catalog = useBusinessCatalog();
   const info = catalog.data?.podProducts.find((p) => p.id === product);
   const retry = () => {
@@ -236,6 +252,8 @@ export function PodPriceScreen() {
       >
         {business.data && catalog.data && info && business.data.pod?.products.includes(info.id) ? (
           <Form
+            id={id}
+            team={team}
             business={business.data}
             info={info}
             maxTiers={catalog.data.limits.tiers}

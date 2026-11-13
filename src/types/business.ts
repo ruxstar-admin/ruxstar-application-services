@@ -214,12 +214,15 @@ export type PayoutMethodInput = { kind: 'bank'; accountNumber: string; ifsc: str
 
 export interface Payout {
   id: string;
-  /** Paise. */
+  /** Paise taken from the balance; the bank gets `amount - fee`. */
   amount: number;
+  fee: number;
   status: 'pending' | 'paid' | 'failed';
   to: string;
   utr: string | null;
   paidAt: string | null;
+  /** Why it failed, for the vendor; the amount is back in their balance. */
+  failure: string | null;
   createdAt: string;
 }
 
@@ -228,19 +231,25 @@ export interface Payments {
   balance: { available: number; pending: number; paidOut: number };
   /** Delivered orders whose share is still on hold, soonest first. `held` waits for Ruxstar to settle a problem. */
   upcoming: { orderId: string; orderNo: number; amount: number; availableAt: string; held: boolean }[];
+  /** The least that can be withdrawn and the fee taken from each withdrawal, both set by Ruxstar. */
+  withdrawal: { minimum: number; fee: number };
   payoutMethod: PayoutMethod | null;
   payouts: Payout[];
 }
 
 /**
  * GET /v1/vendor/payments/statement, newest first. `paid` is an order's share arriving as pending, `available` its hold
- * ending (the same money moving, not more), `refund` money going back out of the share. Paise; negative for refunds.
+ * ending (the same money moving, not more), `refund` money going back out of the share, `withdrawal` money withdrawn and
+ * `returned` a failed withdrawal coming back. Paise; negative for refunds and withdrawals.
  */
 export interface StatementLine {
   id: string;
-  kind: 'paid' | 'available' | 'refund';
+  kind: 'paid' | 'available' | 'refund' | 'withdrawal' | 'returned';
   amount: number;
   at: string;
   module: 'pod' | 'events' | 'coaching' | 'stays' | 'delivery' | 'ledger';
-  order: { id: string; orderNo: number; business: { id: string; name: string } | null };
+  /** Set on order lines. */
+  order: { id: string; orderNo: number; business: { id: string; name: string } | null } | null;
+  /** Set on withdrawal lines. */
+  payout: { id: string; to: string } | null;
 }
