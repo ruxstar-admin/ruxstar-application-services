@@ -146,7 +146,8 @@ const request = async <T>(options: RequestOptions): Promise<T> => {
 export const apiPost = <T>(path: string, body?: Json, token?: string, options?: WriteOptions): Promise<T> =>
   request<T>({ method: 'POST', path, body, token, ...options });
 
-export const apiGet = <T>(path: string, token?: string, query?: Query): Promise<T> => request<T>({ method: 'GET', path, token, query });
+export const apiGet = <T>(path: string, token?: string, query?: Query, options: Pick<RequestOptions, 'timeoutMs'> = {}): Promise<T> =>
+  request<T>({ method: 'GET', path, token, query, ...options });
 
 /** A list endpoint: its items and the cursor for the next page (null on the last one). */
 export const apiGetPage = async <T>(path: string, token?: string, query?: Query): Promise<{ items: T[]; nextCursor: string | null }> => {
@@ -161,7 +162,7 @@ export const apiPostBytes = <T>(
   path: string,
   bytes: NonNullable<RequestOptions['bytes']>,
   token: string,
-  options: Pick<RequestOptions, 'headers' | 'timeoutMs'> = {},
+  options: Pick<RequestOptions, 'headers' | 'timeoutMs' | 'query'> = {},
 ): Promise<T> => request<T>({ method: 'POST', path, bytes, token, ...options });
 
 export const apiPatch = <T>(path: string, body: Json, token: string, options?: WriteOptions): Promise<T> =>

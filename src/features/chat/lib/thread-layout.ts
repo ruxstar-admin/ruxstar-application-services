@@ -1,4 +1,10 @@
-import type { PendingMessage } from '@/types/chat';
+import type { PendingMessage, ReplyPreview } from '@/types/chat';
+
+/** What a reply shows of the message it answers, the same way the API describes it. */
+export function quoteOf(m: PendingMessage): ReplyPreview {
+  const text = m.kind === 'photo' ? 'Photo' : m.kind === 'voice' ? 'Voice message' : m.kind === 'post' ? m.text || 'Post' : m.text;
+  return { id: m.id, available: true, sender: m.mine ? 'You' : m.sender?.name || m.sender?.username || 'Someone', mine: m.mine, kind: m.kind, text };
+}
 
 /** Where a bubble sits in a run of messages from one person, oldest first. */
 export type BubblePosition = 'single' | 'first' | 'middle' | 'last';
@@ -35,6 +41,25 @@ export function stampLabel(iso: string, now: number = Date.now()): string {
   const date = at.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) });
   return `${date}, ${clock(at)}`;
 }
+
+/** "Active now" within 2 minutes, then "Active 5m ago", "Active 3h ago", "Active yesterday", "Active 3d ago"; nothing after a week. */
+export function activeLabel(iso: string | null, now: number = Date.now()): string | null {
+  if (!iso) return null;
+  const minutes = Math.floor((now - Date.parse(iso)) / 60_000);
+  if (minutes < 2) return 'Active now';
+  if (minutes < 60) return `Active ${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Active ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Active yesterday';
+  return days < 7 ? `Active ${days}d ago` : null;
+}
+
+/** A voice message's length: "0:07", "1:42". */
+export const clockOf = (ms: number) => {
+  const seconds = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+};
 
 const senderOf = (m: PendingMessage) => (m.kind === 'event' ? '#event' : m.mine ? '#me' : (m.sender?.id ?? '#unknown'));
 

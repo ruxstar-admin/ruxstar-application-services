@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -12,9 +12,10 @@ import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { Composer } from '@/features/chat/components/Composer';
 import { MessageBubble } from '@/features/chat/components/MessageBubble';
 import { MessageMenu } from '@/features/chat/components/MessageMenu';
-import { useThread } from '@/features/chat/hooks/use-thread';
+import { TypingBubble } from '@/features/chat/components/TypingBubble';
+import { useThread, type Recording } from '@/features/chat/hooks/use-thread';
 import { seenMessageId } from '@/features/chat/lib/merge-messages';
-import { layoutThread, type ThreadRow } from '@/features/chat/lib/thread-layout';
+import { activeLabel, layoutThread, type ThreadRow } from '@/features/chat/lib/thread-layout';
 import { PhotoViewer } from '@/features/social/components/PhotoViewer';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { Feedback } from '@/lib/haptics';
@@ -28,6 +29,16 @@ const noticeOf = (chat: ChatDetail | null) => {
 
 const rowKey = (row: ThreadRow) => row.message.idempotencyKey ?? row.message.id;
 
+/** The time now, moving on each minute, so "Active 5m ago" stays right while the chat is open. */
+function useMinute() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
 /** A chat. Newest message at the bottom (inverted list); tap a photo to see it full screen, hold a message for its menu. */
 export function ThreadScreen() {
   const router = useRouter();
@@ -39,6 +50,8 @@ export function ThreadScreen() {
   const [viewing, setViewing] = useState<number | null>(null);
   const [cameraOff, setCameraOff] = useState(false);
   const [deciding, setDeciding] = useState<'accept' | 'decline' | null>(null);
+  const [replyingTo, setReplyingTo] = useState<PendingMessage | null>(null);
+  const now = useMinute();
   // Messages newer than what was there when the chat opened slide in; the history doesn't.
   const [openedWith, setOpenedWith] = useState<string | null>(null);
   if (openedWith === null && !thread.loading) setOpenedWith(thread.messages.at(-1)?.createdAt ?? '');
@@ -60,6 +73,22 @@ export function ThreadScreen() {
     setMenuFor(message);
   }, []);
 
+  // The thread's actions change every render; the bubbles get stable ones that call the latest.
+  const latest = useRef(thread);
+  useLayoutEffect(() => {
+    latest.current = thread;
+  });
+  const retry = useCallback((message: PendingMessage) => latest.current.retry(message), []);
+  const react = useCallback((message: PendingMessage, emoji: string) => {
+    Feedback.select();
+    latest.current.react(message, emoji);
+  }, []);
+  const reply = useCallback((message: PendingMessage) => {
+    Feedback.press();
+    setReplyingTo(message);
+  }, []);
+  const canRespond = chat?.state === 'active' && chat.canSend;
+
   const renderItem = useCallback(
     ({ item }: { item: ThreadRow }) => (
       <MessageBubble
@@ -69,13 +98,16 @@ export function ThreadScreen() {
         showAuthor={isGroup}
         seen={item.message.id === seenId}
         fresh={!!item.message.sendState || (openedWith !== null && item.message.createdAt > openedWith)}
-        onRetry={thread.retry}
+        canRespond={canRespond}
+        onRetry={retry}
         onLongPress={openMenu}
+        onReact={react}
+        onReply={reply}
         onOpenPost={openPost}
         onOpenPhoto={openPhoto}
       />
     ),
-    [isGroup, seenId, openedWith, thread.retry, openMenu, openPost, openPhoto],
+    [isGroup, seenId, openedWith, canRespond, retry, openMenu, react, reply, openPost, openPhoto],
   );
 
   const pickPhoto = async () => {
@@ -83,7 +115,8 @@ export function ThreadScreen() {
     if (result.canceled || !result.assets[0]) return;
     Feedback.select();
     setCameraOff(false);
-    thread.sendPhoto(result.assets[0]);
+    thread.sendPhoto(result.assets[0], replyingTo);
+    setReplyingTo(null);
   };
 
   const takePhoto = async () => {
@@ -93,10 +126,23 @@ export function ThreadScreen() {
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
     if (result.canceled || !result.assets[0]) return;
     Feedback.select();
-    thread.sendPhoto(result.assets[0]);
+    thread.sendPhoto(result.assets[0], replyingTo);
+    setReplyingTo(null);
+  };
+
+  const sendText = (text: string) => {
+    thread.send(text, replyingTo);
+    setReplyingTo(null);
+  };
+
+  const sendVoice = (recording: Recording) => {
+    Feedback.select();
+    thread.sendVoice(recording, replyingTo);
+    setReplyingTo(null);
   };
 
   const unsend = async (message: PendingMessage) => {
+    if (replyingTo?.id === message.id) setReplyingTo(null);
     if (await thread.unsend(message)) Feedback.success();
   };
 
@@ -122,7 +168,10 @@ export function ThreadScreen() {
   // An inverted list renders the first item at the bottom, so the rows are newest-first.
   const rows = useMemo(() => layoutThread(thread.messages).reverse(), [thread.messages]);
   const title = chat?.title ?? titleParam ?? '';
-  const subtitle = !chat ? '' : isGroup ? `${chat.members} people` : chat.peer ? `@${chat.peer.username}` : '';
+  const typingLine = thread.typing.length === 0 ? null : isGroup && thread.typing.length > 1 ? `${thread.typing.length} people are typing…` : isGroup ? `${thread.typing[0].name || thread.typing[0].username} is typing…` : 'typing…';
+  const subtitle = !chat
+    ? ''
+    : (typingLine ?? (isGroup ? `${chat.members} people` : (activeLabel(chat.activeAt, now) ?? (chat.peer ? `@${chat.peer.username}` : ''))));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -143,7 +192,11 @@ export function ThreadScreen() {
               <Text style={styles.title} numberOfLines={1}>
                 {title}
               </Text>
-              {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+              {subtitle ? (
+                <Text style={[styles.subtitle, typingLine && styles.subtitleLive]} numberOfLines={1}>
+                  {subtitle}
+                </Text>
+              ) : null}
             </View>
           </Pressable>
           {chat ? (
@@ -171,6 +224,7 @@ export function ThreadScreen() {
             keyboardShouldPersistTaps="handled"
             onEndReached={thread.loadOlder}
             onEndReachedThreshold={0.3}
+            ListHeaderComponent={<TypingBubble people={thread.typing} showName={isGroup} />}
             ListFooterComponent={thread.loadingOlder ? <ActivityIndicator color={Brand.primarySoft} style={styles.older} /> : null}
             ListEmptyComponent={<EmptyState icon="chatbubble-ellipses-outline" title="Say hello" message="Your messages will appear here." />}
           />
@@ -193,11 +247,20 @@ export function ThreadScreen() {
             </View>
           </View>
         ) : chat ? (
-          <Composer onSend={thread.send} onPhoto={pickPhoto} onCamera={takePhoto} notice={noticeOf(chat)} />
+          <Composer
+            onSend={sendText}
+            onPhoto={pickPhoto}
+            onCamera={takePhoto}
+            onVoice={sendVoice}
+            onTyping={thread.noteTyping}
+            replyingTo={replyingTo}
+            onCancelReply={() => setReplyingTo(null)}
+            notice={noticeOf(chat)}
+          />
         ) : null}
       </KeyboardAvoidingView>
 
-      <MessageMenu message={menuFor} onClose={() => setMenuFor(null)} onUnsend={unsend} />
+      <MessageMenu message={menuFor} canRespond={canRespond} onClose={() => setMenuFor(null)} onReact={react} onReply={reply} onUnsend={unsend} />
       <PhotoViewer photos={photos} index={viewing} onClose={() => setViewing(null)} />
     </SafeAreaView>
   );
@@ -212,6 +275,7 @@ const styles = StyleSheet.create({
   groupIcon: { width: 36, height: 36, borderRadius: Radius.pill, backgroundColor: 'rgba(180,92,242,0.14)', alignItems: 'center', justifyContent: 'center' },
   title: { ...Typography.bodyStrong, color: Brand.text },
   subtitle: { ...Typography.caption, color: Brand.textMuted },
+  subtitleLive: { color: Brand.primarySoft },
   list: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.three },
   skeletons: { padding: Spacing.three, gap: Spacing.three },
   mine: { alignSelf: 'flex-end' },

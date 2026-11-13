@@ -1,5 +1,5 @@
 import type { ChatMessage, PendingMessage } from '@/types/chat';
-import { confirmSent, dropUnsent, mergeIncoming, mergeOlder, seenMessageId } from '../merge-messages';
+import { applyUpdated, confirmSent, dropUnsent, mergeIncoming, mergeOlder, seenMessageId, withMyReaction } from '../merge-messages';
 
 const make = (id: string, extra: Partial<PendingMessage> = {}): PendingMessage => ({
   id,
@@ -10,8 +10,32 @@ const make = (id: string, extra: Partial<PendingMessage> = {}): PendingMessage =
   text: id,
   post: null,
   photo: null,
+  voice: null,
+  replyTo: null,
+  reactions: [],
   createdAt: '2026-10-22T10:00:00Z',
   ...extra,
+});
+
+describe('applyUpdated', () => {
+  it('swaps in newer copies of held messages and keeps the array when none match', () => {
+    const current = [make('1'), make('2', { idempotencyKey: 'k' })];
+    const heart = [{ emoji: '❤️', count: 1, mine: false }];
+    const next = applyUpdated(current, [make('2', { reactions: heart })]);
+    expect(next[1]).toMatchObject({ reactions: heart, idempotencyKey: 'k' });
+    expect(applyUpdated(current, [make('x')])).toBe(current);
+  });
+});
+
+describe('withMyReaction', () => {
+  const heart = { emoji: '❤️', count: 2, mine: false };
+  it('adds yours, swaps it, and takes it back', () => {
+    const added = withMyReaction([heart], '❤️');
+    expect(added).toEqual([{ emoji: '❤️', count: 3, mine: true }]);
+    const swapped = withMyReaction(added, '😂');
+    expect(swapped).toEqual([heart, { emoji: '😂', count: 1, mine: true }]);
+    expect(withMyReaction(swapped, '😂')).toEqual([heart]);
+  });
 });
 
 describe('mergeIncoming', () => {
