@@ -17,7 +17,7 @@ import type {
 } from '@/types/social';
 import type { ReportReason } from '@/types/profile';
 
-interface ApiAuthor {
+export interface ApiAuthor {
   id: string;
   name: string;
   username: string;
@@ -61,7 +61,7 @@ interface ApiNotification {
 
 type Done = { done: true };
 
-const toAuthor = (a: ApiAuthor): Author => ({
+export const toAuthor = (a: ApiAuthor): Author => ({
   id: a.id,
   name: a.name,
   username: a.username,

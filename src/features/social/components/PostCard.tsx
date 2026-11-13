@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { WEBSITE_URL } from '@/constants/config';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { SharePostSheet } from '@/features/chat/components/SharePostSheet';
 import { VerifiedTick } from '@/features/kyc/components/VerifiedTick';
 import { PostImages } from '@/features/social/components/PostImages';
 import { Feedback } from '@/lib/haptics';
@@ -82,12 +83,18 @@ function Action({ icon, label, color = Brand.textMuted, accessibilityLabel, onPr
   );
 }
 
+const SHEET_CLOSE_MS = 350;
+
 /** One feed post: author row, text, photos, and like / comment / share / save actions. Memoised for long lists. */
 export const PostCard = memo(function PostCard({ post, onLike, onSave, onOpenComments, onOpenMenu, onOpenAuthor }: PostCardProps) {
+  const [sharing, setSharing] = useState(false);
   const share = () => {
+    setSharing(false);
     const url = `${WEBSITE_URL}/p/${post.id}`;
     const excerpt = post.text.length > 80 ? `${post.text.slice(0, 79)}…` : post.text;
-    Share.share({ message: excerpt ? `${post.author.name} on Ruxstar: ${excerpt}\n${url}` : `${post.author.name} on Ruxstar: ${url}` }).catch(() => undefined);
+    const message = excerpt ? `${post.author.name} on Ruxstar: ${excerpt}\n${url}` : `${post.author.name} on Ruxstar: ${url}`;
+    // iOS won't open its share sheet while the send-to sheet is still closing.
+    setTimeout(() => Share.share({ message }).catch(() => undefined), SHEET_CLOSE_MS);
   };
 
   return (
@@ -127,7 +134,7 @@ export const PostCard = memo(function PostCard({ post, onLike, onSave, onOpenCom
           onPress={() => onLike(post)}
         />
         <Action icon="chatbubble-outline" label={compactCount(post.comments)} accessibilityLabel="Comments" onPress={() => onOpenComments(post)} />
-        <Action icon="paper-plane-outline" accessibilityLabel="Share" onPress={share} />
+        <Action icon="paper-plane-outline" accessibilityLabel="Share" onPress={() => setSharing(true)} />
         <View style={styles.spacer} />
         <Action
           icon={post.savedByMe ? 'bookmark' : 'bookmark-outline'}
@@ -136,6 +143,7 @@ export const PostCard = memo(function PostCard({ post, onLike, onSave, onOpenCom
           onPress={() => onSave(post)}
         />
       </View>
+      <SharePostSheet postId={sharing ? post.id : null} onClose={() => setSharing(false)} onShareLink={share} />
     </View>
   );
 });

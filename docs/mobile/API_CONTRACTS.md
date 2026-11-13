@@ -71,16 +71,18 @@ All are POST with a JSON body (the mock registry keys on method + path; the real
 
 Types: `src/types/social.ts`. Service: `src/services/social-service.ts`.
 
-## Messages, groups, communities (all mocked — `src/services/mock/chat.mocks.ts`)
+## Chats (real API — `/v1/social/chats`, decision 37)
 | Path | Request | Response | Notes |
 |---|---|---|---|
-| `/chat/conversations` | – | `Conversation[]` (joined only, newest first) | kinds: `dm`, `group`, `community` |
-| `/chat/communities/discover` · `/join` · `/leave` | – · `{ id }` · `{ id }` | `Conversation[]` · `Conversation` · `{ message }` | Public communities are broadcast; `canPost` is false unless the user has posting rights (RBAC, PRD Module 11) |
-| `/chat/messages` | `{ id, after? }` | `ChatMessage[]` oldest → newest | No `after`: latest 50. With `after`: only newer than that message id. App polls every 4 s while a thread is open — replace with push/socket when available |
-| `/chat/send` | `{ id, text }` | `ChatMessage` | 403 where posting is not allowed |
-| `/chat/read` · `/chat/unread-total` | `{ id }` · – | `{ message }` · `{ count }` | Tab badge refreshes every 15 s |
-| `/chat/contacts` · `/chat/dm/start` · `/chat/group/create` | `{ q }` · `{ userId }` · `{ name, memberIds[] }` | `Contact[]` · `Conversation` · `Conversation` | DM start is idempotent; a group needs a name and ≥ 1 member |
-| `/chat/report` | `{ messageId, reason }` | `{ message }` | Moderation queue; retention policy is a backend decision |
+| `GET /chats` · `GET /chats/unread` | `?box=chats\|requests&cursor&limit` · – | `Page<Chat>` · `{ unread, requests }` | Newest message first; the list and badge refresh every 15 s |
+| `POST /chats/dm` · `POST /chats/groups` | `{ userId }` · `{ title, userIds[] }` | `ChatDetail` | Starting a 1:1 chat is idempotent; groups hold up to 50 (`CHAT_GROUP_FULL`) |
+| `GET /chats/{id}` · `GET /chats/{id}/messages` | – · `?cursor&limit` | `ChatDetail` · `Page<ChatMessage>` newest first | Group members see messages from when they joined |
+| `GET /chats/{id}/updates` | `?since` (server time) | `{ messages, unsent, seenAt, changed, now }` | Polled every 3 s while a thread is open; pass back `now` |
+| `POST /chats/{id}/messages` · `POST /chats/{id}/photos` | `{ text }` or `{ postId }` · image bytes | `ChatMessage` | `Idempotency-Key` required. `CHAT_REQUEST_PENDING` until a request is accepted |
+| `DELETE /chats/{id}/messages/{messageId}` | – | `{ done: true }` | Unsend your own message |
+| `POST /chats/{id}/read` · `/accept` · `/decline` · `PUT /chats/{id}/mute` | – · – · – · `{ muted }` | `{ done: true }`, except accept: `ChatDetail` | |
+| `PATCH /chats/{id}` · `POST /chats/{id}/people` · `PUT /chats/{id}/admins/{userId}` | `{ title }` · `{ userIds[] }` · – | `ChatDetail` | Admins only |
+| `DELETE /chats/{id}/people/{userId}` · `POST /chats/{id}/leave` | – | `{ done: true }` | Removing someone is for admins |
 
 Types: `src/types/chat.ts`. Service: `src/services/chat-service.ts`.
 

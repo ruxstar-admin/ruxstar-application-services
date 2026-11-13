@@ -17,6 +17,7 @@ import { useFeedStore } from '@/features/social/stores/feed-store';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { Feedback } from '@/lib/haptics';
+import { ChatService } from '@/services/chat-service';
 import { ProfileService } from '@/services/profile-service';
 import { SocialService } from '@/services/social-service';
 import { USER_REPORT_REASONS, type Relation } from '@/types/social';
@@ -42,6 +43,7 @@ export function UserProfileScreen() {
   const [blocking, setBlocking] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [opening, setOpening] = useState(false);
   const vendor = !!data?.badges.includes('vendor');
   const rel = relation.data;
   const blocked = !!rel?.blockedByMe;
@@ -80,6 +82,20 @@ export function UserProfileScreen() {
     }
   };
 
+  /** Opens your chat with them, starting it if needed. If they don't follow you, your first message reaches them as a request. */
+  const message = async () => {
+    if (!data || opening) return;
+    setOpening(true);
+    try {
+      const chat = await ChatService.startDm(token, data.id);
+      router.push({ pathname: '/(customer)/chat/[id]', params: { id: chat.id, title: chat.title } });
+    } catch {
+      Feedback.error();
+    } finally {
+      setOpening(false);
+    }
+  };
+
   const profile = data && rel ? { ...data, followers: rel.counts.followers, following: rel.counts.following } : data;
 
   return (
@@ -110,7 +126,7 @@ export function UserProfileScreen() {
                     />
                   </View>
                   <View style={styles.grow}>
-                    <PrimaryButton label="Message" variant="outline" onPress={() => router.push('/(customer)/(tabs)/messages')} />
+                    <PrimaryButton label="Message" variant="outline" onPress={message} loading={opening} />
                   </View>
                 </>
               )}

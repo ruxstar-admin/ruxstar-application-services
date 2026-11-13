@@ -87,7 +87,7 @@ export function ContactPicker({ selected, onSelect }: ContactPickerProps) {
               }}
               style={({ pressed }) => [styles.row, pressed && styles.pressed]}
             >
-              <Avatar name={contact.name} size={44} />
+              <Avatar name={contact.name} uri={contact.avatarUrl} size={44} />
               <View style={styles.text}>
                 <Text style={styles.name}>{contact.name}</Text>
                 <Text style={styles.username}>@{contact.username}</Text>

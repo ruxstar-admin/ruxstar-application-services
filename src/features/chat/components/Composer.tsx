@@ -6,21 +6,22 @@ import { Feedback } from '@/lib/haptics';
 
 interface ComposerProps {
   onSend: (text: string) => void;
-  /** False in broadcast communities: shows a notice instead of an input. */
-  canPost: boolean;
+  onPhoto: () => void;
+  /** Shown instead of the input when you can't send, e.g. while a request waits. */
+  notice?: string | null;
 }
 
 const MAX_LENGTH = 1000;
 
-/** Message input pinned above the keyboard; replaced by a notice where the viewer may not post. */
-export function Composer({ onSend, canPost }: ComposerProps) {
+/** Message input pinned above the keyboard, with a photo button; replaced by a notice when you can't send. */
+export function Composer({ onSend, onPhoto, notice }: ComposerProps) {
   const [draft, setDraft] = useState('');
   const ready = draft.trim().length > 0;
 
-  if (!canPost) {
+  if (notice) {
     return (
       <View style={styles.bar}>
-        <Text style={styles.notice}>Only community admins can post here.</Text>
+        <Text style={styles.notice}>{notice}</Text>
       </View>
     );
   }
@@ -34,6 +35,9 @@ export function Composer({ onSend, canPost }: ComposerProps) {
 
   return (
     <View style={styles.bar}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Send a photo" hitSlop={8} onPress={onPhoto} style={styles.icon}>
+        <Ionicons name="image-outline" size={22} color={Brand.textMuted} />
+      </Pressable>
       <TextInput
         style={styles.input}
         value={draft}
@@ -62,6 +66,7 @@ const styles = StyleSheet.create({
     borderTopColor: Brand.border,
     backgroundColor: Brand.surface,
   },
+  icon: { width: 36, height: 44, alignItems: 'center', justifyContent: 'center' },
   input: {
     flex: 1,
     ...Typography.body,
