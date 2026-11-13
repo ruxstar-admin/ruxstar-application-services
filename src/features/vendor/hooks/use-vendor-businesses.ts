@@ -13,10 +13,13 @@ export const canOpen = (b: Business) => b.status === 'live' && !b.suspension && 
 const messageOf = (err: unknown) =>
   err instanceof ApiError && err.kind !== 'network' && err.kind !== 'timeout' ? err.message : 'Could not reach Ruxstar. Check your connection and try again.';
 
-/** The vendor's businesses, reloaded on focus, with open and close. Switches flip at once and go back if the API refuses. */
-export function useVendorBusinesses() {
+/**
+ * The vendor's businesses, reloaded on focus, with open and close. Switches flip at once and go back if the API refuses.
+ * `skip` loads nothing, for screens someone on a team shares with the owner.
+ */
+export function useVendorBusinesses({ skip = false }: { skip?: boolean } = {}) {
   const token = useAuthToken();
-  const resource = useAsyncResource(() => BusinessService.list(token));
+  const resource = useAsyncResource(() => (skip ? Promise.resolve([]) : BusinessService.list(token)));
   const { data, reload, setData } = resource;
   useRefetchOnFocus(reload);
   const [busy, setBusy] = useState<Set<string>>(new Set());

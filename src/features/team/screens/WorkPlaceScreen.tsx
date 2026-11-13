@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
@@ -19,9 +19,49 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { WorkService } from '@/services/team-service';
-import type { PermissionInfo, TeamPermission, WorkBusiness } from '@/types/team';
+import type { PermissionInfo, TeamPermission, WorkBusiness, WorkPlace } from '@/types/team';
 import { InviteCard } from '../components/InviteCard';
 import { ACCESS } from '../lib/team';
+
+const has = (...wanted: TeamPermission[]) => (permissions: TeamPermission[]) => wanted.some((p) => permissions.includes(p));
+
+/** What someone can open at a business they work at, by what the owner allowed. */
+const WORK_AREAS: {
+  title: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  allowed: (permissions: TeamPermission[]) => boolean;
+  href: (place: WorkPlace) => Href;
+}[] = [
+  {
+    title: 'Orders',
+    subtitle: 'New orders, ones being made, and past ones',
+    icon: 'receipt-outline',
+    allowed: has('orders.view'),
+    href: (p) => ({ pathname: '/(customer)/work/orders/[id]', params: { id: p.id, name: p.business.name } }),
+  },
+  {
+    title: 'Shop',
+    subtitle: 'Open or close it, and change what you’re allowed to',
+    icon: 'storefront-outline',
+    allowed: has('shop.open', 'shop.catalog', 'shop.details'),
+    href: (p) => ({ pathname: '/(customer)/work/shop/[id]', params: { id: p.id } }),
+  },
+  {
+    title: 'Coupons',
+    subtitle: 'Discounts for this shop',
+    icon: 'pricetag-outline',
+    allowed: has('coupons.manage'),
+    href: (p) => ({ pathname: '/(customer)/work/coupons/[id]', params: { id: p.id } }),
+  },
+  {
+    title: 'Post as the business',
+    subtitle: 'It goes out under the owner’s name',
+    icon: 'create-outline',
+    allowed: has('posts.create'),
+    href: (p) => ({ pathname: '/(customer)/create-post', params: { kind: 'business', businessId: p.business.id, teamOf: p.business.name } }),
+  },
+];
 
 const errorText = (err: unknown) =>
   err instanceof ApiError && err.status > 0 && err.kind !== 'server' ? err.message : 'Could not reach Ruxstar. Check your connection and try again.';
@@ -100,14 +140,11 @@ export function WorkPlaceScreen() {
             {place.access === 'verify' ? (
               <PrimaryButton label="Get verified" onPress={() => router.push('/(customer)/settings/verification')} />
             ) : null}
-            {place.access === 'on' && place.permissions.includes('orders.view') ? (
+            {place.access === 'on' && WORK_AREAS.some((a) => a.allowed(place.permissions)) ? (
               <View style={styles.card}>
-                <ListRow
-                  icon="receipt-outline"
-                  title="Orders"
-                  subtitle="New orders, ones being made, and past ones"
-                  onPress={() => router.push({ pathname: '/(customer)/work/orders/[id]', params: { id: place.id, name: place.business.name } })}
-                />
+                {WORK_AREAS.filter((a) => a.allowed(place.permissions)).map((a) => (
+                  <ListRow key={a.title} icon={a.icon} title={a.title} subtitle={a.subtitle} onPress={() => router.push(a.href(place))} />
+                ))}
               </View>
             ) : null}
             <Text style={styles.section}>What you can do</Text>

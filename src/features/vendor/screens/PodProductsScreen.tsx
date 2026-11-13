@@ -17,13 +17,13 @@ import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
-import { BusinessService } from '@/services/business-service';
+import { shopDesk } from '@/features/vendor/lib/shop-desk';
 import type { Business, BusinessCatalog, PodProduct } from '@/types/business';
 
 const OTHER_CITY = 'Other city';
 const NOTES_MAX = 1000;
 
-function Form({ business, catalog, onSaved }: { business: Business; catalog: BusinessCatalog; onSaved: () => void }) {
+function Form({ id, team, business, catalog, onSaved }: { id: string; team: boolean; business: Business; catalog: BusinessCatalog; onSaved: () => void }) {
   const token = useAuthToken();
   const pod = business.pod!;
   const home = business.location?.city.toLowerCase();
@@ -62,7 +62,7 @@ function Form({ business, catalog, onSaved }: { business: Business; catalog: Bus
     if (!serveAll && !cities.length) return (setProblem('Add a city you deliver to, or turn on every city.'), Feedback.error());
     setSaving(true);
     try {
-      await BusinessService.updatePod(token, business.id, {
+      await shopDesk(team).service.updatePod(token, id, {
         products,
         serveAll,
         cities,
@@ -197,12 +197,12 @@ function Form({ business, catalog, onSaved }: { business: Business; catalog: Bus
   );
 }
 
-/** Print on demand setup: which products, where it delivers, and how fast. */
-export function PodProductsScreen() {
+/** Print on demand setup: which products, where it delivers, and how fast. `team` opens it from Work, by place id. */
+export function PodProductsScreen({ team = false }: { team?: boolean }) {
   const router = useRouter();
   const token = useAuthToken();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const business = useAsyncResource(() => BusinessService.get(token, id), id);
+  const business = useAsyncResource(() => shopDesk(team).service.get(token, id), id);
   const catalog = useBusinessCatalog();
   const retry = () => {
     if (business.error) business.reload();
@@ -218,7 +218,7 @@ export function PodProductsScreen() {
         onRetry={retry}
         skeletonRows={8}
       >
-        {business.data?.pod && catalog.data ? <Form business={business.data} catalog={catalog.data} onSaved={() => router.back()} /> : null}
+        {business.data?.pod && catalog.data ? <Form id={id} team={team} business={business.data} catalog={catalog.data} onSaved={() => router.back()} /> : null}
       </AsyncBoundary>
     </ScreenContainer>
   );

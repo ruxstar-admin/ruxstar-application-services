@@ -15,6 +15,7 @@ import { dateKey } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
 import { AdminService } from '@/services/admin-service';
 import { CouponService } from '@/services/coupon-service';
+import { TeamCouponService } from '@/services/team-service';
 import { CouponFields } from '../components/CouponFields';
 import { draftErrors, emptyDraft, newCouponOf } from '../lib/coupons';
 
@@ -22,7 +23,7 @@ const errorText = (err: unknown) =>
   err instanceof ApiError && err.status > 0 && err.kind !== 'server' ? err.message : 'Could not reach Ruxstar. Check your connection and try again.';
 const retryable = (err: unknown) => err instanceof ApiError && (err.kind === 'network' || err.kind === 'timeout');
 
-function Form({ who, shops }: { who: 'ruxstar' | 'vendor'; shops?: { id: string; name: string }[] }) {
+function Form({ who, shops, placeId }: { who: 'ruxstar' | 'vendor' | 'team'; shops?: { id: string; name: string }[]; placeId?: string }) {
   const router = useRouter();
   const token = useAuthToken();
   const [draft, setDraft] = useState(() => ({ ...emptyDraft(), businessIds: shops?.length === 1 ? [shops[0]!.id] : [] }));
@@ -37,7 +38,11 @@ function Form({ who, shops }: { who: 'ruxstar' | 'vendor'; shops?: { id: string;
     setError(null);
     try {
       const body = newCouponOf(draft, who === 'vendor');
-      await (who === 'ruxstar' ? AdminService.createCoupon(token, body, key.current) : CouponService.create(token, body, key.current));
+      await (who === 'ruxstar'
+        ? AdminService.createCoupon(token, body, key.current)
+        : who === 'team'
+          ? TeamCouponService.create(token, placeId!, body, key.current)
+          : CouponService.create(token, body, key.current));
       Feedback.success();
       router.back();
     } catch (err) {
@@ -62,7 +67,9 @@ function Form({ who, shops }: { who: 'ruxstar' | 'vendor'; shops?: { id: string;
       <Text style={styles.muted}>
         {who === 'ruxstar'
           ? 'Ruxstar pays for the discount, at every print shop. Shops still get their full share.'
-          : 'You pay for the discount: it comes out of your share, and Ruxstar’s commission is on the price after it.'}
+          : who === 'team'
+            ? 'It works at this shop only. The discount comes out of the shop’s share, and Ruxstar’s commission is on the price after it.'
+            : 'You pay for the discount: it comes out of your share, and Ruxstar’s commission is on the price after it.'}
       </Text>
       <CouponFields draft={draft} onChange={setDraft} errors={errors} creating canMoveStart shops={shops} />
     </ScreenContainer>
@@ -90,9 +97,9 @@ function VendorForm() {
   );
 }
 
-/** Making a coupon: Ruxstar's from the console, or a vendor's for their own print shops. */
-export function NewCouponScreen({ who }: { who: 'ruxstar' | 'vendor' }) {
-  return who === 'vendor' ? <VendorForm /> : <Form who="ruxstar" />;
+/** Making a coupon: Ruxstar's from the console, a vendor's for their own print shops, or one shop's from Work (`placeId`). */
+export function NewCouponScreen({ who, placeId }: { who: 'ruxstar' | 'vendor' | 'team'; placeId?: string }) {
+  return who === 'vendor' ? <VendorForm /> : who === 'team' ? <Form who="team" placeId={placeId} /> : <Form who="ruxstar" />;
 }
 
 const styles = StyleSheet.create({

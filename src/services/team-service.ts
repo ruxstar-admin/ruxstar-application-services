@@ -1,4 +1,6 @@
-import { apiDelete, apiGet, apiPatch, apiPost, newIdempotencyKey } from '@/lib/api-client';
+import { apiDelete, apiGet, apiGetPage, apiPatch, apiPost, apiPostBytes, newIdempotencyKey } from '@/lib/api-client';
+import type { Business, BusinessUpdate, PodSetupUpdate } from '@/types/business';
+import type { CouponPatch, ManagedCoupon, NewCoupon } from '@/types/coupon';
 import type { Team, TeamMember, TeamPermission, Work, WorkPlace } from '@/types/team';
 
 type Done = { done: true };
@@ -22,4 +24,28 @@ export const WorkService = {
   accept: (token: string, id: string) => apiPost<WorkPlace>(`${work(id)}/accept`, undefined, token),
   decline: (token: string, id: string) => apiPost<Done>(`${work(id)}/decline`, undefined, token),
   leave: (token: string, id: string) => apiPost<Done>(`${work(id)}/leave`, undefined, token),
+};
+
+/**
+ * The shop someone works at (`/v1/employment/:id/shop`), by their place id, with the same calls as `BusinessService`.
+ * Each needs its permission; the GSTIN stays with the owner.
+ */
+export const TeamShopService = {
+  get: (token: string, placeId: string) => apiGet<Business>(`${work(placeId)}/shop`, token),
+  update: (token: string, placeId: string, changes: BusinessUpdate) => apiPatch<Business>(`${work(placeId)}/shop`, { ...changes }, token),
+  updatePod: (token: string, placeId: string, changes: PodSetupUpdate) => apiPatch<Business>(`${work(placeId)}/shop/pod`, { ...changes }, token),
+  addPhoto: (token: string, placeId: string, jpeg: Uint8Array<ArrayBuffer>) =>
+    apiPostBytes<Business>(`${work(placeId)}/shop/photos`, { data: jpeg, type: 'image/jpeg' }, token),
+  removePhoto: (token: string, placeId: string, photoId: string) =>
+    apiDelete<Business>(`${work(placeId)}/shop/photos/${encodeURIComponent(photoId)}`, token),
+  setOpen: (token: string, placeId: string, open: boolean) => apiPost<Business>(`${work(placeId)}/shop/${open ? 'open' : 'close'}`, undefined, token),
+};
+
+/** The shop's coupons for someone on its team. New ones work at this shop alone; ones for several shops stay with the owner. */
+export const TeamCouponService = {
+  list: (token: string, placeId: string, cursor?: string) => apiGetPage<ManagedCoupon>(`${work(placeId)}/coupons`, token, { cursor }),
+  create: (token: string, placeId: string, body: NewCoupon, idempotencyKey = newIdempotencyKey()) =>
+    apiPost<ManagedCoupon>(`${work(placeId)}/coupons`, { ...body }, token, { idempotencyKey }),
+  update: (token: string, placeId: string, id: string, patch: CouponPatch) =>
+    apiPatch<ManagedCoupon>(`${work(placeId)}/coupons/${encodeURIComponent(id)}`, { ...patch }, token),
 };
