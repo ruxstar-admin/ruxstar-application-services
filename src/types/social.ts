@@ -109,4 +109,8 @@ export interface AppNotification {
   profileId?: string;
   /** A withdrawal arrived or failed: tapping opens Payments in the vendor portal. */
   payments?: boolean;
+  /** A team invite, or news about a team you're on: tapping opens it in Work. */
+  workId?: string;
+  /** Someone joined or left your team: tapping opens that business's team. */
+  teamBusinessId?: string;
 }

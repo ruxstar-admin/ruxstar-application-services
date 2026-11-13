@@ -49,6 +49,7 @@ export function SettingsScreen() {
   return (
     <ScreenContainer title="Settings">
       <ListRow icon="receipt-outline" title="Orders & bookings" subtitle="Prints, tickets, classes and stays" onPress={() => router.push('/(customer)/orders')} />
+      <ListRow icon="briefcase-outline" title="Work" subtitle="Team invites and businesses you help run" onPress={() => router.push('/(customer)/work')} />
       <ListRow icon="shield-outline" title="Verification" subtitle="Ruxstar Card, Verified tick and vendor" onPress={() => router.push('/(customer)/settings/verification')} />
       <ListRow icon="key-outline" title="Change password" subtitle="Signs out your other devices" onPress={() => router.push('/(customer)/settings/password')} />
       <ListRow icon="phone-portrait-outline" title="Sessions & devices" subtitle="Where you are logged in" onPress={() => router.push('/(customer)/settings/sessions')} />

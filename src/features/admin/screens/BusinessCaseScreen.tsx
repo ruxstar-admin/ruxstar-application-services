@@ -20,6 +20,8 @@ import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
 import type { BusinessCase } from '@/types/admin';
 import type { PodProduct, PodProductInfo, PodSetup } from '@/types/business';
+import type { TeamMember } from '@/types/team';
+import { MemberRow } from '@/features/team/components/MemberRow';
 import { useCan } from '../access';
 import { Card, Fact, Facts, Note, ReasonSheet, consoleStyles, errorText } from '../components/parts';
 import { shortDate } from '../labels';
@@ -88,6 +90,70 @@ function Actions({ c, onChanged }: { c: BusinessCase; onChanged: (next: Business
         loading={busy === 'hold'}
         onConfirm={(reason) => run('hold', reason)}
         onCancel={() => setHolding(false)}
+      />
+    </View>
+  );
+}
+
+/** The people the vendor has on the business's team. Anyone can be removed with a reason both they and the vendor see. */
+function BusinessTeam({ businessId }: { businessId: string }) {
+  const token = useAuthToken();
+  const canManage = useCan('businesses.manage');
+  const { data, loading, error, reload } = useAsyncResource(() => AdminService.businessTeam(token, businessId), businessId);
+  const [removing, setRemoving] = useState<TeamMember | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const key = useRef(newIdempotencyKey());
+
+  const remove = async (reason: string) => {
+    if (!removing) return;
+    setBusy(true);
+    setFailure(null);
+    try {
+      await AdminService.removeFromTeam(token, businessId, removing.id, reason, key.current);
+      key.current = newIdempotencyKey();
+      Feedback.success();
+      setDone(`${removing.person.name} was removed. They and the vendor have been told why.`);
+      setRemoving(null);
+      reload();
+    } catch (err) {
+      Feedback.error();
+      setFailure(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <View style={styles.team}>
+      <Text style={styles.sectionTitle}>Team</Text>
+      <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={2}>
+        {data ? (
+          <>
+            {done ? <Note>{done}</Note> : null}
+            {failure ? <ErrorBanner message={failure} /> : null}
+            {data.members.length ? (
+              <Card>
+                {data.members.map((m) => (
+                  <MemberRow key={m.id} member={m} catalog={data.permissions} onPress={canManage ? () => setRemoving(m) : undefined} />
+                ))}
+              </Card>
+            ) : (
+              <Text style={consoleStyles.muted}>No one on the team.</Text>
+            )}
+          </>
+        ) : null}
+      </AsyncBoundary>
+      <ReasonSheet
+        visible={!!removing}
+        title={removing ? `Remove ${removing.person.name}?` : 'Remove from the team'}
+        prompt="Their access ends at once. They and the vendor will see this reason."
+        placeholder="For example: reported for taking orders outside Ruxstar."
+        confirmLabel="Remove"
+        loading={busy}
+        onConfirm={remove}
+        onCancel={() => setRemoving(null)}
       />
     </View>
   );
@@ -168,6 +234,8 @@ export function BusinessCaseScreen({ id }: { id: string }) {
               </Facts>
             </Card>
 
+            {data.business.module === 'pod' ? <BusinessTeam businessId={data.business.id} /> : null}
+
             <Actions
               c={data}
               onChanged={(next, message) => {
@@ -197,4 +265,6 @@ const styles = StyleSheet.create({
   photo: { width: 140, height: 140, borderRadius: Radius.md, backgroundColor: Brand.surfaceAlt },
   actions: { gap: Spacing.two, marginTop: Spacing.two },
   links: { gap: Spacing.three, alignItems: 'flex-start', marginTop: Spacing.two },
+  team: { gap: Spacing.two, marginTop: Spacing.two },
+  sectionTitle: { ...Typography.bodyStrong, color: Brand.text },
 });

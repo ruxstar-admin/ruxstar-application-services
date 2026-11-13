@@ -26,6 +26,7 @@ import type {
 } from '@/types/admin';
 import type { CouponFunder, CouponPatch, ManagedCoupon, NewCoupon } from '@/types/coupon';
 import type { StaffOrder } from '@/types/order';
+import type { Team } from '@/types/team';
 
 export type SettleOutcome = 'refund_full' | 'refund_partial' | 'dismiss';
 
@@ -104,6 +105,10 @@ export const AdminService = {
   holdBusiness: (token: string, id: string, reason: string, key: string) =>
     apiPost<BusinessCase>(`/v1/ruxstar/businesses/${id}/suspend`, { reason }, token, keyed(key)),
   restoreBusiness: (token: string, id: string, key: string) => apiPost<BusinessCase>(`/v1/ruxstar/businesses/${id}/restore`, undefined, token, keyed(key)),
+  businessTeam: (token: string, id: string) => apiGet<Team>(`/v1/ruxstar/businesses/${id}/team`, token),
+  /** The person and the owner both see the reason. */
+  removeFromTeam: (token: string, id: string, memberId: string, reason: string, key: string) =>
+    apiPost<{ done: true }>(`/v1/ruxstar/businesses/${id}/team/${memberId}/remove`, { reason }, token, keyed(key)),
 
   audit: (token: string, filter: AuditFilter, cursor?: string) => apiGetPage<AuditEntry>('/v1/ruxstar/audit', token, { ...filter, cursor }),
 };

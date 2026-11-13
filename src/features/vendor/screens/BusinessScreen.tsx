@@ -47,11 +47,27 @@ function Detail({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-function SetupStep({ title, subtitle, done, disabled, onPress }: { title: string; subtitle: string; done: boolean; disabled?: boolean; onPress: () => void }) {
+function SetupStep({
+  title,
+  subtitle,
+  done,
+  icon,
+  disabled,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  /** A setup step; rows without it show `icon`. */
+  done?: boolean;
+  icon?: keyof typeof Ionicons.glyphMap;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const step = done !== undefined;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${done ? 'done' : 'to do'}`}
+      accessibilityLabel={step ? `${title}, ${done ? 'done' : 'to do'}` : title}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={() => {
@@ -60,7 +76,11 @@ function SetupStep({ title, subtitle, done, disabled, onPress }: { title: string
       }}
       style={({ pressed }) => [styles.step, disabled && styles.stepDisabled, pressed && styles.pressed]}
     >
-      <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={done ? Brand.success : Brand.textMuted} />
+      <Ionicons
+        name={step ? (done ? 'checkmark-circle' : 'ellipse-outline') : (icon ?? 'ellipse-outline')}
+        size={22}
+        color={done ? Brand.success : step ? Brand.textMuted : Brand.text}
+      />
       <View style={styles.stepText}>
         <Text style={styles.stepTitle}>{title}</Text>
         <Text style={styles.muted}>{subtitle}</Text>
@@ -223,6 +243,12 @@ export function BusinessScreen() {
                   done={data.pod.products.length > 0 && !data.missing.includes('pricing')}
                   disabled={!data.pod.products.length}
                   onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/prices', params: { id } })}
+                />
+                <SetupStep
+                  title="Team"
+                  subtitle="Invite people to help with orders, the shop and posts"
+                  icon="people-outline"
+                  onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/team', params: { id } })}
                 />
               </View>
             ) : null}
