@@ -5,6 +5,7 @@ import { ListRow } from '@/components/ui/ListRow';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { ToggleRow } from '@/components/ui/ToggleRow';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { usePushPermission } from '@/hooks/use-push-permission';
 import { Feedback } from '@/lib/haptics';
 import { createLogger } from '@/lib/logger';
 import { AuthService } from '@/services/auth-service';
@@ -18,6 +19,7 @@ export function SettingsScreen() {
   const token = useAuthToken();
   const refreshToken = useAuthStore((s) => s.refreshToken);
   const clearAuth = useAuthStore((s) => s.clearAuth);
+  const { allowed: pushAllowed, change: changePush } = usePushPermission();
   const [confirming, setConfirming] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   // Null until loaded, and on an API too old to have the setting, so the row stays hidden.
@@ -53,7 +55,15 @@ export function SettingsScreen() {
       <ListRow icon="shield-outline" title="Verification" subtitle="Ruxstar Card, Verified tick and vendor" onPress={() => router.push('/(customer)/settings/verification')} />
       <ListRow icon="key-outline" title="Change password" subtitle="Signs out your other devices" onPress={() => router.push('/(customer)/settings/password')} />
       <ListRow icon="phone-portrait-outline" title="Sessions & devices" subtitle="Where you are logged in" onPress={() => router.push('/(customer)/settings/sessions')} />
-      <ListRow icon="notifications-outline" title="Notification preferences" subtitle="Choose what reaches your phone" soon />
+      {pushAllowed !== null ? (
+        <ToggleRow
+          icon="notifications-outline"
+          title="Push notifications"
+          subtitle={pushAllowed ? 'On. Turn off in your phone settings' : 'Off. Tap to allow likes, comments and messages'}
+          value={pushAllowed}
+          onValueChange={() => void changePush()}
+        />
+      ) : null}
       {showActivity !== null ? (
         <ToggleRow
           icon="radio-button-on-outline"
