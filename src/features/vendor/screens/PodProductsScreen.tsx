@@ -23,7 +23,14 @@ import type { Business, BusinessCatalog, PodProduct } from '@/types/business';
 const OTHER_CITY = 'Other city';
 const NOTES_MAX = 1000;
 
-function Form({ id, team, business, catalog, onSaved }: { id: string; team: boolean; business: Business; catalog: BusinessCatalog; onSaved: () => void }) {
+/** The server's reasons, such as "Set a price for every product you offer", rather than its one-line summary. */
+function failureOf(err: unknown) {
+  if (!(err instanceof ApiError) || err.kind === 'network') return 'Could not save. Check your connection and try again.';
+  const reasons = err.details.map((d) => d.message).filter(Boolean);
+  return err.code === 'BUSINESS_INCOMPLETE' && reasons.length ? `${reasons.join('. ')}.` : err.message;
+}
+
+function Form({ id, team, business, catalog, onSaved }: { id: string; team: boolean; business: Business; catalog: BusinessCatalog; onSaved: (saved: Business) => void }) {
   const token = useAuthToken();
   const pod = business.pod!;
   const home = business.location?.city.toLowerCase();
@@ -62,7 +69,7 @@ function Form({ id, team, business, catalog, onSaved }: { id: string; team: bool
     if (!serveAll && !cities.length) return (setProblem('Add a city you deliver to, or turn on every city.'), Feedback.error());
     setSaving(true);
     try {
-      await shopDesk(team).service.updatePod(token, id, {
+      const saved = await shopDesk(team).service.updatePod(token, id, {
         products,
         serveAll,
         cities,
@@ -71,10 +78,10 @@ function Form({ id, team, business, catalog, onSaved }: { id: string; team: bool
         notes: notes.trim() || null,
       });
       Feedback.success();
-      onSaved();
+      onSaved(saved);
     } catch (err) {
       Feedback.error();
-      setFailure(err instanceof ApiError && err.kind !== 'network' ? err.message : 'Could not save. Check your connection and try again.');
+      setFailure(failureOf(err));
     } finally {
       setSaving(false);
     }
@@ -204,6 +211,14 @@ export function PodProductsScreen({ team = false }: { team?: boolean }) {
   const { id } = useLocalSearchParams<{ id: string }>();
   const business = useAsyncResource(() => shopDesk(team).service.get(token, id), id);
   const catalog = useBusinessCatalog();
+  const desk = shopDesk(team);
+  // A product just switched on has no price yet, and customers can't see it until it has one.
+  const saved = (next: Business) => {
+    const before = business.data?.pod?.products ?? [];
+    const added = next.pod?.unpriced.some((p) => !before.includes(p));
+    if (added) router.replace({ pathname: desk.routes.prices, params: { id } });
+    else router.back();
+  };
   const retry = () => {
     if (business.error) business.reload();
     if (catalog.error) catalog.reload();
@@ -218,7 +233,7 @@ export function PodProductsScreen({ team = false }: { team?: boolean }) {
         onRetry={retry}
         skeletonRows={8}
       >
-        {business.data?.pod && catalog.data ? <Form id={id} team={team} business={business.data} catalog={catalog.data} onSaved={() => router.back()} /> : null}
+        {business.data?.pod && catalog.data ? <Form id={id} team={team} business={business.data} catalog={catalog.data} onSaved={saved} /> : null}
       </AsyncBoundary>
     </ScreenContainer>
   );

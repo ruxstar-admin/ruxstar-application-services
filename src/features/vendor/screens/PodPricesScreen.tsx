@@ -41,7 +41,9 @@ export function PodPricesScreen({ team = false }: { team?: boolean }) {
           pod.products.length ? (
             <>
               <Text style={styles.intro}>
-                {pod.unpriced.length ? `${pod.unpriced.length} of ${pod.products.length} still need a price.` : 'Every product has a price.'}
+                {pod.unpriced.length
+                  ? `${pod.unpriced.length} of ${pod.products.length} still need a price. Customers see a product once it has one.`
+                  : 'Every product has a price.'}
               </Text>
               <View style={styles.card}>
                 {catalog.data.podProducts
