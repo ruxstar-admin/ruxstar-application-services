@@ -9,7 +9,7 @@ import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { WorkService } from '@/services/team-service';
 import type { PermissionInfo, WorkInvite } from '@/types/team';
-import { inviteEnds, permissionsLine } from '../lib/team';
+import { inviteEnds, payLine, permissionsLine } from '../lib/team';
 
 const errorText = (err: unknown) =>
   err instanceof ApiError && err.status > 0 && err.kind !== 'server' ? err.message : 'Could not reach Ruxstar. Check your connection and try again.';
@@ -46,6 +46,17 @@ export function InviteCard({ invite, catalog, onAnswered }: { invite: WorkInvite
           </Text>
         </View>
       </View>
+      <View style={styles.pay}>
+        <Text style={styles.muted}>Pay</Text>
+        {invite.pay ? (
+          <>
+            <Text style={styles.amount}>{payLine(invite.pay)}</Text>
+            {invite.pay.note ? <Text style={styles.body}>{invite.pay.note}</Text> : null}
+          </>
+        ) : (
+          <Text style={styles.body}>Not mentioned. Ask {invite.owner.name} before you accept.</Text>
+        )}
+      </View>
       <Text style={styles.body}>You&apos;d be able to: {permissionsLine(catalog, invite.permissions)}</Text>
       <Text style={styles.muted}>{inviteEnds(invite.expiresAt)}</Text>
       {error ? <ErrorBanner message={error} /> : null}
@@ -67,6 +78,8 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: 2 },
   name: { ...Typography.bodyStrong, color: Brand.text },
   body: { ...Typography.body, color: Brand.text },
+  pay: { gap: 2, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Brand.surfaceAlt },
+  amount: { ...Typography.title, fontSize: 20, color: Brand.text },
   muted: { ...Typography.caption, color: Brand.textMuted },
   actions: { flexDirection: 'row', gap: Spacing.two, marginTop: Spacing.one },
   flex: { flex: 1 },

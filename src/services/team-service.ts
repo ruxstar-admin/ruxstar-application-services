@@ -1,7 +1,7 @@
 import { apiDelete, apiGet, apiGetPage, apiPatch, apiPost, apiPostBytes, newIdempotencyKey } from '@/lib/api-client';
 import type { Business, BusinessUpdate, PodSetupUpdate } from '@/types/business';
 import type { CouponPatch, ManagedCoupon, NewCoupon } from '@/types/coupon';
-import type { ActivityEntry, Team, TeamMember, TeamPermission, Work, WorkPlace } from '@/types/team';
+import type { ActivityEntry, Pay, Team, TeamMember, TeamPermission, Work, WorkPlace } from '@/types/team';
 
 type Done = { done: true };
 const team = (businessId: string) => `/v1/vendor/businesses/${encodeURIComponent(businessId)}/team`;
@@ -10,10 +10,11 @@ const work = (id: string) => `/v1/employment/${encodeURIComponent(id)}`;
 /** An owner's team at one business (`/v1/vendor/businesses/:id/team`). Only the owner manages it. */
 export const TeamService = {
   get: (token: string, businessId: string) => apiGet<Team>(team(businessId), token),
-  invite: (token: string, businessId: string, username: string, permissions: TeamPermission[], idempotencyKey = newIdempotencyKey()) =>
-    apiPost<TeamMember>(team(businessId), { username, permissions }, token, { idempotencyKey }),
-  setPermissions: (token: string, businessId: string, memberId: string, permissions: TeamPermission[]) =>
-    apiPatch<TeamMember>(`${team(businessId)}/${encodeURIComponent(memberId)}`, { permissions }, token),
+  invite: (token: string, businessId: string, username: string, permissions: TeamPermission[], pay: Pay | null, idempotencyKey = newIdempotencyKey()) =>
+    apiPost<TeamMember>(team(businessId), { username, permissions, pay }, token, { idempotencyKey }),
+  /** Pay changes only while they're invited. */
+  update: (token: string, businessId: string, memberId: string, changes: { permissions?: TeamPermission[]; pay?: Pay | null }) =>
+    apiPatch<TeamMember>(`${team(businessId)}/${encodeURIComponent(memberId)}`, { ...changes }, token),
   /** Removes a member or cancels an invite. */
   remove: (token: string, businessId: string, memberId: string) => apiDelete<Done>(`${team(businessId)}/${encodeURIComponent(memberId)}`, token),
   /** What happened at the business, newest first; `by` is one person's (a user id). */

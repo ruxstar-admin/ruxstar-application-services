@@ -22,6 +22,16 @@ export interface PermissionInfo {
   needs: TeamPermission | null;
 }
 
+/** `order` is per order or delivery. */
+export type PayPer = 'month' | 'week' | 'day' | 'hour' | 'order';
+
+/** Pay offered with an invite, in paise. Ruxstar only shows it; the shop pays its team outside Ruxstar. */
+export interface Pay {
+  amount: number;
+  per: PayPer;
+  note: string | null;
+}
+
 /** `waiting`: joined, but nothing works until their identity verification is approved. */
 export type MemberStatus = 'invited' | 'waiting' | 'active';
 
@@ -30,6 +40,8 @@ export interface TeamMember {
   person: { id: string; name: string; username: string | null; avatar: string | null };
   status: MemberStatus;
   permissions: TeamPermission[];
+  /** Changes only while they're invited. */
+  pay: Pay | null;
   invitedAt: string;
   /** While invited. */
   expiresAt: string | null;
@@ -59,6 +71,7 @@ export interface WorkInvite {
   business: WorkBusiness;
   owner: { name: string };
   permissions: TeamPermission[];
+  pay: Pay | null;
   invitedAt: string;
   expiresAt: string;
 }
@@ -71,6 +84,8 @@ export interface WorkPlace {
   business: WorkBusiness;
   owner: { name: string };
   permissions: TeamPermission[];
+  /** The pay they accepted. */
+  pay: Pay | null;
   joinedAt: string;
   access: WorkAccess;
 }

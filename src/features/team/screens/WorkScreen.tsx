@@ -13,7 +13,7 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { WorkService } from '@/services/team-service';
 import { InviteCard } from '../components/InviteCard';
-import { ACCESS, permissionsLine } from '../lib/team';
+import { ACCESS, payLine, permissionsLine } from '../lib/team';
 
 /** The Work area: team invites, and the businesses you help run. */
 export function WorkScreen() {
@@ -32,7 +32,10 @@ export function WorkScreen() {
               {note ? <Text style={styles.note}>{note}</Text> : null}
               {data.invites.length ? (
                 <>
-                  <Text style={styles.section}>Invites</Text>
+                  <Text style={styles.section}>{data.invites.length === 1 ? 'Job offer' : `${data.invites.length} job offers`}</Text>
+                  {data.invites.length > 1 ? (
+                    <Text style={styles.hint}>Compare the pay and what you&apos;d do at each. You can accept more than one.</Text>
+                  ) : null}
                   {data.invites.map((invite) => (
                     <InviteCard
                       key={invite.id}
@@ -57,7 +60,7 @@ export function WorkScreen() {
                           key={place.id}
                           leading={<Avatar name={place.business.name} uri={place.business.photo ?? undefined} size={40} />}
                           title={place.business.name}
-                          subtitle={permissionsLine(data.permissions, place.permissions)}
+                          subtitle={[payLine(place.pay), permissionsLine(data.permissions, place.permissions)].filter(Boolean).join(' · ')}
                           right={<Badge label={access.label} tone={access.tone} />}
                           onPress={() => router.push({ pathname: '/(customer)/work/[id]', params: { id: place.id } })}
                         />
@@ -79,5 +82,6 @@ export function WorkScreen() {
 const styles = StyleSheet.create({
   section: { ...Typography.bodyStrong, color: Brand.text, marginTop: Spacing.three },
   note: { ...Typography.caption, fontSize: 14, color: Brand.success },
+  hint: { ...Typography.caption, color: Brand.textMuted },
   card: { borderRadius: Radius.lg, borderWidth: 1, borderColor: Brand.border, backgroundColor: Brand.surface, paddingHorizontal: Spacing.three },
 });

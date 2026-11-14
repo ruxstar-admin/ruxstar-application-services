@@ -20,8 +20,9 @@ import { TeamService } from '@/services/team-service';
 import type { Contact } from '@/types/chat';
 import type { Team, TeamMember, TeamPermission } from '@/types/team';
 import { PermissionPicker } from '../components/PermissionPicker';
+import { PayFields, payDraft, payDraftOk, payOfDraft, type PayDraft } from '../components/PayFields';
 import { PersonSearch } from '../components/PersonSearch';
-import { MEMBER_STATUS, inviteEnds } from '../lib/team';
+import { MEMBER_STATUS, inviteEnds, payLine } from '../lib/team';
 
 const errorText = (err: unknown) =>
   err instanceof ApiError && err.status > 0 && err.kind !== 'server' ? err.message : 'Could not reach Ruxstar. Check your connection and try again.';
@@ -32,25 +33,27 @@ function Invite({ businessId, team }: { businessId: string; team: Team }) {
   const token = useAuthToken();
   const [person, setPerson] = useState<Contact | null>(null);
   const [permissions, setPermissions] = useState<TeamPermission[]>([]);
+  const [pay, setPay] = useState<PayDraft>(() => payDraft(null));
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<{ field?: string; banner?: string } | null>(null);
+  const [error, setError] = useState<{ field?: string; pay?: string; banner?: string } | null>(null);
   const key = useRef(newIdempotencyKey());
   const taken = useMemo(() => new Set(team.members.map((m) => m.person.id)), [team.members]);
-  const ready = !!person && permissions.length > 0;
+  const ready = !!person && permissions.length > 0 && payDraftOk(pay);
 
   const send = async () => {
     if (!person) return;
     setBusy(true);
     setError(null);
     try {
-      await TeamService.invite(token, businessId, person.username, permissions, key.current);
+      await TeamService.invite(token, businessId, person.username, permissions, payOfDraft(pay), key.current);
       Feedback.success();
       router.back();
     } catch (err) {
       Feedback.error();
       if (!retryable(err)) key.current = newIdempotencyKey();
       const onField = err instanceof ApiError && err.detailFor('username');
-      setError(onField ? { field: err.message } : { banner: errorText(err) });
+      const onPay = err instanceof ApiError && err.detailFor('pay');
+      setError(onField ? { field: err.message } : onPay ? { pay: err.message } : { banner: errorText(err) });
     } finally {
       setBusy(false);
     }
@@ -77,6 +80,7 @@ function Invite({ businessId, team }: { businessId: string; team: Team }) {
       />
       <Text style={styles.section}>What they can do</Text>
       <PermissionPicker catalog={team.permissions} value={permissions} onChange={setPermissions} />
+      <PayFields value={pay} onChange={setPay} error={error?.pay} />
     </ScreenContainer>
   );
 }
@@ -85,18 +89,25 @@ function Member({ businessId, team, member }: { businessId: string; team: Team; 
   const router = useRouter();
   const token = useAuthToken();
   const [permissions, setPermissions] = useState(member.permissions);
+  const [pay, setPay] = useState<PayDraft>(() => payDraft(member.pay));
   const [busy, setBusy] = useState<'save' | 'remove' | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const invited = member.status === 'invited';
-  const changed = permissions.join() !== member.permissions.join();
+  const permissionsChanged = permissions.join() !== member.permissions.join();
+  const payChanged = invited && JSON.stringify(payOfDraft(pay)) !== JSON.stringify(member.pay);
+  const changed = permissionsChanged || payChanged;
   const status = MEMBER_STATUS[member.status];
+  const agreed = payLine(member.pay);
 
   const save = async () => {
     setBusy('save');
     setError(null);
     try {
-      await TeamService.setPermissions(token, businessId, member.id, permissions);
+      await TeamService.update(token, businessId, member.id, {
+        ...(permissionsChanged ? { permissions } : {}),
+        ...(payChanged ? { pay: payOfDraft(pay) } : {}),
+      });
       Feedback.success();
       router.back();
     } catch (err) {
@@ -130,7 +141,12 @@ function Member({ businessId, team, member }: { businessId: string; team: Team; 
       footer={
         <>
           {error ? <ErrorBanner message={error} /> : null}
-          <PrimaryButton label="Save changes" onPress={save} loading={busy === 'save'} disabled={!changed || permissions.length === 0 || !!busy} />
+          <PrimaryButton
+            label="Save changes"
+            onPress={save}
+            loading={busy === 'save'}
+            disabled={!changed || permissions.length === 0 || !payDraftOk(pay) || !!busy}
+          />
         </>
       }
     >
@@ -150,6 +166,15 @@ function Member({ businessId, team, member }: { businessId: string; team: Team; 
       <Text style={styles.section}>What they can do</Text>
       <PermissionPicker catalog={team.permissions} value={permissions} onChange={setPermissions} />
       {permissions.length === 0 ? <Text style={styles.warn}>Pick at least one, or remove them from the team.</Text> : null}
+      {invited ? (
+        <PayFields value={pay} onChange={setPay} />
+      ) : (
+        <>
+          <Text style={styles.section}>Pay</Text>
+          <Text style={styles.muted}>{agreed ? `${agreed}${member.pay?.note ? ` · ${member.pay.note}` : ''}` : 'None was set with the invite.'}</Text>
+          <Text style={styles.hint}>This is what they accepted, so it can&apos;t change here.</Text>
+        </>
+      )}
       <View style={styles.remove}>
         {invited ? null : (
           <TextLink
@@ -199,6 +224,7 @@ const styles = StyleSheet.create({
   name: { ...Typography.title, color: Brand.text },
   muted: { ...Typography.caption, fontSize: 14, color: Brand.textMuted },
   warn: { ...Typography.caption, color: Brand.warning },
+  hint: { ...Typography.caption, color: Brand.textFaint },
   section: { ...Typography.bodyStrong, color: Brand.text, marginTop: Spacing.three },
   remove: { alignItems: 'flex-start', gap: Spacing.three, marginTop: Spacing.three },
 });

@@ -1,6 +1,23 @@
-import type { MemberStatus, PermissionInfo, TeamPermission, WorkAccess } from '@/types/team';
+import { money } from '@/features/vendor/lib/pod';
+import type { MemberStatus, Pay, PayPer, PermissionInfo, TeamPermission, WorkAccess } from '@/types/team';
 
 const DAY_MS = 24 * 60 * 60_000;
+
+export const PAY_NOTE_MAX = 120;
+
+export const PAY_PER: { key: PayPer; label: string; suffix: string }[] = [
+  { key: 'month', label: 'Month', suffix: 'a month' },
+  { key: 'week', label: 'Week', suffix: 'a week' },
+  { key: 'day', label: 'Day', suffix: 'a day' },
+  { key: 'hour', label: 'Hour', suffix: 'an hour' },
+  { key: 'order', label: 'Order', suffix: 'per order or delivery' },
+];
+
+/** "₹15,000 a month", or null when there's no pay on the offer. */
+export function payLine(pay: Pay | null): string | null {
+  if (!pay) return null;
+  return `${money(pay.amount)} ${PAY_PER.find((p) => p.key === pay.per)?.suffix ?? ''}`.trim();
+}
 
 /**
  * Switches one permission. Turning one on brings what it needs; turning one off drops what needs it, so

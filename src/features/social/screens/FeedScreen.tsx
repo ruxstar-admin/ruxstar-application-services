@@ -12,6 +12,7 @@ import { usePostActions } from '@/features/social/hooks/use-post-actions';
 import { usePostMenu } from '@/features/social/hooks/use-post-menu';
 import { useUnreadCount } from '@/features/social/hooks/use-unread-count';
 import { useFeedStore } from '@/features/social/stores/feed-store';
+import { useOfferCount } from '@/features/team/hooks/use-offer-count';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { Feedback } from '@/lib/haptics';
@@ -46,6 +47,7 @@ export function FeedScreen() {
   const feed = usePaginated((cursor) => SocialService.feed(token, tab, cursor));
   const { items, setItems } = feed;
   const unread = useUnreadCount();
+  const offers = useOfferCount();
   const dirty = useFeedStore((s) => s.dirty);
   const clearDirty = useFeedStore((s) => s.clearDirty);
   const listRef = useRef<FlatList<Post>>(null);
@@ -84,22 +86,40 @@ export function FeedScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.topBar}>
         <Text style={styles.wordmark}>Ruxstar</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
-          hitSlop={12}
-          onPress={() => {
-            Feedback.tap();
-            router.push('/(customer)/notifications');
-          }}
-        >
-          <Ionicons name="notifications-outline" size={24} color={Brand.text} />
-          {unread > 0 ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
-            </View>
-          ) : null}
-        </Pressable>
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={offers > 0 ? `Work, ${offers} job offer${offers === 1 ? '' : 's'}` : 'Work'}
+            hitSlop={12}
+            onPress={() => {
+              Feedback.tap();
+              router.push('/(customer)/work');
+            }}
+          >
+            <Ionicons name="briefcase-outline" size={24} color={Brand.text} />
+            {offers > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{offers > 9 ? '9+' : offers}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+            hitSlop={12}
+            onPress={() => {
+              Feedback.tap();
+              router.push('/(customer)/notifications');
+            }}
+          >
+            <Ionicons name="notifications-outline" size={24} color={Brand.text} />
+            {unread > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
       </View>
       <View style={styles.tabs}>
         <SegmentedTabs
@@ -163,6 +183,7 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.three, paddingVertical: Spacing.three },
   wordmark: { ...Typography.title, color: Brand.text },
   tabs: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.two },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.four },
   badge: {
     position: 'absolute',
     top: -6,

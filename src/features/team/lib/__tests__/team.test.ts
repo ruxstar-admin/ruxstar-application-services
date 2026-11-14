@@ -1,5 +1,5 @@
 import type { PermissionInfo } from '@/types/team';
-import { cleanUsername, inviteEnds, permissionsLine, togglePermission } from '../team';
+import { cleanUsername, inviteEnds, payLine, permissionsLine, togglePermission } from '../team';
 
 const catalog: PermissionInfo[] = [
   { key: 'orders.view', label: 'See orders', hint: null, needs: null },
@@ -7,6 +7,15 @@ const catalog: PermissionInfo[] = [
   { key: 'earnings.view', label: "See the shop's earnings", hint: null, needs: 'orders.view' },
   { key: 'shop.open', label: 'Open and close the shop', hint: null, needs: null },
 ];
+
+describe('payLine', () => {
+  it('reads the amount and how often, or nothing without pay', () => {
+    expect(payLine({ amount: 1_500_000, per: 'month', note: null })).toBe('₹15,000 a month');
+    expect(payLine({ amount: 5_050, per: 'hour', note: null })).toBe('₹50.50 an hour');
+    expect(payLine({ amount: 4_000, per: 'order', note: 'Petrol extra' })).toBe('₹40 per order or delivery');
+    expect(payLine(null)).toBeNull();
+  });
+});
 
 describe('togglePermission', () => {
   it('brings what a permission needs, in catalog order', () => {
