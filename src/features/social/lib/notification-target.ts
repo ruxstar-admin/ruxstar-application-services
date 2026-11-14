@@ -16,6 +16,7 @@ type Target = Pick<
   | 'workOrderId'
   | 'reviewsBusinessId'
   | 'workReviewsId'
+  | 'supportTicketId'
 >;
 
 /** The screen a notification opens, from the notifications screen or a phone notification; undefined when it opens none. */
@@ -33,5 +34,6 @@ export function notificationHref(n: Target): Href | undefined {
   if (n.workOrderId) return { pathname: '/(customer)/work/order/[id]', params: { id: n.workOrderId } };
   if (n.reviewsBusinessId) return { pathname: '/(vendor)/businesses/[id]/reviews', params: { id: n.reviewsBusinessId } };
   if (n.workReviewsId) return { pathname: '/(customer)/work/reviews/[id]', params: { id: n.workReviewsId } };
+  if (n.supportTicketId) return { pathname: '/(customer)/support/[id]', params: { id: n.supportTicketId } };
   return undefined;
 }

@@ -69,6 +69,21 @@ export function DashboardScreen() {
                   href="/(admin)/(tabs)/kyc"
                 />
               ) : null}
+              {data.support ? (
+                <Tile
+                  icon="help-buoy-outline"
+                  label="Help tickets"
+                  value={data.support.open}
+                  caption={
+                    data.support.open === 0
+                      ? 'Nothing waiting.'
+                      : [data.support.overdue > 0 ? `${data.support.overdue} past reply-by` : null, data.support.unassigned > 0 ? `${data.support.unassigned} with nobody on them` : null]
+                          .filter(Boolean)
+                          .join(', ') || 'Waiting for a reply from Ruxstar'
+                  }
+                  href="/(admin)/support"
+                />
+              ) : null}
               {data.businesses ? (
                 <Tile
                   icon="storefront-outline"

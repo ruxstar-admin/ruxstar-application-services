@@ -33,6 +33,9 @@ const TYPE_ICONS: Partial<Record<string, keyof typeof Ionicons.glyphMap>> = {
   'business.restored': 'storefront-outline',
   'delivery.offer': 'bicycle-outline',
   'delivery.updated': 'bicycle-outline',
+  'support.replied': 'help-buoy-outline',
+  'support.resolved': 'checkmark-circle-outline',
+  'kyc.reopened': 'shield-outline',
 };
 
 export const notificationIcon = (n: Pick<AppNotification, 'kind' | 'type'>) => (n.type && TYPE_ICONS[n.type]) || ICONS[n.kind];

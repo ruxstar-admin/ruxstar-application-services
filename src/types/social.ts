@@ -124,4 +124,6 @@ export interface AppNotification {
   reviewsBusinessId?: string;
   /** A new review at a shop you work at: tapping opens its reviews in Work (the id is your place there). */
   workReviewsId?: string;
+  /** Ruxstar replied to or resolved your help ticket: tapping opens it. */
+  supportTicketId?: string;
 }

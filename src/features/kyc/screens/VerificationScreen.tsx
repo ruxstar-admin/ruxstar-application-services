@@ -16,6 +16,7 @@ import { ROLES } from '@/constants/roles';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { RuxstarCard } from '@/features/kyc/components/RuxstarCard';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
+import { contactSupport } from '@/features/support/lib/support';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
@@ -66,6 +67,7 @@ function Step({ n, title, status, active, children }: { n: number; title: string
 }
 
 function CaseNote({ c, what }: { c: BaseCase; what: string }) {
+  const router = useRouter();
   if (c.status === 'submitted') {
     return (
       <View style={styles.note}>
@@ -88,10 +90,16 @@ function CaseNote({ c, what }: { c: BaseCase; what: string }) {
   }
   if (c.status === 'locked') {
     return (
-      <View style={styles.note}>
-        <Ionicons name="alert-circle-outline" size={20} color={Brand.error} />
-        <Text style={styles.noteText}>Verification is on hold after several rejections. Contact Ruxstar support to continue.</Text>
-      </View>
+      <>
+        <View style={styles.note}>
+          <Ionicons name="alert-circle-outline" size={20} color={Brand.error} />
+          <Text style={styles.noteText}>Verification is on hold after several rejections. Message Ruxstar support to ask for a review.</Text>
+        </View>
+        <TextLink
+          label="Message support"
+          onPress={() => router.push(contactSupport('verification', { type: 'verification', id: 'base', label: 'Identity verification' }))}
+        />
+      </>
     );
   }
   return null;

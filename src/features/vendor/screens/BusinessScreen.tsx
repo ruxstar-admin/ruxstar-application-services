@@ -15,6 +15,7 @@ import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
 import { ratingLine } from '@/features/reviews/lib/review';
+import { contactSupport } from '@/features/support/lib/support';
 import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
 import { canOpen } from '@/features/vendor/hooks/use-vendor-businesses';
 import { BUSINESS_MODULES, MISSING_LABEL, listOf, statusOf } from '@/features/vendor/lib/business-modules';
@@ -217,13 +218,19 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
             </View>
 
             {data.suspension ? (
-              <View style={styles.note}>
-                <Ionicons name="alert-circle-outline" size={20} color={Brand.error} />
-                <Text style={styles.noteText}>
-                  <Text style={styles.strong}>On hold by Ruxstar: </Text>
-                  {data.suspension.reason} Customers can&apos;t see it and it can&apos;t be changed. Contact support to continue.
-                </Text>
-              </View>
+              <>
+                <View style={styles.note}>
+                  <Ionicons name="alert-circle-outline" size={20} color={Brand.error} />
+                  <Text style={styles.noteText}>
+                    <Text style={styles.strong}>On hold by Ruxstar: </Text>
+                    {data.suspension.reason} Customers can&apos;t see it and it can&apos;t be changed. Message support to ask for a review.
+                  </Text>
+                </View>
+                <TextLink
+                  label="Message support"
+                  onPress={() => router.push(team ? contactSupport('business') : contactSupport('business', { type: 'business', id: data.id, label: data.name }))}
+                />
+              </>
             ) : !data.moduleLive ? (
               <View style={styles.note}>
                 <Ionicons name="pause-circle-outline" size={20} color={Brand.warning} />

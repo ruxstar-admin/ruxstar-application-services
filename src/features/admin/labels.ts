@@ -39,6 +39,7 @@ export const KYC_LABEL: Record<string, string> = {
 export const ACTION_LABEL: Record<string, string> = {
   'kyc.approve': 'Approved verification',
   'kyc.reject': 'Sent verification back',
+  'kyc.reopen': 'Reopened verification',
   'report.keep': 'Kept a reported post',
   'post.remove': 'Removed a post',
   'user_report.dismiss': 'Dismissed reports about someone',
@@ -61,6 +62,10 @@ export const ACTION_LABEL: Record<string, string> = {
   'pod_order.problem': 'Reported a problem with a print order',
   'pod_order.refund': 'Refunded part of a print order',
   'pod_order.settle': 'Settled a print order problem',
+  'support.reply': 'Replied to a help ticket',
+  'support.note': 'Added a note to a help ticket',
+  'support.update': 'Changed a help ticket',
+  'support.settings': 'Changed help reply-by times',
 };
 
 export const BUSINESS_STATE_LABEL: Record<'draft' | 'live' | 'suspended', string> = {
@@ -75,6 +80,7 @@ export const AREA_LABEL: Record<string, string> = {
   social: 'Posts',
   ruxstar: 'Staff',
   vendor: 'Vendor',
+  support: 'Help desk',
   ...MODULE_LABEL,
 };
 
@@ -86,6 +92,7 @@ export const PERMISSION_AREA: Record<string, string> = {
   modules: 'Modules',
   businesses: 'Businesses',
   orders: 'Print orders',
+  support: 'Help tickets',
   audit: 'Audit log',
 };
 

@@ -79,6 +79,7 @@ export function SettingsScreen() {
       ) : null}
       <ListRow icon="ban-outline" title="Blocked accounts" subtitle="People you blocked" onPress={() => router.push('/(customer)/settings/blocked')} />
       <ListRow icon="shield-checkmark-outline" title="Account & data" subtitle="Delete your account" onPress={() => router.push('/(customer)/settings/account')} />
+      <ListRow icon="help-buoy-outline" title="Help & support" subtitle="Message the Ruxstar team" onPress={() => router.push('/(customer)/support')} />
       <ListRow icon="log-out-outline" title="Log out" destructive onPress={() => setConfirming(true)} />
 
       <ConfirmSheet

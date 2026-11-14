@@ -19,6 +19,8 @@ export type Permission =
   | 'payouts.manage'
   | 'coupons.view'
   | 'coupons.manage'
+  | 'support.view'
+  | 'support.manage'
   | 'audit.view';
 
 export interface Access {
@@ -42,6 +44,8 @@ export interface Overview {
   /** Order problems waiting for a decision. */
   orders: { problems: number } | null;
   staff: { active: number } | null;
+  /** Help tickets waiting for Ruxstar. Missing on an older API. */
+  support?: { open: number; overdue: number; unassigned: number } | null;
 }
 
 // Verification.

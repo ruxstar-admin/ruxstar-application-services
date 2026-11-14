@@ -140,6 +140,20 @@ Every team call checks the place, the permission, approved identity KYC and the 
 
 `rating { average, count }` is on `ShopCard`, `Shop` and `Business`: `average` is to one decimal and null until 3 live reviews. `overview.reports.reviews` counts reviews with open reports. Types: `src/types/review.ts`. Services: `src/services/review-service.ts`.
 
+## Help tickets (real API — `/v1`, decision 48)
+| Path | Request | Response | Notes |
+|---|---|---|---|
+| `GET /support/tickets` · `POST` same | `?cursor` · `{ category, subject (3 to 80), text (2000), context?{ type: order\|business\|verification\|post\|coupon, id } }` | `Page<Ticket>` · `TicketDetail` | `Idempotency-Key` on create. Up to 5 open at once. A context must be yours, except a post; verification ids are `base` or `delivery` |
+| `GET /support/tickets/{id}` · `POST .../messages` · `POST .../resolve` | – · `{ text }` · – | `TicketDetail` | Opening it marks Ruxstar's replies read. A reply reopens a resolved ticket for 7 days; `CONFLICT` once `closed` |
+| `POST /support/tickets/{id}/messages/{messageId}/photos` | JPEG bytes | `TicketDetail` | Your own message, within 30 minutes, up to 3. Photo links work for 10 minutes |
+| `POST /account/login` · `/login/code` | – | `423 ACCOUNT_ON_HOLD` with `details[0]{ message, supportToken, expiresAt }` | For an account on hold. The pass (2 hours) works as the bearer token on `/support` only; the reason is never sent |
+| `GET /ruxstar/support/tickets` · `GET .../summary` · `GET .../agents` · `GET .../tickets/{id}` | `?status=open\|waiting\|resolved&category&assignee=me\|none&q&cursor` | `Page<StaffTicket>` · `{ open, waiting, overdue, unassigned, mine }` · `[{ id, name, title }]` · `StaffTicketDetail` | `support.view`. Latest activity first, with `overdue` on each; `q` is a ticket number with or without RX- |
+| `POST /ruxstar/support/tickets/{id}/messages` · `PATCH .../tickets/{id}` | `{ text, internal?, status? }` · `{ status?, priority?, category?, assigneeId? }` | `StaffTicketDetail` | `support.manage`, `Idempotency-Key`. A reply waits on the customer and assigns an unassigned ticket to you; a note leaves the status. The customer is told about replies and resolving |
+| `GET\|PUT /ruxstar/support/settings` | – · `{ hours{ urgent, high, normal, low } }` (1 to 336) | `{ hours, updatedAt }` | `support.view` · `support.manage`. Defaults 2, 8, 24 and 72 hours |
+| `POST /ruxstar/kyc/{id}/reopen` | – | `ReviewCase` | `kyc.review`, `Idempotency-Key`. A case on hold gets one more try; the person is told (`kyc.reopened`) |
+
+`overview.support { open, overdue, unassigned }` is set with `support.view`. Notifications `support.replied` and `support.resolved` link to `support`. Types: `src/types/support.ts`. Services: `src/services/support-service.ts` (`SupportService`, `SupportDeskService`), `AdminService.reopenCase`.
+
 ## Payments, Discover, orders (all mocked — `src/services/mock/commerce.mocks.ts`)
 | Path | Request | Response | Notes |
 |---|---|---|---|

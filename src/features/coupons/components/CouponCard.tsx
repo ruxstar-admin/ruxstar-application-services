@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Badge } from '@/components/ui/Badge';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { contactSupport } from '@/features/support/lib/support';
 import { money } from '@/features/vendor/lib/pod';
 import { dateKey, formatDay } from '@/lib/dates';
 import { ApiError } from '@/lib/api-error';
@@ -41,6 +44,7 @@ interface CouponCardProps {
 
 /** One coupon: its code and state, everything about it when opened, and changing it. */
 export function CouponCard({ coupon: c, canEdit, canSwitch, shops, showVendor, save, onSaved }: CouponCardProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(() => draftOf(c));
@@ -108,7 +112,10 @@ export function CouponCard({ coupon: c, canEdit, canSwitch, shops, showVendor, s
             </View>
           )}
           {c.stoppedByRuxstar ? (
-            <Text style={styles.note}>{showVendor ? 'Ruxstar switched this off. The vendor can’t switch it back on.' : 'Ruxstar switched this coupon off. Contact Ruxstar support to use it again.'}</Text>
+            <Text style={styles.note}>{showVendor ? 'Ruxstar switched this off. The vendor can’t switch it back on.' : 'Ruxstar switched this coupon off. Message Ruxstar support to use it again.'}</Text>
+          ) : null}
+          {c.stoppedByRuxstar && !showVendor ? (
+            <TextLink label="Message support" onPress={() => router.push(contactSupport('business', { type: 'coupon', id: c.id, label: `Coupon ${c.code}` }))} />
           ) : null}
           {error ? <ErrorBanner message={error} /> : null}
           {editing ? (

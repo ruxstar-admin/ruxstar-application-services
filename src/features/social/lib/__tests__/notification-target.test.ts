@@ -24,6 +24,10 @@ describe('notificationHref', () => {
     expect(notificationHref({ deliveryVerification: true })).toBe('/(customer)/settings/delivery');
   });
 
+  it('opens the help ticket Ruxstar replied to', () => {
+    expect(notificationHref({ supportTicketId: 't1' })).toEqual({ pathname: '/(customer)/support/[id]', params: { id: 't1' } });
+  });
+
   it('opens nothing when it points nowhere', () => {
     expect(notificationHref({})).toBeUndefined();
   });

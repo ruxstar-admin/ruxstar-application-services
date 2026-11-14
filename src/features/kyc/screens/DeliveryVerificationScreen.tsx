@@ -15,6 +15,7 @@ import { ROLES } from '@/constants/roles';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { isValidDrivingLicence, isValidPlate, tidyNumber } from '@/features/kyc/lib/validators';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
+import { contactSupport } from '@/features/support/lib/support';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
@@ -51,6 +52,7 @@ function Note({ icon, tone, children }: { icon: keyof typeof Ionicons.glyphMap; 
 }
 
 function StatusNote({ c }: { c: DeliveryCase }) {
+  const router = useRouter();
   if (c.status === 'submitted') {
     return <Note icon="time-outline" tone={Brand.warning}>Your details are with the Ruxstar team. We will let you know when they are checked, usually within a day.</Note>;
   }
@@ -64,7 +66,17 @@ function StatusNote({ c }: { c: DeliveryCase }) {
     );
   }
   if (c.status === 'locked') {
-    return <Note icon="alert-circle-outline" tone={Brand.error}>Delivery verification is on hold after several rejections. Contact Ruxstar support to continue.</Note>;
+    return (
+      <>
+        <Note icon="alert-circle-outline" tone={Brand.error}>
+          Delivery verification is on hold after several rejections. Message Ruxstar support to ask for a review.
+        </Note>
+        <TextLink
+          label="Message support"
+          onPress={() => router.push(contactSupport('delivery', { type: 'verification', id: 'delivery', label: 'Delivery verification' }))}
+        />
+      </>
+    );
   }
   return null;
 }

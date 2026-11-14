@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Badge } from '@/components/ui/Badge';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -13,6 +13,7 @@ import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { StatusTimeline } from '@/components/ui/StatusTimeline';
+import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { FileRow } from '@/features/pod/components/FileRow';
 import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
@@ -35,6 +36,7 @@ import {
 } from '@/features/pod/lib/order';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
 import { RateOrderCard } from '@/features/reviews/components/RateOrderCard';
+import { contactSupport } from '@/features/support/lib/support';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -133,6 +135,7 @@ function ReportSheet({ order, visible, onClose, onReported }: { order: Order; vi
 }
 
 function OrderDetails({ order, onChanged }: { order: Order; onChanged: (order?: Order) => void }) {
+  const router = useRouter();
   const token = useAuthToken();
   const { pay } = useLocalSearchParams<{ pay?: string }>();
   const [paying, setPaying] = useState(false);
@@ -296,6 +299,14 @@ function OrderDetails({ order, onChanged }: { order: Order; onChanged: (order?: 
         </View>
       ) : null}
 
+      <View style={styles.help}>
+        <TextLink
+          muted
+          label="Get help with this order"
+          onPress={() => router.push(contactSupport('orders', { type: 'order', id: order.id, label: `Order #${order.orderNo}` }))}
+        />
+      </View>
+
       <ConfirmSheet
         visible={confirming}
         title="Cancel this order?"
@@ -356,4 +367,5 @@ const styles = StyleSheet.create({
   news: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surfaceAlt, marginTop: Spacing.two },
   cancel: { marginTop: Spacing.four },
   report: { gap: Spacing.one, marginTop: Spacing.three },
+  help: { alignItems: 'center', marginTop: Spacing.four },
 });

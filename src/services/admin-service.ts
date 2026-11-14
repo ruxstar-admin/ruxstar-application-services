@@ -47,6 +47,8 @@ export const AdminService = {
   /** The reason (5 to 300 characters) is shown to the person, so it says what to fix. */
   rejectCase: (token: string, id: string, reason: string, key: string) =>
     apiPost<ReviewCase>(`/v1/ruxstar/kyc/${id}/reject`, { reason }, token, keyed(key)),
+  /** A case on hold after too many rejections gets one more try; the person is told. */
+  reopenCase: (token: string, id: string, key: string) => apiPost<ReviewCase>(`/v1/ruxstar/kyc/${id}/reopen`, undefined, token, keyed(key)),
 
   reports: (token: string, status: ReportStatus, cursor?: string) => apiGetPage<ReportCase>('/v1/ruxstar/reports', token, { status, cursor }),
   keepPost: (token: string, postId: string, key: string) => apiPost<ReportCase>(`/v1/ruxstar/reports/${postId}/keep`, undefined, token, keyed(key)),

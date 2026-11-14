@@ -45,6 +45,9 @@ export function MoreScreen() {
         {allows(access, 'coupons.view') ? (
           <ListRow icon="pricetag-outline" title="Coupons" subtitle="Ruxstar's offers, and vendors' coupons" onPress={() => router.push('/(admin)/coupons')} />
         ) : null}
+        {allows(access, 'support.view') ? (
+          <ListRow icon="help-buoy-outline" title="Help tickets" subtitle="Questions and problems people sent Ruxstar" onPress={() => router.push('/(admin)/support')} />
+        ) : null}
         {allows(access, 'audit.view') ? <ListRow icon="time-outline" title="Audit log" subtitle="Every change, newest first" onPress={() => router.push('/(admin)/audit')} /> : null}
 
         <Section>Your account</Section>

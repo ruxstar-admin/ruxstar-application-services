@@ -8,6 +8,7 @@ import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { UsernameField } from '@/features/auth/components/UsernameField';
 import { useUsernameCheck } from '@/features/auth/hooks/use-username-check';
@@ -16,6 +17,7 @@ import { CityField } from '@/features/profile/components/CityField';
 import { EmailVerifySheet } from '@/features/profile/components/EmailVerifySheet';
 import { ProfilePhotoPicker } from '@/features/profile/components/ProfilePhotoPicker';
 import { useProfilePhoto } from '@/features/profile/hooks/use-profile-photo';
+import { contactSupport } from '@/features/support/lib/support';
 import { BIO_LINES, BIO_MAX, limitBio } from '@/features/profile/lib/bio';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -165,7 +167,12 @@ function EditProfileForm({ profile, focus }: { profile: Profile; focus?: EditPro
         accessory={emailAccessory}
         error={email.length > 0 && !isValidEmail(email) ? 'Enter a valid email address.' : undefined}
       />
-      <InputField label="Phone" value={`+91 ${phone}`} editable={false} hint="Contact support to change your number." />
+      <InputField
+        label="Phone"
+        value={`+91 ${phone}`}
+        editable={false}
+        hint={<TextLink muted label="Message support to change your number" onPress={() => router.push(contactSupport('account'))} />}
+      />
       <Text style={styles.fieldLabel}>Gender</Text>
       <SegmentedTabs options={GENDERS} value={gender} onChange={setGender} />
 

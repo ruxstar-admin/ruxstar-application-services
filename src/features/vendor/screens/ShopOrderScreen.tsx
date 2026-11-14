@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Badge } from '@/components/ui/Badge';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -17,6 +17,7 @@ import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
 import { ProblemCard } from '@/features/pod/components/ProblemCard';
 import { choiceLine, isClosed, nextSteps, progressOf, quantityLine, SHOP_STATUS_LABEL, STATUS_TONE, STEP_ACTION } from '@/features/pod/lib/order';
 import { FileRow } from '@/features/pod/components/FileRow';
+import { contactSupport } from '@/features/support/lib/support';
 import { DeliverySection, type DeliveryDesk } from '@/features/vendor/components/DeliverySection';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
@@ -40,6 +41,7 @@ const teamOf = (order: ShopOrder | TeamOrder) => ('placeId' in order ? order : n
 
 /** A shop order for its owner, or for someone on its team with only what their permissions allow. */
 export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk, onChanged }: { order: T; desk: OrderDesk<T>; onChanged: (order: T) => void }) {
+  const router = useRouter();
   const token = useAuthToken();
   const team = teamOf(order);
   const can = (permission: TeamPermission) => !team || team.permissions.includes(permission);
@@ -222,6 +224,16 @@ export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk,
         {order.refundable >= 100 ? <TextLink label="Refund part of this order" onPress={() => setRefundOpen(true)} /> : null}
       </View>
 
+      {!team ? (
+        <View style={styles.help}>
+          <TextLink
+            muted
+            label="Get help with this order"
+            onPress={() => router.push(contactSupport('orders', { type: 'order', id: order.id, label: `Order #${order.orderNo}` }))}
+          />
+        </View>
+      ) : null}
+
       <BottomSheet visible={refundOpen} onClose={() => setRefundOpen(false)} title="Refund part of this order">
         <Text style={styles.muted}>{`It comes out of ${team ? "the shop's" : 'your'} share, up to ${money(order.refundable)}. The customer sees your reason and the order carries on.`}</Text>
         <InputField
@@ -276,4 +288,5 @@ const styles = StyleSheet.create({
   actions: { gap: Spacing.two, marginTop: Spacing.three },
   call: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, marginTop: Spacing.one },
   link: { ...Typography.bodyStrong, fontSize: 14, color: Brand.primarySoft },
+  help: { alignItems: 'center', marginTop: Spacing.four },
 });

@@ -120,6 +120,8 @@ export const toAuthError = (err: unknown, action: AuthAction): AuthError => {
         : { message: 'No account found for this number. Sign up to get started.', target: 'mobile', retryable: false };
     case 'FORBIDDEN':
       return { message: 'This account is on hold. Contact support for help.', target: 'form', retryable: false };
+    case 'ACCOUNT_ON_HOLD':
+      return { message: 'This account is on hold. You can still message Ruxstar support.', target: 'form', retryable: false };
     case 'UPGRADE_REQUIRED':
       return { message: 'Update Ruxstar from the store to keep going.', target: 'form', retryable: false };
     case 'SMS_UNAVAILABLE':
