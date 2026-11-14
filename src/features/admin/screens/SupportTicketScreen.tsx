@@ -13,6 +13,7 @@ import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { SelectField } from '@/components/ui/SelectField';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Spacing, Typography } from '@/constants/theme';
+import { DELIVERY_STATUS_LABEL } from '@/features/pod/lib/order';
 import { MessageBubble } from '@/features/support/components/parts';
 import { CATEGORIES, CATEGORY_LABEL, DESK_STATUS, PRIORITIES, PRIORITY, TEXT_MAX } from '@/features/support/lib/support';
 import { useAsyncResource } from '@/hooks/use-async-resource';
@@ -188,7 +189,8 @@ export function SupportTicketScreen({ id }: { id: string }) {
   };
 
   const ctx = data?.context ?? null;
-  const ctxState = ctx?.state ? (ctx.type === 'verification' ? (KYC_LABEL[ctx.state] ?? ctx.state) : ctx.state) : null;
+  const ctxLabels: Record<string, string> | null = ctx?.type === 'verification' ? KYC_LABEL : ctx?.type === 'delivery' ? DELIVERY_STATUS_LABEL : null;
+  const ctxState = ctx?.state ? (ctxLabels?.[ctx.state] ?? ctx.state) : null;
 
   return (
     <ScreenContainer title={data?.number ?? 'Help ticket'}>

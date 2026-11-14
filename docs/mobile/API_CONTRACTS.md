@@ -143,7 +143,7 @@ Every team call checks the place, the permission, approved identity KYC and the 
 ## Help tickets (real API — `/v1`, decision 48)
 | Path | Request | Response | Notes |
 |---|---|---|---|
-| `GET /support/tickets` · `POST` same | `?cursor` · `{ category, subject (3 to 80), text (2000), context?{ type: order\|business\|verification\|post\|coupon, id } }` | `Page<Ticket>` · `TicketDetail` | `Idempotency-Key` on create. Up to 5 open at once. A context must be yours, except a post; verification ids are `base` or `delivery` |
+| `GET /support/tickets` · `POST` same | `?cursor` · `{ category, subject (3 to 80), text (2000), context?{ type: order\|business\|verification\|post\|coupon\|delivery, id } }` | `Page<Ticket>` · `TicketDetail` | `Idempotency-Key` on create. Up to 5 open at once. A context must be yours, except a post; verification ids are `base` or `delivery`; a `delivery` is a delivery job id, opened from the delivery app by its rider only |
 | `GET /support/tickets/{id}` · `POST .../messages` · `POST .../resolve` | – · `{ text }` · – | `TicketDetail` | Opening it marks Ruxstar's replies read. A reply reopens a resolved ticket for 7 days; `CONFLICT` once `closed` |
 | `POST /support/tickets/{id}/messages/{messageId}/photos` | JPEG bytes | `TicketDetail` | Your own message, within 30 minutes, up to 3. Photo links work for 10 minutes |
 | `POST /account/login` · `/login/code` | – | `423 ACCOUNT_ON_HOLD` with `details[0]{ message, supportToken, expiresAt }` | For an account on hold. The pass (2 hours) works as the bearer token on `/support` only; the reason is never sent |

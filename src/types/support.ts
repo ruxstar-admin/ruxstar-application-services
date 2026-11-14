@@ -4,9 +4,9 @@ export type SupportCategory = 'orders' | 'refunds' | 'verification' | 'business'
 export type SupportPriority = 'urgent' | 'high' | 'normal' | 'low';
 /** `waiting` is waiting on the customer. A resolved ticket can be reopened by replying for 7 days, then it is `closed`. */
 export type SupportStatus = 'open' | 'waiting' | 'resolved' | 'closed';
-export type SupportContextType = 'order' | 'business' | 'verification' | 'post' | 'coupon';
+export type SupportContextType = 'order' | 'business' | 'verification' | 'post' | 'coupon' | 'delivery';
 
-/** What a ticket is about. Verification ids are the track, `base` or `delivery`. */
+/** What a ticket is about. Verification ids are the track, `base` or `delivery`; delivery ids are a delivery job's, from the delivery app. */
 export interface SupportContextRef {
   type: SupportContextType;
   id: string;
