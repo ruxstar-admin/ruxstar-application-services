@@ -9,6 +9,7 @@ import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { SharePostSheet } from '@/features/chat/components/SharePostSheet';
 import { VerifiedTick } from '@/features/kyc/components/VerifiedTick';
 import { PostImages } from '@/features/social/components/PostImages';
+import { PostText } from '@/features/social/components/PostText';
 import { Feedback } from '@/lib/haptics';
 import { compactCount, timeAgo } from '@/lib/time';
 import type { Post, PostBusiness } from '@/types/social';
@@ -121,7 +122,7 @@ export const PostCard = memo(function PostCard({ post, onLike, onSave, onOpenCom
         </Pressable>
       </View>
 
-      {post.text ? <Text style={styles.text}>{post.text}</Text> : null}
+      {post.text ? <PostText text={post.text} style={styles.text} /> : null}
       <PostImages photos={post.photos} onDoubleTap={() => !post.likedByMe && onLike(post)} />
       {post.business ? <BusinessLine business={post.business} /> : null}
 

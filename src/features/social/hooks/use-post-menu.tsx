@@ -17,7 +17,7 @@ import type { Post } from '@/types/social';
 export function usePostMenu({ onRemoved }: { onRemoved: (post: Post) => void }) {
   const router = useRouter();
   const token = useAuthToken();
-  const markFeedDirty = useFeedStore((s) => s.markDirty);
+  const removePost = useFeedStore((s) => s.removePost);
 
   const [target, setTarget] = useState<Post | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -43,7 +43,7 @@ export function usePostMenu({ onRemoved }: { onRemoved: (post: Post) => void }) 
       await SocialService.deletePost(token, target.id);
       Feedback.success();
       onRemoved(target);
-      markFeedDirty();
+      removePost(target.id);
       setDeleting(false);
     } catch {
       Feedback.error();

@@ -1,4 +1,3 @@
-import { useCallback } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -9,10 +8,10 @@ import { Brand, Spacing } from '@/constants/theme';
 import { PostCard } from '@/features/social/components/PostCard';
 import { usePostActions } from '@/features/social/hooks/use-post-actions';
 import { usePostMenu } from '@/features/social/hooks/use-post-menu';
+import { useLatestPosts } from '@/features/social/stores/feed-store';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { SocialService } from '@/services/social-service';
-import type { Post } from '@/types/social';
 
 /** Posts you saved, most recently saved first. Unsaving keeps the post on screen until you leave, so a slip is easy to undo. */
 export function SavedScreen() {
@@ -20,12 +19,8 @@ export function SavedScreen() {
   const token = useAuthToken();
   const list = usePaginated((cursor) => SocialService.saved(token, cursor));
   const { setItems } = list;
-
-  const patch = useCallback(
-    (id: string, changes: Partial<Post>) => setItems((prev) => prev.map((p) => (p.id === id ? { ...p, ...changes } : p))),
-    [setItems],
-  );
-  const { toggleLike, toggleSave } = usePostActions(patch);
+  const items = useLatestPosts(list.items, list.loadedAt);
+  const { toggleLike, toggleSave } = usePostActions();
   const { openMenu, sheets } = usePostMenu({ onRemoved: (post) => setItems((prev) => prev.filter((p) => p.id !== post.id)) });
 
   return (
@@ -39,11 +34,11 @@ export function SavedScreen() {
             <Skeleton key={i} height={120} radius={14} />
           ))}
         </View>
-      ) : list.error && list.items.length === 0 ? (
+      ) : list.error && items.length === 0 ? (
         <EmptyState icon="cloud-offline-outline" title="Could not load saved posts" actionLabel="Try again" onAction={list.retry} />
       ) : (
         <FlatList
-          data={list.items}
+          data={items}
           keyExtractor={(post) => post.id}
           renderItem={({ item }) => (
             <PostCard

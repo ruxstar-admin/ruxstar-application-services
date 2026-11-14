@@ -65,6 +65,7 @@ All are POST with a JSON body (the mock registry keys on method + path; the real
 | `/posts/get` · `/posts/create` · `/posts/update` · `/posts/delete` | `{ id }` · `{ text, images[] }` · `{ id, text }` · `{ id }` | `Post` / `{ message }` | Only the author may update/delete (403); images are local URIs in the mock — real API needs upload |
 | `/posts/like` · `/posts/save` | `{ id, liked }` · `{ id, saved }` | `{ likes, likedByMe }` · `{ savedByMe }` | Idempotent |
 | `/posts/comments` · `/posts/comment` | `{ id, cursor? }` · `{ id, text }` | `Page<Comment>` · `Comment` | Comments load page by page (scope review #9) |
+| `PATCH /v1/social/comments/:id` (real API) | `{ text }` | `Comment` (with `editedAt`) | Only the author; people newly @mentioned are told, as when a post's text is edited |
 | `/posts/report` | `{ id, reason }` | `{ message }` | Same reasons as user reports; goes to the moderation queue |
 | `/search` | `{ q, scope: people | businesses | events | courses | stays }` | `SearchResult[]` | Min 2 chars; business/event/course/stay indexes by location + facilities per scope review #5 |
 | `/notifications/list` · `/unread-count` · `/read` · `/respond` | `{ cursor? }` · – · `{ id? }` · `{ id, accept }` | `Page<AppNotification>` · `{ count }` · `{ message }` | `respond` is for employment offers (Phase 7 owns the employment lifecycle) |

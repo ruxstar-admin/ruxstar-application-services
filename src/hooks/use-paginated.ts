@@ -4,7 +4,8 @@ import type { Page } from '@/types/social';
 /**
  * Cursor-paginated list: first page on mount (and on `retry()`), `refresh()` for pull-to-refresh,
  * `loadMore()` for endless scroll. One request at a time, so a fast scroll can never fetch the same
- * page twice. `setItems` supports optimistic edits (likes, deletes) without refetching.
+ * page twice. `setItems` supports optimistic edits (likes, deletes) without refetching. `loadedAt` is when the first
+ * page last arrived.
  */
 export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>) {
   const loadRef = useRef(loadPage);
@@ -18,6 +19,7 @@ export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>)
   const [error, setError] = useState<unknown>(undefined);
   const [hasMore, setHasMore] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [loadedAt, setLoadedAt] = useState(0);
 
   useEffect(() => {
     loadRef.current = loadPage;
@@ -28,6 +30,7 @@ export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>)
       cursorRef.current = page.nextCursor;
       setHasMore(page.nextCursor !== null);
       setItems((prev) => (append ? [...prev, ...page.items] : page.items));
+      if (!append) setLoadedAt(Date.now());
     }
     setError(failure);
     setLoading(false);
@@ -73,5 +76,5 @@ export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>)
     setAttempt((n) => n + 1);
   }, []);
 
-  return { items, setItems, loading, refreshing, loadingMore, hasMore, error, refresh, loadMore, retry };
+  return { items, setItems, loadedAt, loading, refreshing, loadingMore, hasMore, error, refresh, loadMore, retry };
 }

@@ -57,7 +57,8 @@ const ratioOf = (asset: ImagePicker.ImagePickerAsset) =>
 export function CreatePostScreen() {
   const router = useRouter();
   const token = useAuthToken();
-  const markFeedDirty = useFeedStore((s) => s.markDirty);
+  const addPost = useFeedStore((s) => s.addPost);
+  const editPost = useFeedStore((s) => s.editPost);
   const {
     id,
     text: initialText,
@@ -163,17 +164,20 @@ export function CreatePostScreen() {
     setSaving(true);
     setFailure(null);
     try {
-      if (editing) await SocialService.updatePost(token, id, text.trim());
-      else {
-        await SocialService.createPost(token, {
-          text: text.trim(),
-          mediaIds: drafts.map((d) => d.id!),
-          kind,
-          ...(kind === 'business' && businessId ? { businessId } : {}),
-        });
+      if (editing) {
+        const saved = await SocialService.updatePost(token, id, text.trim());
+        editPost(saved.id, { text: saved.text, editedAt: saved.editedAt });
+      } else {
+        addPost(
+          await SocialService.createPost(token, {
+            text: text.trim(),
+            mediaIds: drafts.map((d) => d.id!),
+            kind,
+            ...(kind === 'business' && businessId ? { businessId } : {}),
+          }),
+        );
       }
       Feedback.success();
-      markFeedDirty();
       router.back();
     } catch (err) {
       Feedback.error();

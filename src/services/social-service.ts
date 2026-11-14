@@ -44,12 +44,14 @@ interface ApiComment {
   author: ApiAuthor;
   text: string;
   createdAt: string;
+  editedAt: string | null;
   mine: boolean;
 }
 
 interface ApiNotification {
   id: string;
   kind: 'social' | 'account';
+  type: string;
   title: string;
   body: string;
   link: {
@@ -98,6 +100,7 @@ const toComment = ({ author, ...rest }: ApiComment): Comment => ({ ...rest, auth
 const toNotification = (n: ApiNotification): AppNotification => ({
   id: n.id,
   kind: n.kind,
+  type: n.type,
   title: n.title,
   body: n.body,
   createdAt: n.createdAt,
@@ -172,6 +175,8 @@ export const SocialService = {
 
   comments: (token: string, id: string, cursor?: string) => mapPage(apiGetPage<ApiComment>(`${path(id)}/comments`, token, { cursor }), toComment),
   addComment: async (token: string, id: string, text: string) => toComment(await apiPost<ApiComment>(`${path(id)}/comments`, { text }, token)),
+  updateComment: async (token: string, id: string, text: string) =>
+    toComment(await apiPatch<ApiComment>(`/v1/social/comments/${encodeURIComponent(id)}`, { text }, token)),
   deleteComment: (token: string, id: string) => apiDelete<Done>(`/v1/social/comments/${encodeURIComponent(id)}`, token),
 
   /** `ref` is a username or a user id. */

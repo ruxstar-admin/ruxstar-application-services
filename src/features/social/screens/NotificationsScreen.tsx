@@ -54,7 +54,7 @@ export function NotificationsScreen() {
           contentContainerStyle={styles.list}
           onEndReached={list.loadMore}
           onEndReachedThreshold={0.5}
-          ListEmptyComponent={<EmptyState icon="notifications-off-outline" title="You are all caught up" message="Likes and comments on your posts show up here." />}
+          ListEmptyComponent={<EmptyState icon="notifications-off-outline" title="You are all caught up" message="Likes, comments, mentions and news about your orders show up here." />}
           ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={styles.footer} /> : null}
         />
       )}

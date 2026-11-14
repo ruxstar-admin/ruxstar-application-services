@@ -12,6 +12,31 @@ const ICONS: Record<NotificationKind, keyof typeof Ionicons.glyphMap> = {
   account: 'shield-checkmark-outline',
 };
 
+/** Types whose icon says more than their kind's. */
+const TYPE_ICONS: Partial<Record<string, keyof typeof Ionicons.glyphMap>> = {
+  'user.followed': 'person-add-outline',
+  'post.like': 'heart-outline',
+  'post.comment': 'chatbubble-outline',
+  'post.mention': 'at-outline',
+  'post.removed': 'flag-outline',
+  'report.resolved': 'shield-outline',
+  'order.placed': 'cube-outline',
+  'order.updated': 'cube-outline',
+  'payout.updated': 'wallet-outline',
+  'review.posted': 'star-outline',
+  'review.replied': 'chatbox-outline',
+  'review.removed': 'flag-outline',
+  'team.invited': 'people-outline',
+  'team.joined': 'people-outline',
+  'team.ended': 'people-outline',
+  'business.suspended': 'alert-circle-outline',
+  'business.restored': 'storefront-outline',
+  'delivery.offer': 'bicycle-outline',
+  'delivery.updated': 'bicycle-outline',
+};
+
+export const notificationIcon = (n: Pick<AppNotification, 'kind' | 'type'>) => (n.type && TYPE_ICONS[n.type]) || ICONS[n.kind];
+
 interface NotificationRowProps {
   notification: AppNotification;
   onOpen?: (notification: AppNotification) => void;
@@ -27,7 +52,7 @@ export function NotificationRow({ notification, onOpen }: NotificationRowProps) 
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       <View style={styles.icon}>
-        <Ionicons name={ICONS[notification.kind]} size={20} color={Brand.primarySoft} />
+        <Ionicons name={notificationIcon(notification)} size={20} color={Brand.primarySoft} />
       </View>
       <View style={styles.body}>
         <View style={styles.titleRow}>

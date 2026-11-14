@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { photoSource } from '@/features/social/lib/photo-source';
+import { useLatestPosts } from '@/features/social/stores/feed-store';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { Feedback } from '@/lib/haptics';
@@ -61,14 +62,15 @@ export function ProfilePosts({ owner, kind, empty }: ProfilePostsProps) {
   const router = useRouter();
   const token = useAuthToken();
   const list = usePaginated((cursor) => SocialService.userPosts(token, owner, kind, cursor));
+  const items = useLatestPosts(list.items, list.loadedAt);
   const [width, setWidth] = useState(0);
   const size = Math.floor((width - GAP * (COLUMNS - 1)) / COLUMNS);
   const onLayout = (e: LayoutChangeEvent) => setWidth(Math.floor(e.nativeEvent.layout.width));
 
-  if (list.error && list.items.length === 0) {
+  if (list.error && items.length === 0) {
     return <EmptyState icon="cloud-offline-outline" title="Could not load posts" actionLabel="Try again" onAction={list.retry} />;
   }
-  if (!list.loading && list.items.length === 0) return <EmptyState {...empty} />;
+  if (!list.loading && items.length === 0) return <EmptyState {...empty} />;
 
   return (
     <View style={styles.wrap}>
@@ -77,7 +79,7 @@ export function ProfilePosts({ owner, kind, empty }: ProfilePostsProps) {
           ? null
           : list.loading
             ? Array.from({ length: SKELETON_TILES }, (_, i) => <View key={i} style={[styles.tile, { width: size, height: size }]} />)
-            : list.items.map((post) => (
+            : items.map((post) => (
                 <Tile
                   key={post.id}
                   post={post}

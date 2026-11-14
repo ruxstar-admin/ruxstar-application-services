@@ -83,6 +83,7 @@ export interface Comment {
   author: Author;
   text: string;
   createdAt: string;
+  editedAt: string | null;
   mine: boolean;
 }
 
@@ -91,6 +92,8 @@ export type NotificationKind = 'employment' | 'order' | 'class' | 'social' | 'ac
 export interface AppNotification {
   id: string;
   kind: NotificationKind;
+  /** What happened, like `post.mention` or `order.updated`. Picks the icon. */
+  type?: string;
   title: string;
   body: string;
   createdAt: string;

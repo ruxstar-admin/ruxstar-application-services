@@ -11,7 +11,7 @@ import { PostCard } from '@/features/social/components/PostCard';
 import { usePostActions } from '@/features/social/hooks/use-post-actions';
 import { usePostMenu } from '@/features/social/hooks/use-post-menu';
 import { useUnreadCount } from '@/features/social/hooks/use-unread-count';
-import { useFeedStore } from '@/features/social/stores/feed-store';
+import { useFeedStore, useLatestPosts } from '@/features/social/stores/feed-store';
 import { useOfferCount } from '@/features/team/hooks/use-offer-count';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
@@ -45,28 +45,32 @@ export function FeedScreen() {
   const token = useAuthToken();
   const [tab, setTab] = useState<FeedTab>('for_you');
   const feed = usePaginated((cursor) => SocialService.feed(token, tab, cursor));
-  const { items, setItems } = feed;
+  const { setItems } = feed;
+  const items = useLatestPosts(feed.items, feed.loadedAt);
   const unread = useUnreadCount();
   const offers = useOfferCount();
   const dirty = useFeedStore((s) => s.dirty);
   const clearDirty = useFeedStore((s) => s.clearDirty);
+  const takePosted = useFeedStore((s) => s.takePosted);
   const listRef = useRef<FlatList<Post>>(null);
 
-  // A post was created, edited or deleted on another screen: reload when the feed is shown again.
+  // Who you see changed on another screen: reload. A post you just made goes on top.
   useFocusEffect(
     useCallback(() => {
-      if (!dirty) return;
-      clearDirty();
-      feed.refresh();
+      if (dirty) {
+        clearDirty();
+        takePosted();
+        feed.refresh();
+      } else {
+        const post = takePosted();
+        if (!post) return;
+        setItems((prev) => [post, ...prev.filter((p) => p.id !== post.id)]);
+      }
       listRef.current?.scrollToOffset({ offset: 0, animated: false });
-    }, [dirty, clearDirty, feed]),
+    }, [dirty, clearDirty, takePosted, feed, setItems]),
   );
 
-  const patch = useCallback(
-    (id: string, changes: Partial<Post>) => setItems((prev) => prev.map((p) => (p.id === id ? { ...p, ...changes } : p))),
-    [setItems],
-  );
-  const { toggleLike, toggleSave } = usePostActions(patch);
+  const { toggleLike, toggleSave } = usePostActions();
   const { openMenu, sheets } = usePostMenu({ onRemoved: (post) => setItems((prev) => prev.filter((p) => p.id !== post.id)) });
   const openComments = useCallback((post: Post) => router.push({ pathname: '/(customer)/post/[id]', params: { id: post.id } }), [router]);
   const openAuthor = useCallback(
