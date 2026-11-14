@@ -194,7 +194,6 @@ src/
 │   ├── auth-service.ts            (/auth/*)
 │   ├── vendor-service.ts          (/vendor/*)
 │   ├── kyc-service.ts             (/vendor/kyc/*)
-│   ├── delivery-service.ts        ← New (/delivery/* once backend exists)
 │   ├── commerce-service.ts
 │   ├── catalog-service.ts
 │   └── notification-service.ts
@@ -350,9 +349,9 @@ screens also call resets *before* `setAuth()` so no data leaks across a login �
   `{ kyc: {...} }` backend envelope) and `nextKycStep()` (maps status →
   `aadhaar | pan | face | pending_review | verified | rejected`).
 - `vendor-service.ts` — vendor/business endpoints.
-- `delivery-service.ts` — build against backend delivery routes once they exist; until then,
-  stub with typed request/response shapes matching the `delivery` role's expected API so the
-  UI can be built against a contract.
+- Delivery: riders use the separate Ruxstar Delivery app. This app only has delivery
+  verification (`kyc-service.ts`), "Who delivers" on shop orders (`order-service.ts`) and the
+  customer's rider card (docs/mobile/DECISIONS.md #45).
 - API base URL: `EXPO_PUBLIC_API_URL` env var, falling back to the production Cloud Run URL in
   `src/constants/config.ts`.
 

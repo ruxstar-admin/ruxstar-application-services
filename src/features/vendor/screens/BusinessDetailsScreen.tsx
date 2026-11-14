@@ -76,7 +76,7 @@ function Form({ id, team, business, catalog, onSaved }: { id: string; team: bool
       {team ? null : (
         <>
           <InputField
-            label="GSTIN (optional)"
+            label={business.missing.includes('gstin') ? 'GSTIN, needed to publish' : 'GSTIN (optional)'}
             value={gstin}
             onChangeText={(text) => {
               setGstin(text.toUpperCase().replace(/\s/g, '').slice(0, 15));

@@ -12,6 +12,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { CheckoutCoupons } from '@/features/coupons/components/CheckoutCoupons';
+import { DropLocation } from '@/features/pod/components/DropLocation';
 import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
 import { checkoutReturn, fileSize, requiredOption } from '@/features/pod/lib/order';
 import { readyLine } from '@/features/pod/lib/shop';
@@ -137,7 +138,11 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
     };
   }, [token, shop.city]);
 
-  const choiceKey = JSON.stringify([productId, options, colour, qty, fileIds, couponCode]);
+  // Only a per-km fee depends on where it goes; then the address counts once it can be found on the map.
+  const byDistance = shop.deliveryFee.perKm > 0;
+  const findable = !!address.point || (/^[1-9]\d{5}$/.test(address.pincode) && address.line.trim().length >= 5);
+  const drop = byDistance && findable ? { line: address.line.trim(), city: address.city.trim(), pincode: address.pincode, point: address.point ?? null } : undefined;
+  const choiceKey = JSON.stringify([productId, options, colour, qty, fileIds, couponCode, drop]);
   const priceable = !missing && qty >= 1 && !(perPage && !colour);
   const current = priceable && priced?.key === choiceKey ? priced : null;
   const quote = current?.quote ?? null;
@@ -149,7 +154,7 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
     if (!priceable) return;
     let live = true;
     const timer = setTimeout(() => {
-      OrderService.quote(token, { shopId: shop.id, product: productId, options, colour, quantity: qty, fileIds, couponCode: couponCode ?? undefined })
+      OrderService.quote(token, { shopId: shop.id, product: productId, options, colour, quantity: qty, fileIds, couponCode: couponCode ?? undefined, address: drop })
         .then((q) => live && setPriced({ key: choiceKey, quote: q, error: null }))
         .catch((err) => live && setPriced({ key: choiceKey, quote: null, error: messageOf(err) }));
     }, QUOTE_DELAY_MS);
@@ -371,6 +376,19 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
       <InputField label="Name" value={address.name} onChangeText={set('name')} maxLength={80} autoComplete="name" error={show(fieldErrors.name)} />
       <InputField label="Phone" value={address.phone} onChangeText={set('phone')} keyboardType="phone-pad" maxLength={10} autoComplete="tel" error={show(fieldErrors.phone)} />
       <InputField label="House, street and area" value={address.line} onChangeText={set('line')} maxLength={300} multiline error={show(fieldErrors.line)} />
+      <DropLocation
+        point={address.point ?? null}
+        onLocated={(point, found) =>
+          setAddress((now) => ({
+            ...now,
+            point,
+            line: now.line.trim() ? now.line : (found.line ?? now.line),
+            city: found.city && !now.city.trim() ? found.city : now.city,
+            pincode: now.pincode || found.pincode || '',
+          }))
+        }
+        onClear={() => setAddress((now) => ({ ...now, point: null }))}
+      />
       <View style={styles.pair}>
         <View style={styles.flex}>
           <InputField

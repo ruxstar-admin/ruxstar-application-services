@@ -1,6 +1,19 @@
 import { File } from 'expo-file-system';
-import { apiGet, apiGetPage, apiPost, apiPostBytes, type WriteOptions } from '@/lib/api-client';
-import type { Order, OrderAddress, OrderChoice, PrintFile, ProblemKind, Quote, ShopOrder, ShopOrderView, ShopStatus, TeamOrder } from '@/types/order';
+import { apiDelete, apiGet, apiGetPage, apiPost, apiPostBytes, type WriteOptions } from '@/lib/api-client';
+import type {
+  AssignChoice,
+  DeliveryOptions,
+  Order,
+  OrderAddress,
+  OrderChoice,
+  PrintFile,
+  ProblemKind,
+  Quote,
+  ShopOrder,
+  ShopOrderView,
+  ShopStatus,
+  TeamOrder,
+} from '@/types/order';
 
 const UPLOAD_TIMEOUT_MS = 3 * 60_000;
 const id = (value: string) => encodeURIComponent(value);
@@ -51,6 +64,12 @@ export const ShopOrderService = {
   /** Paise, out of the shop's share, up to `refundable`. The order carries on. */
   refund: (token: string, orderId: string, amount: number, reason: string, options: WriteOptions) =>
     apiPost<ShopOrder>(`/v1/vendor/orders/${id(orderId)}/refund`, { amount, reason }, token, options),
+  deliveryOptions: (token: string, orderId: string) => apiGet<DeliveryOptions>(`/v1/vendor/orders/${id(orderId)}/delivery`, token),
+  /** A ready order, with someone on the team or offered to Ruxstar partners in the shop's city. */
+  assign: (token: string, orderId: string, choice: AssignChoice, options: WriteOptions) =>
+    apiPost<ShopOrder>(`/v1/vendor/orders/${id(orderId)}/delivery`, { ...choice }, token, options),
+  /** Before pickup only. */
+  cancelDelivery: (token: string, orderId: string) => apiDelete<ShopOrder>(`/v1/vendor/orders/${id(orderId)}/delivery`, token),
 };
 
 /** `/v1/employment`: a shop's orders for the people on its team, each action behind its permission. */
@@ -66,4 +85,9 @@ export const TeamOrderService = {
     apiGet<{ url: string; expiresAt: string }>(`/v1/employment/orders/${id(orderId)}/files/${id(fileId)}`, token),
   refund: (token: string, orderId: string, amount: number, reason: string, options: WriteOptions) =>
     apiPost<TeamOrder>(`/v1/employment/orders/${id(orderId)}/refund`, { amount, reason }, token, options),
+  /** `orders.move`, like the owner's. */
+  deliveryOptions: (token: string, orderId: string) => apiGet<DeliveryOptions>(`/v1/employment/orders/${id(orderId)}/delivery`, token),
+  assign: (token: string, orderId: string, choice: AssignChoice, options: WriteOptions) =>
+    apiPost<TeamOrder>(`/v1/employment/orders/${id(orderId)}/delivery`, { ...choice }, token, options),
+  cancelDelivery: (token: string, orderId: string) => apiDelete<TeamOrder>(`/v1/employment/orders/${id(orderId)}/delivery`, token),
 };

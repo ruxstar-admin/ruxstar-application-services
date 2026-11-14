@@ -11,10 +11,11 @@ src/
 │   │   ├── (tabs)/            Feed · Discover · Search · Messages · Profile
 │   │   └── settings/ chat/ pod/ events/ coaching/ stays/ kyc/ post/ user/ …
 │   ├── (vendor)/              Vendor portal — only with the vendor role
-│   └── (partner)/             Delivery partner area — only with the delivery role (movable, see DECISIONS #26)
+│   └── (admin)/               Ruxstar console — admins and Ruxstar staff only
 ├── features/<feature>/        screens/ components/ hooks/ lib/ — all real UI and rules
 │   auth · profile · kyc · social · chat · vendor · discover · payments · money
-│   pod · events · coaching · stays · delivery · moderation · design
+│   pod · events · coaching · stays · moderation · design
+│   (riders use the separate Ruxstar Delivery app, DECISIONS #45)
 ├── components/ui/             Logic-free primitives used by 2+ features (kit listed in DESIGN_SYSTEM.md)
 ├── services/                  One thin API wrapper per backend area (+ services/mock/)
 ├── stores/                    Zustand: auth (persisted), feed (dirty flag)
@@ -32,7 +33,7 @@ src/
 
 ## Navigation and access
 - `AuthGuard` (`src/app/_layout.tsx`) is the only place that redirects. Signed-out → `(auth)/welcome`; signed-in → `(customer)/(tabs)`.
-- Roles stack on one account: `useAuthStore.roles` authorises `(vendor)` and `(partner)`; both are entered from Profile. Never add `<Redirect>` to `src/app/index.tsx`.
+- Roles stack on one account: `useAuthStore.roles` authorises `(vendor)`, entered from Profile; the delivery role only changes Profile's bicycle button. Never add `<Redirect>` to `src/app/index.tsx`.
 - Transitions come from three shared tokens: `STACK_SCREEN_OPTIONS`, `TAB_SCREEN_OPTIONS`, and `BottomSheet` (all in `constants/motion.ts` / `components/ui`).
 
 ## Data patterns (use these, do not hand-roll)

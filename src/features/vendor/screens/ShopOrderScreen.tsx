@@ -17,6 +17,7 @@ import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
 import { ProblemCard } from '@/features/pod/components/ProblemCard';
 import { choiceLine, isClosed, nextSteps, progressOf, quantityLine, SHOP_STATUS_LABEL, STATUS_TONE, STEP_ACTION } from '@/features/pod/lib/order';
 import { FileRow } from '@/features/pod/components/FileRow';
+import { DeliverySection, type DeliveryDesk } from '@/features/vendor/components/DeliverySection';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -29,7 +30,7 @@ import type { PrintFile, ShopOrder, ShopStatus, TeamOrder } from '@/types/order'
 import type { TeamPermission } from '@/types/team';
 
 /** The owner's `ShopOrderService` or the team's `TeamOrderService`. */
-export interface OrderDesk<T extends ShopOrder | TeamOrder> {
+export interface OrderDesk<T extends ShopOrder | TeamOrder> extends DeliveryDesk<T> {
   move: (token: string, orderId: string, status: ShopStatus, reason: string | undefined, options: WriteOptions) => Promise<T>;
   fileLink: (token: string, orderId: string, fileId: string) => Promise<{ url: string }>;
   refund: (token: string, orderId: string, amount: number, reason: string, options: WriteOptions) => Promise<T>;
@@ -184,6 +185,8 @@ export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk,
           )}
         </View>
       ) : null}
+
+      <DeliverySection order={order} desk={desk} canManage={can('orders.move')} onChanged={onChanged} />
 
       {!closed ? (
         <>

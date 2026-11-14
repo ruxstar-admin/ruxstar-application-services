@@ -7,6 +7,8 @@ import {
   isValidBusinessId,
   isValidDrivingLicence,
   isValidIfsc,
+  isValidPlate,
+  tidyNumber,
   upperAlnum,
 } from '../validators';
 
@@ -32,8 +34,15 @@ describe('kyc validators', () => {
 
   it('accepts driving licence numbers with or without separators', () => {
     expect(isValidDrivingLicence('KA0120190012345')).toBe(true);
-    expect(isValidDrivingLicence('KA01-20190012345')).toBe(true);
+    expect(isValidDrivingLicence('ka01-2019 0012345')).toBe(true);
     expect(isValidDrivingLicence('1234')).toBe(false);
+  });
+
+  it('accepts number plates, including the BH series, and tidies them as the API stores them', () => {
+    expect(isValidPlate('TS 09 AB 1234')).toBe(true);
+    expect(isValidPlate('22BH1234AB')).toBe(true);
+    expect(isValidPlate('TS0912')).toBe(false);
+    expect(tidyNumber('ts-09 ab.1234')).toBe('TS09AB1234');
   });
 
   it('cleans and formats typed input', () => {

@@ -82,10 +82,19 @@ export interface PodSetup {
   prices: PodPrice[];
   /** Chosen products still without a price. */
   unpriced: PodProduct[];
+  /** What the customer pays for delivery; all 0 is free. */
+  deliveryFee: DeliveryFee;
 }
 
-/** What is still needed before a draft can be published; the last three are print on demand only. */
-export type BusinessMissing = 'photo' | 'phone' | 'location' | 'products' | 'area' | 'pricing';
+/** Paise: `base` covers the first `includedKm`, then `perKm` for each km after. */
+export interface DeliveryFee {
+  base: number;
+  includedKm: number;
+  perKm: number;
+}
+
+/** What is still needed before a draft can be published. Products, area and pricing are print on demand only; a GSTIN when Ruxstar asks for one in the category. */
+export type BusinessMissing = 'photo' | 'phone' | 'location' | 'products' | 'area' | 'pricing' | 'gstin';
 
 /** GET /v1/vendor/businesses/{id} */
 export interface Business {
@@ -166,6 +175,7 @@ export interface PodSetupUpdate {
   minOrder?: number;
   notes?: string | null;
   prices?: PodPriceInput[];
+  deliveryFee?: DeliveryFee;
 }
 
 export interface BusinessTypeInfo {
@@ -196,11 +206,22 @@ export interface BusinessCatalog {
     live: boolean;
     /** Whether new businesses can be created in it. */
     signupsOpen: boolean;
+    /** Publishing needs a verified GSTIN. */
+    gstinRequired: boolean;
     types: BusinessTypeInfo[];
   }[];
   states: { name: string; cities: string[] }[];
   podProducts: PodProductInfo[];
-  limits: { businesses: number; photos: number; description: number; cities: number; turnaroundDays: number; tiers: number };
+  limits: {
+    businesses: number;
+    photos: number;
+    description: number;
+    cities: number;
+    turnaroundDays: number;
+    tiers: number;
+    /** Paise: the most a shop can charge to deliver. */
+    deliveryFee: { base: number; perKm: number };
+  };
 }
 
 export interface PayoutMethod {

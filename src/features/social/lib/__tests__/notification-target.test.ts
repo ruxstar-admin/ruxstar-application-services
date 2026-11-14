@@ -20,6 +20,10 @@ describe('notificationHref', () => {
     expect(notificationHref({ workReviewsId: 'e2' })).toEqual({ pathname: '/(customer)/work/reviews/[id]', params: { id: 'e2' } });
   });
 
+  it('opens Delivery verification for delivery partner decisions and delivery news', () => {
+    expect(notificationHref({ deliveryVerification: true })).toBe('/(customer)/settings/delivery');
+  });
+
   it('opens nothing when it points nowhere', () => {
     expect(notificationHref({})).toBeUndefined();
   });

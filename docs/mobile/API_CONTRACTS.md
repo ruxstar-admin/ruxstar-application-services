@@ -194,18 +194,21 @@ Every "create" below (order, ticket, enrolment, booking) takes `paymentRef` and 
 | `/vendor/coupons` · `/create` · `/toggle` | – · `{ code, percent, cap, module? }` · `{ code, active }` | `Coupon[]` · `Coupon` · `{ message }` | Vendor coupons are vendor-funded; Ruxstar coupons are managed on the website |
 | `/orders/cancel-quote` · `/orders/cancel` | `{ refId }` | `{ allowed, refundable, summary }` · `{ refunded, message }` | Inside the window a cancel refunds in full with **no approval**; 409 once complete or after 7 days; **coaching dropout after the first session is allowed but refunds ₹0**; whole-batch cancel refunding everyone and admin force-refund are backend/web |
 
-## Delivery partner (`delivery.mocks.ts`)
+## Delivery (real API, DECISIONS 45)
+The mock partner area is gone; riders use the Ruxstar Delivery app (`/v1/delivery/*`, `X-Client: delivery`). This app calls:
+
 | Path | Request | Response | Notes |
 |---|---|---|---|
-| `/delivery/home` | – | `{ stats, active?, waiting[], recent[] }` | App refreshes on focus and every 10 s so new offers appear |
-| `/delivery/online` | `{ online }` | `{ online }` | 409 when going offline mid-delivery |
-| `/delivery/accept` · `/delivery/pass` | `{ id }` | `DeliveryJob` · `{ message }` | Accept needs the partner online (409) and no active job (409). A ready order creates **one** job, offered to the vendor's own online delivery staff, then a Ruxstar partner, then Shadowfax, one at a time (scope review #14) — the mock only has the partner pool |
-| `/delivery/advance` | `{ id, code? }` | `DeliveryJob` | accepted → picked_up; picked_up → delivered needs the customer's 4-digit `deliveryCode` (401 if wrong). Delivering completes the order. Proof-of-delivery photo/QR is a parked decision |
-| `/delivery/earnings` | – | `{ today, week, total, items[] }` | Paid from the delivery fee, never the vendor's money |
+| `PATCH /v1/kyc/delivery` | `{ licenceNumber?, vehicleType?, vehicleNumber? }` | `DeliveryCase` | Opens once identity is approved; spaces and dashes are fine |
+| `PUT /v1/kyc/delivery/photos/{licence\|vehicle}` | JPEG bytes | `DeliveryCase` | 1600 px; kept 30 days after approval |
+| `POST /v1/kyc/delivery/submit` | – | `DeliveryCase` | Reviewed in the console (`GET /v1/ruxstar/kyc?track=delivery`); approval sets `roles.delivery` |
+| `GET /v1/vendor/orders/:id/delivery` · `/v1/employment/orders/:id/delivery` | – | `DeliveryOptions` | Team riders (with "Deliver orders" and an approved delivery case) and the Ruxstar partner option: pay, km, online count, or why not |
+| `POST …/orders/:id/delivery` | `{ carrier: 'team', placeId } \| { carrier: 'partner' }` + `Idempotency-Key` | `ShopOrder` | Ready orders only. A partner offer goes to online partners in the shop's city; the first to accept gets it |
+| `DELETE …/orders/:id/delivery` | – | `ShopOrder` | Before pickup only; the order stays ready for the shop |
 
-`PodOrder.deliveryCode` is generated for delivery orders and shown to the customer only while the order is out for delivery. The partner area lives in `features/delivery` + route group `(partner)` and opens only for accounts with the delivery role. It stays in this app; there is no separate delivery app (decided 29 Oct 2026).
+`POST /v1/pod/quote` and order placing take `address.point { lat, lng }`; the price has `delivery` and `deliveryKm` (road km, rounded up). `Order.delivery` gives the customer the rider, vehicle, status and `dropCode`; `ShopOrder.delivery` adds `jobId`, `pay` and `offerUntil`. The console's `PATCH /v1/ruxstar/modules/{module}` takes `gstinRequired` (business modules) and `riderRate`, `shopFeeMax` and `offerMinutes` (delivery).
 
-Types: `src/types/{commerce,pod,events,coaching,stays,money,delivery}.ts`. Services: `src/services/{commerce,pod,events,coaching,stays}-service.ts`.
+Types: `src/types/{commerce,pod,events,coaching,stays,money}.ts`. Services: `src/services/{commerce,pod,events,coaching,stays}-service.ts`.
 
 Backend gaps still open (not mocked): login attempt counter + 30-min lockout, suspended-vs-disabled status, session/device registration.
 

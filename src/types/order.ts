@@ -49,6 +49,11 @@ export interface OrderProblem {
   resolution: { outcome: 'refunded' | 'partial' | 'dismissed'; amount: number; note: string; at: string } | null;
 }
 
+export interface GeoPoint {
+  lat: number;
+  lng: number;
+}
+
 export interface OrderAddress {
   name: string;
   /** 10 digits. */
@@ -56,7 +61,12 @@ export interface OrderAddress {
   line: string;
   city: string;
   pincode: string;
+  /** From the phone's location. Without it the API looks the address up on the map, which is less exact. */
+  point?: GeoPoint | null;
 }
+
+/** As much of the address as the customer filled in, so the quote can price delivery by distance. */
+export type QuoteAddress = Partial<Pick<OrderAddress, 'line' | 'city' | 'pincode' | 'point'>>;
 
 /** What the customer picks. `options` is option → value; documents also need `colour`. */
 export interface OrderChoice {
@@ -68,9 +78,10 @@ export interface OrderChoice {
   fileIds: string[];
   /** Any case. The API checks it and takes it off the items. */
   couponCode?: string;
+  address?: QuoteAddress;
 }
 
-/** Paise. `units` is pieces, or pages times copies for documents. `total` is items less the discount, plus the platform fee. */
+/** Paise. `units` is pieces, or pages times copies for documents. `total` is items less the discount, plus the platform fee and delivery. */
 export interface OrderPrice {
   units: number;
   unitPrice: number;
@@ -79,8 +90,48 @@ export interface OrderPrice {
   discount: number;
   coupon: AppliedCoupon | null;
   platformFee: number;
+  /** The shop's delivery charge; 0 when it delivers free. */
+  delivery: number;
+  /** The road distance it was priced on; null when the address isn't on the map yet. */
+  deliveryKm: number | null;
   total: number;
 }
+
+/** `offered` waits for a rider to accept; `cancelled` sent it back to the shop. */
+export type DeliveryStatus = 'offered' | 'accepted' | 'picked_up' | 'delivered' | 'cancelled';
+export type VehicleType = 'bike' | 'scooter';
+
+/** Who is taking an order to the customer: someone on the shop's team, or a Ruxstar delivery partner. Null while the shop delivers it itself. */
+export interface OrderDelivery {
+  carrier: 'team' | 'partner';
+  status: DeliveryStatus;
+  rider: { name: string; avatarUrl: string | null; phone: string; vehicle: { type: VehicleType; number: string } } | null;
+}
+
+/** The customer gives the code to the rider at the door; null once delivered or cancelled. */
+export interface CustomerDelivery extends OrderDelivery {
+  dropCode: string | null;
+}
+
+/** Paise: `pay` is the Ruxstar partner's, out of the shop's share at delivery; 0 for the team. */
+export interface ShopDelivery extends OrderDelivery {
+  jobId: string;
+  pay: number;
+  /** A partner offer nobody accepts is cancelled then. */
+  offerUntil: string | null;
+}
+
+/** GET …/orders/:id/delivery: who can take a ready order. The shop can always deliver it itself. */
+export interface DeliveryOptions {
+  orderStatus: OrderStatus;
+  canAssign: boolean;
+  reason: string | null;
+  /** People on the team with "Deliver orders"; `ready` once they are delivery verified. */
+  team: { placeId: string; name: string; avatarUrl: string | null; vehicle: { type: VehicleType; number: string } | null; ready: boolean }[];
+  partner: { available: boolean; reason: string | null; pay: number; distanceKm: number | null; online: number };
+}
+
+export type AssignChoice = { carrier: 'team'; placeId: string } | { carrier: 'partner' };
 
 export interface Quote extends OrderPrice {
   pages: number;
@@ -128,10 +179,12 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   price: OrderPrice;
+  delivery: CustomerDelivery | null;
 }
 
 /** The same order as the shop sees it, with Ruxstar's commission and the shop's payout. */
-export interface ShopOrder extends Omit<Order, 'price'> {
+export interface ShopOrder extends Omit<Order, 'price' | 'delivery'> {
+  delivery: ShopDelivery | null;
   /**
    * `payoutLeft` is the payout less partial refunds. With the shop's own coupon, commission is on the items
    * less the discount and the discount comes out of the payout; with Ruxstar's, the payout is as if there were none.

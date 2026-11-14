@@ -53,7 +53,20 @@ interface ApiNotification {
   title: string;
   body: string;
   link: {
-    screen: 'post' | 'verification' | 'business' | 'order' | 'shop_order' | 'profile' | 'payments' | 'work' | 'team' | 'work_order' | 'reviews' | 'work_reviews';
+    screen:
+      | 'post'
+      | 'verification'
+      | 'business'
+      | 'order'
+      | 'shop_order'
+      | 'profile'
+      | 'payments'
+      | 'work'
+      | 'team'
+      | 'work_order'
+      | 'reviews'
+      | 'work_reviews'
+      | 'delivery_job';
     id: string;
   };
   read: boolean;
@@ -94,7 +107,7 @@ const toNotification = (n: ApiNotification): AppNotification => ({
 const LINKS: Record<ApiNotification['link']['screen'], (id: string) => Partial<AppNotification>> = {
   post: (id) => ({ postId: id }),
   business: (id) => ({ businessId: id }),
-  verification: () => ({ verification: true }),
+  verification: (id) => (id === 'delivery' ? { deliveryVerification: true } : { verification: true }),
   order: (id) => ({ orderId: id }),
   shop_order: (id) => ({ shopOrderId: id }),
   profile: (id) => ({ profileId: id }),
@@ -104,6 +117,7 @@ const LINKS: Record<ApiNotification['link']['screen'], (id: string) => Partial<A
   work_order: (id) => ({ workOrderId: id }),
   reviews: (id) => ({ reviewsBusinessId: id }),
   work_reviews: (id) => ({ workReviewsId: id }),
+  delivery_job: () => ({ deliveryVerification: true }),
 };
 
 /** What a phone notification's `screen` and `id` point at, in the notifications screen's terms. Unknown screens point nowhere. */

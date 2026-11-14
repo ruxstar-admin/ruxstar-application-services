@@ -25,6 +25,7 @@ export const MISSING_LABEL: Record<BusinessMissing, string> = {
   products: 'the products you print',
   area: 'where you deliver',
   pricing: 'prices for every product',
+  gstin: 'a GSTIN, in the business details',
 };
 
 /** The one badge a business shows: on hold beats everything, then draft, then paused, open or closed. */

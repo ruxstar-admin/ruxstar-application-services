@@ -9,6 +9,7 @@ type Target = Pick<
   | 'shopOrderId'
   | 'profileId'
   | 'verification'
+  | 'deliveryVerification'
   | 'payments'
   | 'workId'
   | 'teamBusinessId'
@@ -25,6 +26,7 @@ export function notificationHref(n: Target): Href | undefined {
   if (n.shopOrderId) return { pathname: '/(vendor)/sale/[id]', params: { id: n.shopOrderId } };
   if (n.profileId) return { pathname: '/(customer)/user/[id]', params: { id: n.profileId } };
   if (n.verification) return '/(customer)/settings/verification';
+  if (n.deliveryVerification) return '/(customer)/settings/delivery';
   if (n.payments) return '/(vendor)/(tabs)/payments';
   if (n.workId) return { pathname: '/(customer)/work/[id]', params: { id: n.workId } };
   if (n.teamBusinessId) return { pathname: '/(vendor)/businesses/[id]/team', params: { id: n.teamBusinessId } };

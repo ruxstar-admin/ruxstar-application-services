@@ -2,7 +2,6 @@ import { ApiError } from '@/lib/api-error';
 import { MAX_COPIES, MAX_PAGES, nextStatus, quotePod, STATUS_LABEL } from '@/features/pod/lib/pricing';
 import type { Fulfilment, PodOrder, PodStatus, PrintShop, PrintSpecs } from '@/types/pod';
 import { recordEngagement, registerCanceller, registerListings, updateEngagement } from './commerce-state';
-import { createDeliveryJob, setDeliveredHandler } from './delivery.mocks';
 import { defineMocks } from './registry';
 
 const SHOPS: PrintShop[] = [
@@ -25,15 +24,6 @@ const orderOf = (id: string) => {
   if (!order) throw new ApiError(404, 'Order not found');
   return order;
 };
-
-/** A partner finishing the delivery completes the print order too. */
-setDeliveredHandler((orderRef) => {
-  const order = orders.find((o) => o.id === orderRef);
-  if (!order) return;
-  order.status = 'completed';
-  order.timeline = [...order.timeline, { status: 'completed', at: new Date().toISOString() }];
-  updateEngagement(order.id, { status: 'completed', subtitle: `${order.shopName} · ${STATUS_LABEL.completed}` });
-});
 
 registerCanceller('pod', (refId) => {
   const order = orderOf(refId);
@@ -130,17 +120,6 @@ defineMocks({
       if (!next) throw new ApiError(409, 'Order is already finished');
       order.status = next;
       order.timeline = [...order.timeline, { status: next, at: new Date().toISOString() }];
-      if (next === 'ready' && order.fulfilment === 'delivery') {
-        const area = (order.address ?? '').split(',').pop()?.trim() || 'Customer';
-        createDeliveryJob({
-          orderRef: order.id,
-          shopName: order.shopName,
-          pickupArea: shopOf(order.shopId).area,
-          dropArea: area,
-          fee: order.lines.find((l) => l.kind === 'delivery')?.amount ?? 0,
-          code: order.deliveryCode ?? '1234',
-        });
-      }
       updateEngagement(order.id, {
         status: next === 'completed' ? 'completed' : 'in_progress',
         subtitle: `${order.shopName} · ${STATUS_LABEL[next]}`,

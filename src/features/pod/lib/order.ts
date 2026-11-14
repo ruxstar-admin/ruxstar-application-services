@@ -1,7 +1,19 @@
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { money, OPTION_LABELS } from '@/features/vendor/lib/pod';
-import type { Order, OrderPrice, OrderProblem, OrderRefund, OrderStatus, ProblemKind, ShopOrder, ShopStatus } from '@/types/order';
+import type {
+  DeliveryStatus,
+  Order,
+  OrderDelivery,
+  OrderPrice,
+  OrderProblem,
+  OrderRefund,
+  OrderStatus,
+  ProblemKind,
+  ShopOrder,
+  ShopStatus,
+  VehicleType,
+} from '@/types/order';
 import type { ShopProduct } from '@/types/shop';
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -94,14 +106,31 @@ export function priceLines(price: OrderPrice, pricing: 'per_unit' | 'per_page') 
   if (price.extrasPerUnit) lines.push({ label: `Extras, ${money(price.extrasPerUnit)} each`, amount: price.units * price.extrasPerUnit });
   if (price.discount && price.coupon) lines.push({ label: `Coupon ${price.coupon.code} · ${price.coupon.label}`, amount: price.discount, negative: true });
   if (price.platformFee) lines.push({ label: 'Platform fee', amount: price.platformFee });
+  if (price.delivery) lines.push({ label: price.deliveryKm ? `Delivery · ${price.deliveryKm} km` : 'Delivery', amount: price.delivery });
   return lines;
 }
+
+/** A rider has the order or it is offered to one: only they move it on, until it is delivered or handed back. */
+export const tripActive = (delivery: Pick<OrderDelivery, 'status'> | null | undefined) =>
+  !!delivery && (delivery.status === 'offered' || delivery.status === 'accepted' || delivery.status === 'picked_up');
+
+export const DELIVERY_STATUS_LABEL: Record<DeliveryStatus, string> = {
+  offered: 'Waiting for a rider',
+  accepted: 'Rider on the way to the shop',
+  picked_up: 'Rider has it',
+  delivered: 'Delivered',
+  cancelled: 'Delivery cancelled',
+};
+
+/** "Bike TS09AB1234" */
+export const vehicleLine = (vehicle: { type: VehicleType; number: string }) => `${vehicle.type === 'scooter' ? 'Scooter' : 'Bike'} ${vehicle.number}`;
 
 /** Size, or paper size for documents: an order can't be priced without it. */
 export const requiredOption = (product: ShopProduct) => (product.pricing === 'per_page' ? 'paperSize' : 'size');
 
-/** What the shop can move a paid order to next. Turning down is only before accepting. */
-export function nextSteps(order: Pick<ShopOrder, 'status'>): ShopStatus[] {
+/** What the shop can move a paid order to next. Turning down is only before accepting; a rider's trip is theirs to move. */
+export function nextSteps(order: Pick<ShopOrder, 'status'> & { delivery?: ShopOrder['delivery'] }): ShopStatus[] {
+  if (tripActive(order.delivery)) return [];
   switch (order.status) {
     case 'placed':
       return ['accepted', 'rejected'];

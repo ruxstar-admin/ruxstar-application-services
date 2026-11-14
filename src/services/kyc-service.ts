@@ -1,5 +1,5 @@
-import { apiGet, apiPost, apiPostBytes } from '@/lib/api-client';
-import type { KycOverview, RuxstarCard } from '@/types/kyc';
+import { apiGet, apiPatch, apiPost, apiPostBytes, apiPutBytes } from '@/lib/api-client';
+import type { DeliveryPhotoKind, KycOverview, RuxstarCard, VehicleType } from '@/types/kyc';
 
 /** `/v1/kyc`. Every step answers with the whole overview, so the screen just replaces what it shows. */
 export const KycService = {
@@ -14,6 +14,14 @@ export const KycService = {
   sendSelfie: (token: string, jpeg: Uint8Array<ArrayBuffer>) =>
     apiPostBytes<KycOverview>('/v1/kyc/base/face', { data: jpeg, type: 'image/jpeg' }, token),
   submitIdentity: (token: string) => apiPost<KycOverview>('/v1/kyc/base/submit', undefined, token),
+
+  /** Delivery partner details, after identity. Send only what changed; numbers may have spaces and dashes. */
+  saveDelivery: (token: string, body: { licenceNumber?: string; vehicleType?: VehicleType; vehicleNumber?: string }) =>
+    apiPatch<KycOverview>('/v1/kyc/delivery', body, token),
+  /** Replaces the photo before. Kept privately for the Ruxstar team. */
+  sendDeliveryPhoto: (token: string, kind: DeliveryPhotoKind, jpeg: Uint8Array<ArrayBuffer>) =>
+    apiPutBytes<KycOverview>(`/v1/kyc/delivery/photos/${kind}`, { data: jpeg, type: 'image/jpeg' }, token),
+  submitDelivery: (token: string) => apiPost<KycOverview>('/v1/kyc/delivery/submit', undefined, token),
 
   getCard: (token: string) => apiGet<RuxstarCard>('/v1/kyc/card', token),
 };

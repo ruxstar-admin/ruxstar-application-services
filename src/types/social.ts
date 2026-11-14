@@ -99,6 +99,8 @@ export interface AppNotification {
   postId?: string;
   /** A verification decision: tapping opens the Verification screen. */
   verification?: boolean;
+  /** A delivery partner decision, or news about a delivery (those are handled in the Ruxstar Delivery app): tapping opens Delivery verification. */
+  deliveryVerification?: boolean;
   /** A hold on one of your businesses, or its lifting: tapping opens it in the vendor portal. */
   businessId?: string;
   /** News about your print order: tapping opens it. */

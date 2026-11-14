@@ -57,9 +57,8 @@ function AuthGuard() {
     const inAuthGroup = segments[0] === '(auth)';
     const inCustomerGroup = segments[0] === '(customer)';
     const inVendorGroup = segments[0] === '(vendor)';
-    const inPartnerGroup = segments[0] === '(partner)';
     const inAdminGroup = segments[0] === '(admin)';
-    const inNamedGroup = inAuthGroup || inCustomerGroup || inVendorGroup || inPartnerGroup || inAdminGroup;
+    const inNamedGroup = inAuthGroup || inCustomerGroup || inVendorGroup || inAdminGroup;
     const team = roles.includes(ROLES.ADMIN) || roles.includes(ROLES.RUXSTAR_STAFF);
 
     if (!isAuthenticated && !inAuthGroup) {
@@ -85,9 +84,8 @@ function AuthGuard() {
       return;
     }
 
-    // Role-gated areas: the vendor portal and the delivery partner area each need their role.
+    // The vendor portal needs its role. Delivery partners work in the separate Ruxstar Delivery app.
     if (isAuthenticated && inVendorGroup && !roles.includes(ROLES.VENDOR)) router.replace(HOME as never);
-    if (isAuthenticated && inPartnerGroup && !roles.includes(ROLES.DELIVERY)) router.replace(HOME as never);
   }, [navState?.key, _hasHydrated, isAuthenticated, roles, segments, router]);
 
   // After the redirects above, so a tapped notification's screen opens on top of home.
@@ -115,7 +113,7 @@ function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: Brand.bg }}>
       <StatusBar style="light" />
       <AuthGuard />
-      {/* A stack, not a slot: opening the vendor or partner area from Profile must keep Profile underneath for Back. */}
+      {/* A stack, not a slot: opening the vendor portal from Profile must keep Profile underneath for Back. */}
       <Stack screenOptions={STACK_SCREEN_OPTIONS} />
     </GestureHandlerRootView>
   );

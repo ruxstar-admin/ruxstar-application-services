@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-14 — Delivery, phase 1
+Prompt:    "differntiate vendor, employee and delivery partner … add a delivery icon beside edit profile … build the delivery app … vendor can assign orders to delivery partners or team members"
+Decision:  Riders get a separate Ruxstar Delivery app on the same account; this app keeps verification, checkout location, "Who delivers" and the customer's rider card (DECISIONS #45, Architecture decision 57).
+Done:      `DeliveryVerificationScreen`, `settings/delivery`, Profile bicycle button, `DropLocation`, `DeliverySection`, `RiderCard`, delivery charge in Products & delivery, console Verification tracks and delivery photos, Modules GSTIN switch and delivery rates; deleted `(partner)`, `features/delivery`, `delivery-service.ts`, `delivery.mocks.ts`.
+Blocked:   Shadowfax and rider withdrawals are phase 2.
+Mocks:     none added; the delivery mocks are gone.
+Verified by user: no
+Next:      Verify as a rider in Expo Go, approve in the console, then sign in to Ruxstar Delivery.
+
+---
+
 ## 2026-10-22 — Welcome: star-portal backdrop and bottom gap
 Prompt:    "add this image as the background in the first page and also bottom side it was showing some gap for the overlay of mobile number enter area below the continue button please fix that"
 Decision:  Artwork (`assets/images/Futuristic Gold and Cyan Star Portal.png`) replaces the Lottie hero as the full-screen backdrop; wordmark and rotating caption stay on top. Sheet now runs to the screen edge and pads itself by the bottom safe-area inset instead of the screen reserving that strip.

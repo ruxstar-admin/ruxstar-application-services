@@ -32,7 +32,8 @@ export interface Access {
 
 /** A section is null when this person may not see it. */
 export interface Overview {
-  kyc: { waiting: number } | null;
+  /** `delivery` is how many of those waiting are delivery partners. */
+  kyc: { waiting: number; delivery: number } | null;
   /** `people` and `reviews` count those with open reports. */
   reports: { posts: number; reports: number; people: number; reviews: number } | null;
   users: { total: number; newThisWeek: number; suspended: number } | null;
@@ -47,9 +48,12 @@ export interface Overview {
 
 export type ReviewStatus = 'submitted' | 'approved' | 'rejected' | 'locked';
 export type CaseStatus = 'not_started' | 'in_progress' | ReviewStatus;
+/** `base` is identity; `delivery` is a delivery partner's licence and vehicle. */
+export type ReviewTrack = 'base' | 'delivery';
 
 export interface ReviewCase {
   id: string;
+  track: ReviewTrack;
   status: CaseStatus;
   rejections: number;
   user: { id: string; name: string; username: string; phone: string; avatarUrl: string | null; memberSince: string };
@@ -62,6 +66,14 @@ export interface ReviewCase {
     livenessScore: number | null;
     faceMatchScore: number | null;
   };
+  /** Delivery cases only. The photo links open without signing in and work for 10 minutes. */
+  delivery: {
+    licenceNumber: string | null;
+    licencePhotoUrl: string | null;
+    vehicleType: 'bike' | 'scooter' | null;
+    vehicleNumber: string | null;
+    vehiclePhotoUrl: string | null;
+  } | null;
   submittedAt: string | null;
   review: { decision: 'approved' | 'rejected'; reason: string | null; at: string } | null;
 }
@@ -203,14 +215,29 @@ export interface ModuleSettings {
   /** Ledger only: paise taken from each withdrawal, and the least a vendor can withdraw. */
   payouts: { fee: number; minimum: number } | null;
   deliveryEnabled: boolean;
+  /** Business modules: publishing needs a verified GSTIN. Null for other modules. */
+  gstinRequired: boolean | null;
+  /** The delivery module only. */
+  delivery: DeliverySettings | null;
   updatedAt: string;
 }
 
-export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 'commissionBps' | 'platformFee' | 'deliveryEnabled'>> & {
-  /** Ledger only, paise. The minimum must be at least ₹1 more than the fee. */
-  payoutFee?: number;
-  minPayout?: number;
-};
+/** Paise. `riderRate` is what a Ruxstar partner is paid for one trip, out of the shop's share; `shopFeeMax` caps what shops charge. */
+export interface DeliverySettings {
+  riderRate: { base: number; includedKm: number; perKm: number };
+  shopFeeMax: { base: number; perKm: number };
+  /** A partner offer nobody accepts is cancelled after this. */
+  offerMinutes: number;
+}
+
+export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 'commissionBps' | 'platformFee' | 'deliveryEnabled'>> &
+  Partial<Pick<DeliverySettings, 'riderRate' | 'shopFeeMax' | 'offerMinutes'>> & {
+    /** Ledger only, paise. The minimum must be at least ₹1 more than the fee. */
+    payoutFee?: number;
+    minPayout?: number;
+    /** Business modules only. Live businesses without one stay live. */
+    gstinRequired?: boolean;
+  };
 
 // Payouts and held money.
 

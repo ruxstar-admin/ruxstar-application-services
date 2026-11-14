@@ -1,22 +1,29 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Badge } from '@/components/ui/Badge';
+import { ChoiceChips } from '@/components/ui/ChoiceChips';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Brand, Spacing } from '@/constants/theme';
+import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
-import type { CaseStatus, ReviewCase, ReviewStatus } from '@/types/admin';
+import type { CaseStatus, ReviewCase, ReviewStatus, ReviewTrack } from '@/types/admin';
 import { useCan } from '../access';
-import { Card, ConsoleScreen, Fact, Facts, Note, ReasonSheet, Row, consoleStyles, errorText } from '../components/parts';
+import { Card, ConsoleScreen, Fact, Facts, Note, ReasonSheet, Row, Section, consoleStyles, errorText } from '../components/parts';
 import { shortDate } from '../labels';
+
+const TRACKS = [
+  { key: 'base', label: 'Identity' },
+  { key: 'delivery', label: 'Delivery partners' },
+] as const satisfies readonly { key: ReviewTrack; label: string }[];
 
 const TABS = [
   { key: 'submitted', label: 'To review' },
@@ -43,6 +50,40 @@ const MATCH: Record<string, string> = {
 };
 
 const percent = (score: number | null) => (score === null ? '—' : `${Math.round(score * 100)}%`);
+
+/** Tapping opens the full photo in the browser to zoom in. The link works for 10 minutes; pull to refresh for a new one. */
+function Photo({ label, url }: { label: string; url: string | null }) {
+  if (!url) return <Fact label={label} value="No photo" warn />;
+  return (
+    <Pressable
+      accessibilityRole="imagebutton"
+      accessibilityLabel={`Open the ${label.toLowerCase()}`}
+      onPress={() => Linking.openURL(url).catch(() => undefined)}
+      style={({ pressed }) => [styles.photo, pressed && styles.pressed]}
+    >
+      <Image source={{ uri: url }} style={styles.photoImage} contentFit="cover" transition={150} />
+      <Text style={styles.photoLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function DeliveryFacts({ d }: { d: NonNullable<ReviewCase['delivery']> }) {
+  return (
+    <>
+      <Section>Licence and vehicle</Section>
+      <Facts>
+        <Fact label="Licence number" value={d.licenceNumber ?? '—'} />
+        <Fact label="Vehicle" value={d.vehicleType ? `${d.vehicleType === 'bike' ? 'Bike' : 'Scooter'} · ${d.vehicleNumber ?? '—'}` : '—'} />
+      </Facts>
+      <Text style={consoleStyles.muted}>Check the licence photo matches the number, and the plate in the vehicle photo matches the vehicle number.</Text>
+      <View style={styles.photos}>
+        <Photo label="Licence" url={d.licencePhotoUrl} />
+        <Photo label="Vehicle" url={d.vehiclePhotoUrl} />
+      </View>
+      <Section>Their identity</Section>
+    </>
+  );
+}
 
 function CaseDetail({ c, onDecided }: { c: ReviewCase; onDecided: (done: ReviewCase, message: string) => void }) {
   const token = useAuthToken();
@@ -72,6 +113,7 @@ function CaseDetail({ c, onDecided }: { c: ReviewCase; onDecided: (done: ReviewC
 
   return (
     <View style={styles.detail}>
+      {c.delivery ? <DeliveryFacts d={c.delivery} /> : null}
       <Facts>
         <Fact label="Phone" value={c.user.phone} />
         <Fact label="Member since" value={shortDate(c.user.memberSince)} />
@@ -104,7 +146,7 @@ function CaseDetail({ c, onDecided }: { c: ReviewCase; onDecided: (done: ReviewC
         visible={rejecting}
         title={c.rejections >= 2 ? 'Send back and put on hold' : 'Send back'}
         prompt="What should they fix? They will see this."
-        placeholder="For example: your selfie is blurry. Retake it in good light."
+        placeholder={c.track === 'delivery' ? 'For example: the number plate is not readable. Retake the vehicle photo.' : 'For example: your selfie is blurry. Retake it in good light.'}
         confirmLabel={c.rejections >= 2 ? 'Send back and put on hold' : 'Send back'}
         loading={busy === 'reject'}
         onConfirm={(reason) => decide('reject', reason)}
@@ -114,9 +156,9 @@ function CaseDetail({ c, onDecided }: { c: ReviewCase; onDecided: (done: ReviewC
   );
 }
 
-function Queue({ status }: { status: ReviewStatus }) {
+function Queue({ status, track }: { status: ReviewStatus; track: ReviewTrack }) {
   const token = useAuthToken();
-  const list = usePaginated((cursor) => AdminService.reviewQueue(token, status, cursor));
+  const list = usePaginated((cursor) => AdminService.reviewQueue(token, status, track, cursor));
   const [open, setOpen] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
@@ -142,7 +184,7 @@ function Queue({ status }: { status: ReviewStatus }) {
       onEndReached={list.loadMore}
       onEndReachedThreshold={0.5}
       ListHeaderComponent={done ? <Note>{done}</Note> : null}
-      ListEmptyComponent={<EmptyState icon="shield-checkmark-outline" title={status === 'submitted' ? 'Nothing waiting' : 'No cases here'} message={status === 'submitted' ? 'New verification requests show up here.' : undefined} />}
+      ListEmptyComponent={<EmptyState icon="shield-checkmark-outline" title={status === 'submitted' ? 'Nothing waiting' : 'No cases here'} message={status === 'submitted' ? (track === 'delivery' ? 'New delivery partner requests show up here.' : 'New verification requests show up here.') : undefined} />}
       ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
       renderItem={({ item: c }) => {
         const [label, tone] = STATUS[c.status];
@@ -175,18 +217,25 @@ function Queue({ status }: { status: ReviewStatus }) {
 }
 
 export function KycReviewScreen() {
+  const [track, setTrack] = useState<ReviewTrack>('base');
   const [status, setStatus] = useState<ReviewStatus>('submitted');
   return (
     <ConsoleScreen title="Verification">
       <View style={styles.tabs}>
+        <ChoiceChips options={TRACKS} value={track} onChange={setTrack} />
         <SegmentedTabs options={TABS} value={status} onChange={setStatus} />
       </View>
-      <Queue key={status} status={status} />
+      <Queue key={`${track}:${status}`} status={status} track={track} />
     </ConsoleScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  tabs: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.two },
+  tabs: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.two, gap: Spacing.two },
   detail: { gap: Spacing.three, paddingTop: Spacing.two },
+  photos: { flexDirection: 'row', gap: Spacing.two },
+  photo: { flex: 1, gap: Spacing.one },
+  photoImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: Radius.md, backgroundColor: Brand.surfaceAlt },
+  photoLabel: { ...Typography.caption, color: Brand.textMuted },
+  pressed: { opacity: 0.7 },
 });

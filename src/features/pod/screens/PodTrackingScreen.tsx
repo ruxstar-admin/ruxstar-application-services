@@ -17,6 +17,7 @@ import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { FileRow } from '@/features/pod/components/FileRow';
 import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
 import { ProblemCard } from '@/features/pod/components/ProblemCard';
+import { RiderCard } from '@/features/pod/components/RiderCard';
 import {
   checkoutReturn,
   choiceLine,
@@ -225,6 +226,7 @@ function OrderDetails({ order, onChanged }: { order: Order; onChanged: (order?: 
       {inHand && order.readyBy ? <Text style={styles.muted}>{`Ready by ${dayLabel(order.readyBy)}`}</Text> : null}
 
       <News order={order} />
+      {order.delivery?.rider && order.delivery.status !== 'cancelled' && !isClosed(order.status) ? <RiderCard delivery={order.delivery} code={order.delivery.dropCode} /> : null}
       {error ? <ErrorBanner message={error} /> : null}
 
       {order.status === 'awaiting_payment' ? <PrimaryButton label={`Pay ${money(order.price.total)}`} onPress={startPayment} loading={paying} /> : null}

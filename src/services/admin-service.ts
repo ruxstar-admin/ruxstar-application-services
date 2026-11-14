@@ -21,6 +21,7 @@ import type {
   ReportStatus,
   ReviewCase,
   ReviewStatus,
+  ReviewTrack,
   StaffMember,
   StaffPayout,
 } from '@/types/admin';
@@ -40,7 +41,8 @@ export const AdminService = {
   getAccess: (token: string) => apiGet<Access>('/v1/ruxstar/access', token),
   getOverview: (token: string) => apiGet<Overview>('/v1/ruxstar/overview', token),
 
-  reviewQueue: (token: string, status: ReviewStatus, cursor?: string) => apiGetPage<ReviewCase>('/v1/ruxstar/kyc', token, { status, cursor }),
+  reviewQueue: (token: string, status: ReviewStatus, track: ReviewTrack, cursor?: string) =>
+    apiGetPage<ReviewCase>('/v1/ruxstar/kyc', token, { status, track, cursor }),
   approveCase: (token: string, id: string, key: string) => apiPost<ReviewCase>(`/v1/ruxstar/kyc/${id}/approve`, undefined, token, keyed(key)),
   /** The reason (5 to 300 characters) is shown to the person, so it says what to fix. */
   rejectCase: (token: string, id: string, reason: string, key: string) =>

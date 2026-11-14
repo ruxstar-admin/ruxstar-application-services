@@ -56,6 +56,14 @@ export interface Shop extends ShopCard {
   minOrder: number;
   notes: string | null;
   catalog: ShopProduct[];
+  deliveryFee: DeliveryFee;
+}
+
+/** Paise: `base` covers the first `includedKm`, then `perKm` for each km after. All 0 is free delivery. */
+export interface DeliveryFee {
+  base: number;
+  includedKm: number;
+  perKm: number;
 }
 
 export type ShopFilters = {

@@ -97,6 +97,108 @@ function Withdrawals({ m, onSaved }: { m: ModuleSettings & { payouts: NonNullabl
   );
 }
 
+const MAX_RATE_RUPEES = 1000;
+const wholeOf = (text: string) => (/^\d+$/.test(text.trim()) ? Number(text) : NaN);
+const rupeeError = (paise: number) => (Number.isFinite(paise) && paise >= 0 && paise <= MAX_RATE_RUPEES * 100 ? undefined : `Enter an amount from 0 to ${MAX_RATE_RUPEES}`);
+
+/** Delivery only: what a Ruxstar partner is paid for a trip, the most a shop can charge, and how long an offer waits. */
+function DeliveryRates({ m, onSaved }: { m: ModuleSettings & { delivery: NonNullable<ModuleSettings['delivery']> }; onSaved: (m: ModuleSettings) => void }) {
+  const token = useAuthToken();
+  const canManage = useCan('modules.manage');
+  const d = m.delivery;
+  const [riderBase, setRiderBase] = useState(rupeesOf(d.riderRate.base));
+  const [riderKm, setRiderKm] = useState(String(d.riderRate.includedKm));
+  const [riderPerKm, setRiderPerKm] = useState(rupeesOf(d.riderRate.perKm));
+  const [shopBase, setShopBase] = useState(rupeesOf(d.shopFeeMax.base));
+  const [shopPerKm, setShopPerKm] = useState(rupeesOf(d.shopFeeMax.perKm));
+  const [minutes, setMinutes] = useState(String(d.offerMinutes));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const key = useRef(newIdempotencyKey());
+
+  const riderRate = { base: paiseOf(riderBase), includedKm: wholeOf(riderKm), perKm: paiseOf(riderPerKm) };
+  const shopFeeMax = { base: paiseOf(shopBase), perKm: paiseOf(shopPerKm) };
+  const offerMinutes = wholeOf(minutes);
+  const errors = {
+    riderBase: rupeeError(riderRate.base),
+    riderKm: riderRate.includedKm >= 0 && riderRate.includedKm <= 50 ? undefined : 'Enter whole km from 0 to 50',
+    riderPerKm: rupeeError(riderRate.perKm),
+    shopBase: rupeeError(shopFeeMax.base),
+    shopPerKm: rupeeError(shopFeeMax.perKm),
+    minutes: offerMinutes >= 1 && offerMinutes <= 120 ? undefined : 'Enter whole minutes from 1 to 120',
+  };
+  const invalid = Object.values(errors).some(Boolean);
+  const changed =
+    riderRate.base !== d.riderRate.base ||
+    riderRate.includedKm !== d.riderRate.includedKm ||
+    riderRate.perKm !== d.riderRate.perKm ||
+    shopFeeMax.base !== d.shopFeeMax.base ||
+    shopFeeMax.perKm !== d.shopFeeMax.perKm ||
+    offerMinutes !== d.offerMinutes;
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const done = await AdminService.updateModule(token, m.module, { riderRate, shopFeeMax, offerMinutes }, key.current);
+      key.current = newIdempotencyKey();
+      Feedback.success();
+      onSaved(done);
+    } catch (err) {
+      Feedback.error();
+      setError(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!canManage) {
+    return (
+      <Facts>
+        <Fact label="Partner pay" value={`₹${rupeesOf(d.riderRate.base)} for ${d.riderRate.includedKm} km, then ₹${rupeesOf(d.riderRate.perKm)} a km`} />
+        <Fact label="Most a shop charges" value={`₹${rupeesOf(d.shopFeeMax.base)}, plus ₹${rupeesOf(d.shopFeeMax.perKm)} a km`} />
+        <Fact label="Offer waits" value={`${d.offerMinutes} min`} />
+      </Facts>
+    );
+  }
+  const rupees = (set: (v: string) => void) => (value: string) => set(value.replace(/[^\d.]/g, ''));
+  const whole = (set: (v: string) => void) => (value: string) => set(value.replace(/\D/g, ''));
+  return (
+    <>
+      <Text style={styles.group}>Ruxstar partner pay, per trip</Text>
+      <Text style={consoleStyles.muted}>Paid to the partner out of the shop&apos;s share. The partner keeps all of it.</Text>
+      <View style={styles.pair}>
+        <View style={styles.flex}>
+          <InputField label="Base (₹)" keyboardType="decimal-pad" value={riderBase} onChangeText={rupees(setRiderBase)} error={errors.riderBase} />
+        </View>
+        <View style={styles.flex}>
+          <InputField label="Covers (km)" keyboardType="number-pad" value={riderKm} onChangeText={whole(setRiderKm)} error={errors.riderKm} />
+        </View>
+      </View>
+      <InputField label="Each km after (₹)" keyboardType="decimal-pad" value={riderPerKm} onChangeText={rupees(setRiderPerKm)} error={errors.riderPerKm} />
+      <Text style={styles.group}>Most a shop can charge customers</Text>
+      <View style={styles.pair}>
+        <View style={styles.flex}>
+          <InputField label="Base (₹)" keyboardType="decimal-pad" value={shopBase} onChangeText={rupees(setShopBase)} error={errors.shopBase} />
+        </View>
+        <View style={styles.flex}>
+          <InputField label="Per km (₹)" keyboardType="decimal-pad" value={shopPerKm} onChangeText={rupees(setShopPerKm)} error={errors.shopPerKm} />
+        </View>
+      </View>
+      <InputField
+        label="Offer waits (minutes)"
+        keyboardType="number-pad"
+        value={minutes}
+        onChangeText={whole(setMinutes)}
+        hint="If no partner accepts by then, the offer is cancelled and the shop is told."
+        error={errors.minutes}
+      />
+      <PrimaryButton label="Save delivery rates" variant="outline" onPress={save} loading={busy} disabled={invalid || !changed} />
+      {error ? <ErrorBanner message={error} /> : null}
+    </>
+  );
+}
+
 function Module({ m, onSaved }: { m: ModuleSettings; onSaved: (m: ModuleSettings) => void }) {
   const token = useAuthToken();
   const canManage = useCan('modules.manage');
@@ -148,6 +250,14 @@ function Module({ m, onSaved }: { m: ModuleSettings; onSaved: (m: ModuleSettings
           <ToggleRow title="Live" subtitle="Off hides it everywhere, for everyone." value={m.live} onValueChange={(live) => save({ live })} />
           <ToggleRow title="New vendors can join" subtitle="Off keeps current vendors working but stops new ones joining." value={m.signupsOpen} onValueChange={(signupsOpen) => save({ signupsOpen })} />
           <ToggleRow title="Delivery" subtitle="Orders can be sent with a Ruxstar delivery partner." value={m.deliveryEnabled} onValueChange={(deliveryEnabled) => save({ deliveryEnabled })} />
+          {m.gstinRequired !== null ? (
+            <ToggleRow
+              title="GSTIN needed to publish"
+              subtitle="New businesses need a verified GSTIN. Live ones without one stay live."
+              value={m.gstinRequired}
+              onValueChange={(gstinRequired) => save({ gstinRequired })}
+            />
+          ) : null}
           <InputField
             label="Commission on each order (%)"
             keyboardType="decimal-pad"
@@ -182,12 +292,14 @@ function Module({ m, onSaved }: { m: ModuleSettings; onSaved: (m: ModuleSettings
         <Facts>
           <Fact label="New vendors can join" value={m.signupsOpen ? 'Yes' : 'No'} />
           <Fact label="Delivery" value={m.deliveryEnabled ? 'On' : 'Off'} />
+          {m.gstinRequired !== null ? <Fact label="GSTIN to publish" value={m.gstinRequired ? 'Needed' : 'Optional'} /> : null}
           <Fact label="Commission" value={`${percentOf(m.commissionBps)}%`} />
           <Fact label="Platform fee" value={m.platformFee ? `₹${rupeesOf(m.platformFee)}` : 'None'} />
         </Facts>
       )}
       {error ? <ErrorBanner message={error} /> : null}
       {m.payouts ? <Withdrawals m={{ ...m, payouts: m.payouts }} onSaved={onSaved} /> : null}
+      {m.delivery ? <DeliveryRates m={{ ...m, delivery: m.delivery }} onSaved={onSaved} /> : null}
     </Card>
   );
 }
@@ -215,4 +327,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1, gap: 2 },
   head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   name: { ...Typography.bodyStrong, color: Brand.text },
+  group: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.two },
+  pair: { flexDirection: 'row', gap: Spacing.two },
 });

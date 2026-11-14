@@ -42,10 +42,16 @@ function Form({ id, team, business, catalog, onSaved }: { id: string; team: bool
   const [turnaround, setTurnaround] = useState(pod.turnaroundDays);
   const [minOrder, setMinOrder] = useState(pod.minOrder ? rupeesText(pod.minOrder) : '');
   const [notes, setNotes] = useState(pod.notes ?? '');
+  const [feeBase, setFeeBase] = useState(pod.deliveryFee.base ? rupeesText(pod.deliveryFee.base) : '');
+  const [feeKm, setFeeKm] = useState(pod.deliveryFee.includedKm);
+  const [feePerKm, setFeePerKm] = useState(pod.deliveryFee.perKm ? rupeesText(pod.deliveryFee.perKm) : '');
   const [problem, setProblem] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const feeMax = catalog.limits.deliveryFee;
+  const base = paiseOf(feeBase) ?? 0;
+  const perKm = paiseOf(feePerKm) ?? 0;
   const stateCities = catalog.states.find((s) => s.name === business.location?.state)?.cities ?? [];
   const suggestions = stateCities.filter((c) => !cities.includes(c.toLowerCase()));
   const limit = catalog.limits.cities;
@@ -67,6 +73,9 @@ function Form({ id, team, business, catalog, onSaved }: { id: string; team: bool
     setFailure(null);
     if (!products.length) return (setProblem('Choose at least one product.'), Feedback.error());
     if (!serveAll && !cities.length) return (setProblem('Add a city you deliver to, or turn on every city.'), Feedback.error());
+    if (base > feeMax.base || perKm > feeMax.perKm) {
+      return (setProblem(`Ruxstar allows a delivery charge of up to ₹${rupeesText(feeMax.base)}, plus ₹${rupeesText(feeMax.perKm)} a km.`), Feedback.error());
+    }
     setSaving(true);
     try {
       const saved = await shopDesk(team).service.updatePod(token, id, {
@@ -76,6 +85,7 @@ function Form({ id, team, business, catalog, onSaved }: { id: string; team: bool
         turnaroundDays: turnaround,
         minOrder: paiseOf(minOrder) ?? 0,
         notes: notes.trim() || null,
+        deliveryFee: { base, includedKm: perKm ? feeKm : 0, perKm },
       });
       Feedback.success();
       onSaved(saved);
@@ -169,6 +179,35 @@ function Form({ id, team, business, catalog, onSaved }: { id: string; team: bool
             />
           ) : null}
         </>
+      ) : null}
+
+      <Text style={styles.section}>Delivery charge</Text>
+      <InputField
+        label="Base charge (₹)"
+        value={feeBase}
+        onChangeText={(t) => setFeeBase(rupeeInput(t))}
+        keyboardType="decimal-pad"
+        placeholder="0"
+        hint={`Up to ₹${rupeesText(feeMax.base)}. Leave both at 0 for free delivery.`}
+      />
+      <InputField
+        label="Per km (₹, optional)"
+        value={feePerKm}
+        onChangeText={(t) => setFeePerKm(rupeeInput(t))}
+        keyboardType="decimal-pad"
+        placeholder="0"
+        hint={`Up to ₹${rupeesText(feeMax.perKm)} a km. Customers then share their location at checkout.`}
+      />
+      {perKm ? (
+        <View style={styles.row}>
+          <View style={styles.flex}>
+            <Text style={styles.label}>Km in the base charge</Text>
+            <Text style={styles.hint}>
+              {feeKm === 0 ? `₹${rupeesText(perKm)} for every km` : `₹${rupeesText(perKm)} a km after the first ${feeKm} km`}
+            </Text>
+          </View>
+          <Stepper value={feeKm} min={0} max={50} onChange={setFeeKm} label="Km the base charge covers" />
+        </View>
       ) : null}
 
       <Text style={styles.section}>Orders</Text>

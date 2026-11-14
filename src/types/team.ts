@@ -6,6 +6,7 @@ export type TeamPermission =
   | 'orders.move'
   | 'orders.reject'
   | 'orders.refund'
+  | 'orders.deliver'
   | 'earnings.view'
   | 'shop.open'
   | 'shop.catalog'

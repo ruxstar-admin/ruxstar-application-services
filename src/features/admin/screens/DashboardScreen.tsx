@@ -59,7 +59,13 @@ export function DashboardScreen() {
                   icon="shield-checkmark-outline"
                   label="Verification to review"
                   value={data.kyc.waiting}
-                  caption={data.kyc.waiting === 0 ? 'Nothing waiting.' : 'Identity checks waiting for a decision'}
+                  caption={
+                    data.kyc.waiting === 0
+                      ? 'Nothing waiting.'
+                      : data.kyc.delivery
+                        ? `Waiting for a decision, ${data.kyc.delivery} of them delivery partners`
+                        : 'Identity checks waiting for a decision'
+                  }
                   href="/(admin)/(tabs)/kyc"
                 />
               ) : null}

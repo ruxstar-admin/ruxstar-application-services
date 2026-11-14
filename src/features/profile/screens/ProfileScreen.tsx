@@ -40,9 +40,11 @@ export function ProfileScreen() {
   useRefetchOnFocus(reload);
   // Approval happens on the server, so the stored roles catch up from the profile without a fresh sign-in.
   const verifiedVendor = !!data?.badges.includes('vendor');
+  const verifiedRider = !!data?.badges.includes('delivery');
   useEffect(() => {
     if (verifiedVendor) addRole(ROLES.VENDOR);
-  }, [verifiedVendor, addRole]);
+    if (verifiedRider) addRole(ROLES.DELIVERY);
+  }, [verifiedVendor, verifiedRider, addRole]);
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('personal');
   const [viewingPhoto, setViewingPhoto] = useState(false);
   // Only a pull shows the spinner; focus refetches stay silent.
@@ -143,6 +145,17 @@ export function ProfileScreen() {
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityLabel={isPartner ? 'Delivery partner: use the Ruxstar Delivery app' : 'Become a delivery partner'}
+                  onPress={() => {
+                    Feedback.tap();
+                    router.push('/(customer)/settings/delivery');
+                  }}
+                  style={({ pressed }) => [styles.iconButton, isPartner && styles.vendorButton, pressed && styles.iconButtonPressed]}
+                >
+                  <Ionicons name={isPartner ? 'bicycle' : 'bicycle-outline'} size={24} color={isPartner ? Brand.onAction : Brand.textFaint} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
                   accessibilityLabel="Share profile"
                   onPress={share}
                   style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
@@ -154,8 +167,6 @@ export function ProfileScreen() {
               <Animated.View entering={rise(4)}>
                 <ProfileChecklist profile={data} onStep={openStep} />
               </Animated.View>
-
-              {isPartner ? <PrimaryButton label="Open Ruxstar Partner app" onPress={() => router.push('/(partner)')} /> : null}
 
               <Animated.View entering={rise(5)} style={styles.tabs}>
                 {isVendor ? <SegmentedTabs options={TABS} value={tab} onChange={setTab} /> : null}

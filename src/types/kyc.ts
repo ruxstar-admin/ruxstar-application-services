@@ -25,9 +25,20 @@ export interface BaseCase extends Decision {
   };
 }
 
+export type VehicleType = 'bike' | 'scooter';
+export type DeliveryPhotoKind = 'licence' | 'vehicle';
+
+/** Delivery partner: the driving licence and the bike or scooter, on top of approved identity. The Ruxstar team checks the photos. */
+export interface DeliveryCase extends Decision {
+  identityVerified: boolean;
+  licence: { number: string | null; photo: boolean };
+  vehicle: { type: VehicleType | null; number: string | null; photo: boolean };
+}
+
 /** GET /v1/kyc */
 export interface KycOverview {
   base: BaseCase;
+  delivery: DeliveryCase;
 }
 
 /** Issued when identity is approved, which also makes the person a vendor. The masked numbers are for the owner only. */
