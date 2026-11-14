@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ChoiceChips } from '@/components/ui/ChoiceChips';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
+import { DetailLine } from '@/components/ui/DetailLine';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
@@ -16,6 +17,7 @@ import { StatusTimeline } from '@/components/ui/StatusTimeline';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { FileRow } from '@/features/pod/components/FileRow';
+import { OrderBusiness } from '@/features/pod/components/OrderBusiness';
 import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
 import { ProblemCard } from '@/features/pod/components/ProblemCard';
 import { RiderCard } from '@/features/pod/components/RiderCard';
@@ -222,11 +224,11 @@ function OrderDetails({ order, onChanged }: { order: Order; onChanged: (order?: 
       <View style={styles.head}>
         <View style={styles.flex}>
           <Text style={styles.title}>{`Order #${order.orderNo}`}</Text>
-          <Text style={styles.muted}>{order.shop.name}</Text>
+          <Text style={styles.muted}>{inHand && order.readyBy ? `Ready by ${dayLabel(order.readyBy)}` : order.productLabel}</Text>
         </View>
         <Badge label={STATUS_LABEL[order.status]} tone={STATUS_TONE[order.status]} />
       </View>
-      {inHand && order.readyBy ? <Text style={styles.muted}>{`Ready by ${dayLabel(order.readyBy)}`}</Text> : null}
+      <OrderBusiness label="From" name={order.shop.name} onPress={() => router.push({ pathname: '/(customer)/pod/shop/[id]', params: { id: order.shop.id } })} />
 
       <News order={order} />
       {order.delivery?.rider && order.delivery.status !== 'cancelled' && !isClosed(order.status) ? <RiderCard delivery={order.delivery} code={order.delivery.dropCode} /> : null}
@@ -292,6 +294,17 @@ function OrderDetails({ order, onChanged }: { order: Order; onChanged: (order?: 
       <View style={styles.card}>
         <OrderPriceList price={order.price} pricing={order.pricing} />
       </View>
+      {order.paidAt ? (
+        <View style={styles.payment}>
+          <DetailLine label="Paid on" value={formatDateTime(order.paidAt)} />
+          {order.paymentId ? <DetailLine label="Payment ID" value={order.paymentId} copyable /> : null}
+          <PrimaryButton
+            label="View payment"
+            variant="outline"
+            onPress={() => router.push({ pathname: '/(customer)/payments', params: { open: order.id } })}
+          />
+        </View>
+      ) : null}
 
       {cancellable ? (
         <View style={styles.cancel}>
@@ -367,5 +380,6 @@ const styles = StyleSheet.create({
   news: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surfaceAlt, marginTop: Spacing.two },
   cancel: { marginTop: Spacing.four },
   report: { gap: Spacing.one, marginTop: Spacing.three },
+  payment: { gap: Spacing.three, padding: Spacing.three, marginTop: Spacing.two, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   help: { alignItems: 'center', marginTop: Spacing.four },
 });

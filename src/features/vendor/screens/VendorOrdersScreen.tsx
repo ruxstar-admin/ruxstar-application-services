@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { ChoiceChips } from '@/components/ui/ChoiceChips';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
@@ -9,10 +10,12 @@ import { Spacing } from '@/constants/theme';
 import { OrderRow } from '@/features/pod/components/OrderRow';
 import { SHOP_STATUS_LABEL } from '@/features/pod/lib/order';
 import { VendorTabScreen } from '@/features/vendor/components/VendorTabScreen';
+import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { titleCase } from '@/features/vendor/lib/pod';
+import { BusinessService } from '@/services/business-service';
 import { ShopOrderService } from '@/services/order-service';
 import type { ShopOrderView } from '@/types/order';
 
@@ -21,6 +24,7 @@ const VIEWS = [
   { key: 'active', label: 'In progress' },
   { key: 'past', label: 'Past' },
 ] as const;
+const ALL = 'all';
 
 const EMPTY: Record<ShopOrderView, { title: string; message: string }> = {
   new: { title: 'No new orders', message: 'Paid orders to your shops wait here for you to accept.' },
@@ -28,12 +32,14 @@ const EMPTY: Record<ShopOrderView, { title: string; message: string }> = {
   past: { title: 'No past orders', message: 'Delivered, turned down and cancelled orders show here.' },
 };
 
-/** Paid orders to every shop the vendor runs: new ones to accept, ones being made, and past ones. */
+/** Paid orders to every shop the vendor runs, each marked with its shop: new ones to accept, ones being made, and past ones. */
 export function VendorOrdersScreen() {
   const router = useRouter();
   const token = useAuthToken();
   const [view, setView] = useState<ShopOrderView>('new');
-  const list = usePaginated((cursor) => ShopOrderService.list(token, { view }, cursor));
+  const [business, setBusiness] = useState<string>(ALL);
+  const shops = useAsyncResource(() => BusinessService.list(token).then((all) => all.filter((b) => b.module === 'pod')));
+  const list = usePaginated((cursor) => ShopOrderService.list(token, { view, business: business === ALL ? undefined : business }, cursor));
   useRefetchOnFocus(list.refresh);
 
   const first = useRef(true);
@@ -44,11 +50,18 @@ export function VendorOrdersScreen() {
       return;
     }
     retry();
-  }, [view, retry]);
+  }, [view, business, retry]);
+
+  const choices = (shops.data?.length ?? 0) > 1 ? [{ key: ALL, label: 'All businesses' }, ...shops.data!.map((b) => ({ key: b.id, label: b.name }))] : null;
 
   return (
     <VendorTabScreen title="Orders" onRefresh={list.refresh}>
       <SegmentedTabs options={VIEWS} value={view} onChange={setView} />
+      {choices ? (
+        <View style={styles.chips}>
+          <ChoiceChips options={choices} value={business} onChange={setBusiness} secondary />
+        </View>
+      ) : null}
       {list.loading ? (
         <View style={styles.skeletons}>
           {[0, 1, 2].map((i) => (
@@ -65,7 +78,7 @@ export function VendorOrdersScreen() {
             <OrderRow
               key={order.id}
               order={order}
-              subtitle={titleCase(order.address.city)}
+              subtitle={`${order.shop.name} · ${titleCase(order.address.city)}`}
               amount={order.price.payout}
               statusLabel={SHOP_STATUS_LABEL}
               onPress={() => router.push({ pathname: '/(vendor)/sale/[id]', params: { id: order.id } })}
@@ -80,4 +93,5 @@ export function VendorOrdersScreen() {
 
 const styles = StyleSheet.create({
   skeletons: { gap: Spacing.three },
+  chips: { marginHorizontal: -Spacing.three },
 });

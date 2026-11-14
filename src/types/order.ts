@@ -159,6 +159,8 @@ export interface Order {
   status: OrderStatus;
   timeline: { status: OrderStatus; at: string }[];
   paidAt: string | null;
+  /** The payment gateway's ID for it, once it confirmed the payment. */
+  paymentId: string | null;
   /** Oldest first. */
   refunds: OrderRefund[];
   /** Paise, all refunds added up. */

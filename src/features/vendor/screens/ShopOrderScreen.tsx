@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Badge } from '@/components/ui/Badge';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { DetailLine } from '@/components/ui/DetailLine';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
@@ -13,6 +14,7 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { StatusTimeline } from '@/components/ui/StatusTimeline';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { TextLink } from '@/components/ui/TextLink';
+import { OrderBusiness } from '@/features/pod/components/OrderBusiness';
 import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
 import { ProblemCard } from '@/features/pod/components/ProblemCard';
 import { choiceLine, filesKept, isClosed, nextSteps, progressOf, quantityLine, SHOP_STATUS_LABEL, STATUS_TONE, STEP_ACTION } from '@/features/pod/lib/order';
@@ -158,10 +160,15 @@ export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk,
       <View style={styles.head}>
         <View style={styles.flex}>
           <Text style={styles.title}>{`Order #${order.orderNo}`}</Text>
-          <Text style={styles.muted}>{`${order.shop.name} · paid ${order.paidAt ? timeAgo(order.paidAt) : ''}`}</Text>
+          <Text style={styles.muted}>{order.paidAt ? `Paid ${timeAgo(order.paidAt)}` : order.productLabel}</Text>
         </View>
         <Badge label={SHOP_STATUS_LABEL[order.status]} tone={STATUS_TONE[order.status]} />
       </View>
+      <OrderBusiness
+        label="For your business"
+        name={order.shop.name}
+        onPress={team ? undefined : () => router.push({ pathname: '/(vendor)/businesses/[id]', params: { id: order.shop.id } })}
+      />
 
       {order.status === 'rejected' ? (
         <View style={styles.news}>
@@ -249,6 +256,18 @@ export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk,
         {order.refundable >= 100 ? <TextLink label="Refund part of this order" onPress={() => setRefundOpen(true)} /> : null}
       </View>
 
+      {!team && order.paidAt ? (
+        <>
+          <Text style={styles.section}>Payment</Text>
+          <View style={styles.payment}>
+            <DetailLine label="Paid by" value={address.name} />
+            <DetailLine label="Paid on" value={formatDateTime(order.paidAt)} />
+            {order.paymentId ? <DetailLine label="Payment ID" value={order.paymentId} copyable /> : null}
+            <PrimaryButton label="View in Payments" variant="outline" onPress={() => router.push('/(vendor)/(tabs)/payments')} />
+          </View>
+        </>
+      ) : null}
+
       {!team ? (
         <View style={styles.help}>
           <TextLink
@@ -309,6 +328,7 @@ const styles = StyleSheet.create({
   faint: { ...Typography.caption, fontSize: 12, color: Brand.textFaint, marginTop: Spacing.two },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.four, marginBottom: Spacing.one },
   card: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
+  payment: { gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   news: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surfaceAlt, marginTop: Spacing.two },
   actions: { gap: Spacing.two, marginTop: Spacing.three },
   call: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, marginTop: Spacing.one },

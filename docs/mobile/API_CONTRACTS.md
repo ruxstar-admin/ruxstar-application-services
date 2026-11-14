@@ -34,6 +34,7 @@ Your own profile and devices are real (`/v1/account`); the rest is mocked in `sr
 | GET `/v1/account/sessions` | – | `Session[]` (`label`, `client`, `current`, `lastSeenAt`) | real | Sessions & devices |
 | DELETE `/v1/account/sessions/:id` | – | `{ done }` | real | Sessions & devices |
 | GET `/v1/account/payments` | `cursor?` | `Payment[]` (`business`, `order`, `amount`, `paidAt`, `paymentId`, `status`, `refunds`), one per paid order | real | Your payments (Discover, Settings) |
+| GET `/v1/account/payments/:id` | `id` = the order's ID | `Payment` | real | Order → View payment |
 | POST `/users/profile` | `{ userId }` | `Profile` or 404 | mocked | User profile |
 | GET / POST `/settings/notifications` | – / partial `NotificationPrefs` | `NotificationPrefs` | mocked | Notification preferences |
 | GET `/settings/blocked` | – | `BlockedUser[]` | mocked | Blocked users |

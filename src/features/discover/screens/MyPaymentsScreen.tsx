@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Badge } from '@/components/ui/Badge';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { DetailLine } from '@/components/ui/DetailLine';
@@ -92,17 +92,30 @@ function PaymentDetails({ payment, onOrder }: { payment: Payment; onOrder: () =>
   );
 }
 
-/** What you paid, at every business, and what came back. */
+/** What you paid, at every business, and what came back. `open` (an order ID) opens that payment straight away. */
 export function MyPaymentsScreen() {
   const router = useRouter();
   const token = useAuthToken();
+  const { open: openId } = useLocalSearchParams<{ open?: string }>();
   const list = usePaginated((cursor) => PaymentService.list(token, cursor));
   const [open, setOpen] = useState<Payment | null>(null);
   useRefetchOnFocus(list.refresh);
 
+  useEffect(() => {
+    if (!openId) return;
+    let live = true;
+    PaymentService.get(token, openId)
+      .then((payment) => live && setOpen(payment))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [openId, token]);
+
   const toOrder = (payment: Payment) => {
     setOpen(null);
-    router.push({ pathname: '/(customer)/pod/order/[id]', params: { id: payment.order.id } });
+    if (payment.order.id === openId && router.canGoBack()) router.back();
+    else router.push({ pathname: '/(customer)/pod/order/[id]', params: { id: payment.order.id } });
   };
 
   return (
