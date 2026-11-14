@@ -66,7 +66,8 @@ interface ApiNotification {
       | 'work_order'
       | 'reviews'
       | 'work_reviews'
-      | 'delivery_job';
+      | 'delivery_job'
+      | 'delivery_earnings';
     id: string;
   };
   read: boolean;
@@ -118,6 +119,7 @@ const LINKS: Record<ApiNotification['link']['screen'], (id: string) => Partial<A
   reviews: (id) => ({ reviewsBusinessId: id }),
   work_reviews: (id) => ({ workReviewsId: id }),
   delivery_job: () => ({ deliveryVerification: true }),
+  delivery_earnings: () => ({ deliveryVerification: true }),
 };
 
 /** What a phone notification's `screen` and `id` point at, in the notifications screen's terms. Unknown screens point nowhere. */

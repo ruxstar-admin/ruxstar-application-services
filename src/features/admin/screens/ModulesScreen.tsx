@@ -26,9 +26,10 @@ const MAX_PAYOUT_FEE_RUPEES = 100;
 const MAX_MIN_PAYOUT_RUPEES = 100_000;
 const paiseOf = (rupees: string) => (rupees.trim() === '' ? NaN : Math.round(Number(rupees) * 100));
 
-/** Ledger only: the fee taken from each vendor withdrawal and the least they can withdraw. */
+/** The fee taken from each withdrawal and the least that can be withdrawn: vendors' on the ledger, Ruxstar partners' on delivery. */
 function Withdrawals({ m, onSaved }: { m: ModuleSettings & { payouts: NonNullable<ModuleSettings['payouts']> }; onSaved: (m: ModuleSettings) => void }) {
   const token = useAuthToken();
+  const who = m.module === 'delivery' ? 'partner' : 'vendor';
   const canManage = useCan('modules.manage');
   const [fee, setFee] = useState(rupeesOf(m.payouts.fee));
   const [minimum, setMinimum] = useState(rupeesOf(m.payouts.minimum));
@@ -69,8 +70,8 @@ function Withdrawals({ m, onSaved }: { m: ModuleSettings & { payouts: NonNullabl
   if (!canManage) {
     return (
       <Facts>
-        <Fact label="Withdrawal fee" value={m.payouts.fee ? `₹${rupeesOf(m.payouts.fee)}` : 'None'} />
-        <Fact label="Minimum withdrawal" value={`₹${rupeesOf(m.payouts.minimum)}`} />
+        <Fact label={`Withdrawal fee (${who}s)`} value={m.payouts.fee ? `₹${rupeesOf(m.payouts.fee)}` : 'None'} />
+        <Fact label={`Minimum withdrawal (${who}s)`} value={`₹${rupeesOf(m.payouts.minimum)}`} />
       </Facts>
     );
   }
@@ -81,11 +82,11 @@ function Withdrawals({ m, onSaved }: { m: ModuleSettings & { payouts: NonNullabl
         keyboardType="decimal-pad"
         value={fee}
         onChangeText={(value) => setFee(value.replace(/[^\d.]/g, ''))}
-        hint="Covers Cashfree's charge. The vendor gets the rest. 0 for none."
+        hint={`Covers Cashfree's charge. The ${who} gets the rest. 0 for none.`}
         error={feeError}
       />
       <InputField
-        label="Least a vendor can withdraw (₹)"
+        label={`Least a ${who} can withdraw (₹)`}
         keyboardType="decimal-pad"
         value={minimum}
         onChangeText={(value) => setMinimum(value.replace(/[^\d.]/g, ''))}

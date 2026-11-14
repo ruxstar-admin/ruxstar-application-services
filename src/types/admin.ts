@@ -212,7 +212,7 @@ export interface ModuleSettings {
   commissionBps: number;
   /** Paise the customer pays Ruxstar on each order, on top of the price. */
   platformFee: number;
-  /** Ledger only: paise taken from each withdrawal, and the least a vendor can withdraw. */
+  /** Paise taken from each withdrawal, and the least that can be withdrawn: vendors' on the ledger, Ruxstar partners' on delivery. */
   payouts: { fee: number; minimum: number } | null;
   deliveryEnabled: boolean;
   /** Business modules: publishing needs a verified GSTIN. Null for other modules. */
@@ -245,8 +245,10 @@ export type PayoutStatus = 'pending' | 'failed' | 'paid';
 
 export interface StaffPayout {
   id: string;
+  /** `partner` is a Ruxstar delivery partner's withdrawal; `vendor` is then the partner. */
+  payee: 'vendor' | 'partner';
   vendor: { id: string; name: string };
-  /** Paise taken from the vendor's balance; the bank gets `amount - fee`. */
+  /** Paise taken from the payee's balance; the bank gets `amount - fee`. */
   amount: number;
   fee: number;
   status: PayoutStatus;
@@ -254,7 +256,7 @@ export interface StaffPayout {
   /** Cashfree's transfer_id. */
   transferId: string;
   utr: string | null;
-  /** `text` is what the vendor was told. */
+  /** `text` is what the payee was told. */
   failure: { code: string; text: string } | null;
   /** Times it was sent to Cashfree. */
   attempts: number;
@@ -276,6 +278,11 @@ export interface HeldOrder {
   releaseAt: string;
   /** A reported problem waits for a decision; it can't be released until then. */
   problemOpen: boolean;
+  /**
+   * A Ruxstar partner delivered it and their pay (already out of the shop's share) is on hold until `releaseAt`.
+   * `held`: the customer said it never arrived, so it waits until that is settled.
+   */
+  partner: { rider: { id: string; name: string }; amount: number; releaseAt: string; held: boolean } | null;
 }
 
 // Audit log.

@@ -85,7 +85,9 @@ function PayoutDetail({ payout, onChecked }: { payout: StaffPayout; onChecked: (
         {payout.paidAt ? <Fact label="Paid" value={formatDateTime(payout.paidAt)} /> : null}
         <Fact label="Transfer id" value={payout.transferId} />
       </Facts>
-      {payout.failure ? <Note tone="danger">{`${payout.failure.text} (${payout.failure.code}) The money went back to the vendor's balance.`}</Note> : null}
+      {payout.failure ? (
+        <Note tone="danger">{`${payout.failure.text} (${payout.failure.code}) The money went back to the ${payout.payee === 'partner' ? "partner's" : "vendor's"} balance.`}</Note>
+      ) : null}
       {payout.status === 'pending' && canManage ? <PrimaryButton label="Check with Cashfree now" variant="outline" onPress={check} loading={checking} /> : null}
       {payout.status === 'pending' && !canManage ? <Note>Checking needs the “Release held money and check payouts” permission.</Note> : null}
       {error ? <ErrorBanner message={error} /> : null}
@@ -117,7 +119,7 @@ function Payouts({ status }: { status: PayoutStatus }) {
         <EmptyState
           icon="wallet-outline"
           title={status === 'pending' ? 'Nothing on the way' : status === 'failed' ? 'No failed payouts' : 'No payouts yet'}
-          message={status === 'pending' ? 'Withdrawals vendors ask for show up here until the bank answers.' : undefined}
+          message={status === 'pending' ? 'Withdrawals vendors and delivery partners ask for show up here until the bank answers.' : undefined}
         />
       }
       ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
@@ -128,7 +130,7 @@ function Payouts({ status }: { status: PayoutStatus }) {
             <Row
               name={p.vendor.name}
               title={`${money(p.amount)} · ${p.vendor.name}`}
-              subtitle={`${p.to} · ${timeAgo(p.paidAt ?? p.createdAt)}`}
+              subtitle={[p.payee === 'partner' ? 'Partner' : null, p.to, timeAgo(p.paidAt ?? p.createdAt)].filter(Boolean).join(' · ')}
               right={<Badge {...STATUS[p.status]} />}
               onPress={() => setOpen(expanded ? null : p.id)}
             />
@@ -187,6 +189,14 @@ function HeldDetail({ order, onReleased }: { order: HeldOrder; onReleased: () =>
         <Fact label="Vendor" value={order.vendor.name} />
         {order.deliveredAt ? <Fact label="Delivered" value={formatDateTime(order.deliveredAt)} /> : null}
         <Fact label="Available on its own" value={order.problemOpen ? 'After the problem is settled' : formatDateTime(order.releaseAt)} />
+        {order.partner ? <Fact label={`Partner pay · ${order.partner.rider.name}`} value={money(order.partner.amount)} /> : null}
+        {order.partner ? (
+          <Fact
+            label="Partner can withdraw it"
+            value={order.partner.held ? 'After the “never arrived” report is settled' : formatDateTime(order.partner.releaseAt)}
+            warn={order.partner.held}
+          />
+        ) : null}
       </Facts>
       {order.problemOpen ? <Note>A customer reported a problem. Settle it in Reports first, so a refund can still come out of the share.</Note> : null}
       {!order.problemOpen && canManage ? <PrimaryButton label="Release now" variant="outline" onPress={() => setAsking(true)} /> : null}
@@ -287,7 +297,7 @@ function HeldList({ orderNo, token }: { orderNo: number | undefined; token: stri
   );
 }
 
-/** Vendors' withdrawals by status, and order shares still on hold that the team can release early. */
+/** Vendors' and delivery partners' withdrawals by status, and order shares still on hold that the team can release early. */
 export function PayoutsScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('pending');
