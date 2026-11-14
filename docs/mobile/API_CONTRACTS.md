@@ -175,14 +175,18 @@ Every "create" below (order, ticket, enrolment, booking) takes `paymentRef` and 
 | `/pod/order/get` | `{ id }` | `PodOrder` (with `timeline`) | Customer app polls every 8 s while open |
 | `/pod/vendor/orders` · `/pod/vendor/advance` | – · `{ id }` | `PodOrder[]` · `PodOrder` | Path: placed → accepted → printing → ready → (out_for_delivery) → completed; 409 once finished |
 
-## Events (`events.mocks.ts`)
+## Events (real API — `/v1`, Architecture 10 Part B)
 | Path | Request | Response | Notes |
 |---|---|---|---|
-| `/events/get` | `{ id }` | `EventDetail` (+ `myTicket`) | |
-| `/events/register` | `{ eventId, paymentRef? }` | `Ticket` | Free events need no payment; 402 if paid event has none; 409 if full or already registered |
-| `/events/waitlist/join` | `{ eventId }` | `Ticket` (`waitlisted`, `waitlistPosition`) | FIFO; a freed seat is held 24 h for the first person (claim step not built — needs backend) |
-| `/events/ticket` | `{ id }` | `Ticket` | Ticket shows a code; **QR rendering needs a QR library — not added (approval needed)**, organiser enters the code instead of scanning |
-| `/events/vendor/list` · `/create` · `/registrations` · `/checkin` | – · `NewEvent` · `{ eventId }` · `{ code }` | `EventItem[]` · `EventItem` · `Ticket[]` · `Ticket` | Check-in: 404 unknown code, 409 already checked in, 403 not valid |
+| `GET /events/rules` | – | `EventRules` | Refund hours, waitlist hours, limits, commission and platform fee, all set in the console |
+| `GET /events` · `GET /events/{id}` | `?city&kind&q&cursor` · – | `Page<EventCard>` · `EventDetail` | |
+| `POST /events/{id}/tickets` | `BookTicketsBody` | `{ order, checkoutUrl }` | `Idempotency-Key`, kept when a try times out. Free orders come back confirmed with no link. Unpaid seats are held 20 minutes |
+| `POST /events/{id}/waitlist` · `DELETE /events/waitlist/{id}` | `{ tierId, quantity }` · – | `MyWait` | |
+| `GET /events/orders` · `GET /events/orders/{id}` · `POST .../pay` · `POST .../cancel` | `?view=upcoming\|past&cursor` · – · `{ returnTo }` · – | `Page<TicketOrder>` · `TicketOrder` · `{ checkoutUrl }` · `TicketOrder` | `Idempotency-Key` on cancel. Reading an unpaid order asks Cashfree |
+| `GET\|POST /vendor/businesses/{id}/events` · `GET\|PATCH\|DELETE /vendor/events/{id}` · `POST .../photo\|publish\|cancel` · `GET .../bookings` | `EventInput` · JPEG bytes · `{ reason }` · `?status&cursor` | `VendorEvent` · `Page<Booking>` | The list is up to 100, soonest first, not paged |
+| `GET /events/desk` · `GET /events/desk/{id}` · `POST .../scan` · `GET .../lookup` · `POST .../tickets/{ticketId}/check-in` · `GET .../offline` · `POST .../sync` · `GET .../guests` | `{ qr }` · `?q` · – · – · `{ scans[] }` (up to 500) · `?view&cursor` | `DeskEvent` · `ScanResult` · `OfflineList` · `SyncResult` · `Page<Guest>` | Owner and team with "Scan tickets"; the guest list needs "See the guest list" |
+| `GET /ruxstar/events` · `GET /ruxstar/events/{id}` · `POST /ruxstar/events/{id}/take-down` | `?status=draft\|live\|cancelled&q&cursor` · – · `{ reason }` (5 to 300) | `Page<VendorEvent>` · `VendorEvent` | `businesses.view` · `businesses.manage`, `Idempotency-Key`. Take-down cancels and refunds everyone; `CONFLICT` once cancelled or ended. `live` includes ended events |
+| `PATCH /ruxstar/modules/events` | `{ eventRules: { refundHours? (0 to 720), waitlistHours? (1 to 48), maxTicketTypes? (1 to 10), maxQuestions? (0 to 10) } }` | `ModuleSettings` with `eventRules` | `modules.manage`. Send only what changes |
 
 ## Coaching (`coaching.mocks.ts`)
 | Path | Request | Response | Notes |

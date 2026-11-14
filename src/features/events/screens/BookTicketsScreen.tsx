@@ -22,7 +22,7 @@ import { PersonCard } from '../components/PersonCard';
 import { StepBar } from '../components/StepBar';
 import { ticketReturn } from '../lib/checkout';
 import { countOf, orderPrice, peopleFor, personErrors, playersFor, refundText, toHolders, whenLine, type PersonDraft, type Selection } from '../lib/events';
-import { errorText } from '../lib/messages';
+import { errorText, isOffline } from '../lib/messages';
 
 const STEPS = ['Tickets', 'Who’s coming', 'Pay'] as const;
 
@@ -99,7 +99,8 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
     } catch (err) {
       Feedback.error();
       setFailure(errorText(err));
-      attempt.current = newIdempotencyKey();
+      // A booking that timed out may have been placed; trying again with the same key returns it instead of holding seats twice.
+      if (!isOffline(err)) attempt.current = newIdempotencyKey();
     } finally {
       setBusy(false);
     }

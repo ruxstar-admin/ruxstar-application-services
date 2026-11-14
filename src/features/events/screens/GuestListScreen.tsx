@@ -38,7 +38,7 @@ function GuestRow({ guest }: { guest: Guest }) {
         ) : null}
       </View>
       {guest.phone ? (
-        <Text accessibilityRole="link" style={styles.call} onPress={() => void Linking.openURL(`tel:${guest.phone}`)}>
+        <Text accessibilityRole="link" accessibilityLabel={`Call ${guest.name}`} style={styles.call} onPress={() => void Linking.openURL(`tel:${guest.phone}`)}>
           Call
         </Text>
       ) : null}

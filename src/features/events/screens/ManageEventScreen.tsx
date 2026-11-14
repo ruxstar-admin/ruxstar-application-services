@@ -15,7 +15,6 @@ import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { ShopCover } from '@/features/pod/components/ShopCover';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
-import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
@@ -23,21 +22,13 @@ import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { VendorEventsService } from '@/services/events-service';
 import type { VendorEvent } from '@/types/events';
-import { EVENT_STATUS, KIND_LABEL, soldLine, whenLine } from '../lib/events';
+import { EventSales } from '../components/EventSales';
+import { EVENT_STATUS, KIND_LABEL, whenLine } from '../lib/events';
 import { errorText } from '../lib/messages';
 
 /** Posters are 16:9 on the event card; the API keeps them within 1440 px. */
 const POSTER_SIDE = 1440;
 const POSTER_ASPECT = 16 / 9;
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <View style={styles.stat}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
 
 function Row({ icon, title, subtitle, onPress }: { icon: keyof typeof Ionicons.glyphMap; title: string; subtitle: string; onPress: () => void }) {
   return (
@@ -186,27 +177,7 @@ function Dashboard({ event, setEvent, reload, fresh }: { event: VendorEvent; set
         </View>
       ) : null}
 
-      {draft ? null : (
-        <View style={styles.stats}>
-          <Stat value={String(event.counts.tickets)} label="Tickets" />
-          <Stat value={String(event.counts.checkedIn)} label="In today" />
-          <Stat value={money(event.money.share)} label="Your share" />
-        </View>
-      )}
-
-      <View style={styles.card}>
-        <Text style={styles.rowTitle}>{soldLine(event)}</Text>
-        {event.tiers.map((t) => (
-          <View key={t.id} style={styles.tier}>
-            <View style={styles.rowText}>
-              <Text style={styles.body}>{t.name}</Text>
-              <Text style={styles.small}>{`${t.price ? money(t.price) : 'Free'}${t.held ? ` · ${t.held} being paid for` : ''}`}</Text>
-            </View>
-            <Text style={styles.body}>{`${t.sold} / ${t.capacity}`}</Text>
-          </View>
-        ))}
-        {event.counts.waiting ? <Text style={styles.small}>{`${event.counts.waiting} on the waitlist`}</Text> : null}
-      </View>
+      <EventSales event={event} shareLabel="Your share" />
 
       <View style={styles.rows}>
         {draft ? null : (
@@ -297,17 +268,10 @@ const styles = StyleSheet.create({
   headText: { flex: 1, gap: 2 },
   title: { ...Typography.title, color: Brand.text },
   small: { ...Typography.caption, color: Brand.textMuted },
-  body: { ...Typography.body, fontSize: 15, color: Brand.text },
   note: { flexDirection: 'row', gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Brand.surfaceAlt },
   noteText: { ...Typography.caption, fontSize: 14, color: Brand.text, flex: 1 },
   noteStrong: { ...Typography.bodyStrong, fontSize: 14, color: Brand.text },
   missing: { flex: 1, gap: 2 },
-  stats: { flexDirection: 'row', gap: Spacing.two },
-  stat: { flex: 1, gap: 2, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
-  statValue: { ...Typography.heading, color: Brand.text },
-  statLabel: { ...Typography.caption, color: Brand.textMuted },
-  card: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
-  tier: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   rows: { gap: Spacing.two },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   rowIcon: { width: 40, height: 40, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(180,92,242,0.14)' },

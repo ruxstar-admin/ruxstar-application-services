@@ -14,6 +14,8 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { Feedback } from '@/lib/haptics';
 import { DeskService } from '@/services/events-service';
 import type { DeskCounts, DeskEvent, OfflineList, OfflineTicket, ScanResult, SyncResult, SyncScan } from '@/types/events';
+import { useAwakeWhileFocused } from '../hooks/use-awake-while-focused';
+import { useScanSounds, type ScanTone } from '../hooks/use-scan-sounds';
 import { dayLabel, timeText } from '../lib/events';
 import { GateStore, OUTCOME, POLL_MS, SYNC_BATCH, byHash, checkLocal, findOffline, insideToday, lookupKind, repeatFilter, sha256, type LocalResult } from '../lib/gate';
 import { errorText, isOffline } from '../lib/messages';
@@ -25,7 +27,7 @@ const PANEL_MS = 8000;
 /** A saved list older than this is downloaded again while online. */
 const LIST_MAX_AGE_MS = 15 * 60_000;
 
-type Color = 'green' | 'amber' | 'red';
+type Color = ScanTone;
 const COLORS: Record<Color, string> = { green: Brand.success, amber: Brand.warning, red: Brand.error };
 const ICONS: Record<Color, keyof typeof Ionicons.glyphMap> = { green: 'checkmark-circle', amber: 'alert-circle', red: 'close-circle' };
 
@@ -96,15 +98,21 @@ function Gate({ eventId }: { eventId: string }) {
   const syncingRef = useRef(false);
   const refreshingRef = useRef(false);
   const panelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sound = useScanSounds();
+  useAwakeWhileFocused('ruxstar-gate');
 
-  const show = useCallback((next: Panel) => {
-    if (next.color === 'green') Feedback.success();
-    else if (next.color === 'amber') Feedback.warning();
-    else Feedback.error();
-    setPanel(next);
-    if (panelTimer.current) clearTimeout(panelTimer.current);
-    panelTimer.current = setTimeout(() => setPanel(null), PANEL_MS);
-  }, []);
+  const show = useCallback(
+    (next: Panel) => {
+      if (next.color === 'green') Feedback.success();
+      else if (next.color === 'amber') Feedback.warning();
+      else Feedback.error();
+      sound(next.color);
+      setPanel(next);
+      if (panelTimer.current) clearTimeout(panelTimer.current);
+      panelTimer.current = setTimeout(() => setPanel(null), PANEL_MS);
+    },
+    [sound],
+  );
   useEffect(
     () => () => {
       if (panelTimer.current) clearTimeout(panelTimer.current);

@@ -93,6 +93,13 @@ export const ACTION_LABEL: Record<string, string> = {
   'support.note': 'Added a note to a help ticket',
   'support.update': 'Changed a help ticket',
   'support.settings': 'Changed help reply-by times',
+  'event.create': 'Made an event',
+  'event.update': "Changed an event's details",
+  'event.publish': 'Published an event',
+  'event.cancel': 'Cancelled an event',
+  'event.take_down': 'Took an event down',
+  'event_order.cancel': 'Cancelled event tickets',
+  'event_ticket.check_in': 'Checked a ticket in by hand',
 };
 
 export const BUSINESS_STATE_LABEL: Record<'draft' | 'live' | 'suspended', string> = {

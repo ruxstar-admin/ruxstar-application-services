@@ -34,10 +34,13 @@ export function MoreScreen() {
       <ScrollView contentContainerStyle={consoleStyles.list} showsVerticalScrollIndicator={false}>
         {access.admin ? <ListRow icon="shield-outline" title="Ruxstar staff" subtitle="Who can use the console, and what they can do" onPress={() => router.push('/(admin)/staff')} /> : null}
         {allows(access, 'modules.view') ? (
-          <ListRow icon="apps-outline" title="Modules" subtitle="Live, new vendors, delivery and commission" onPress={() => router.push('/(admin)/modules')} />
+          <ListRow icon="apps-outline" title="Modules" subtitle="Live, new vendors, commission and event rules" onPress={() => router.push('/(admin)/modules')} />
         ) : null}
         {allows(access, 'businesses.view') ? (
           <ListRow icon="storefront-outline" title="Businesses" subtitle="Every vendor's businesses, and holds" onPress={() => router.push('/(admin)/businesses')} />
+        ) : null}
+        {allows(access, 'businesses.view') ? (
+          <ListRow icon="ticket-outline" title="Events" subtitle="Every organiser's events, and taking one down" onPress={() => router.push('/(admin)/events')} />
         ) : null}
         {allows(access, 'payouts.view') ? (
           <ListRow icon="wallet-outline" title="Payouts" subtitle="Vendors' withdrawals, and money on hold" onPress={() => router.push('/(admin)/payouts')} />

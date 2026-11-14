@@ -35,7 +35,7 @@ import {
   type QuestionDraft,
   type TierDraft,
 } from '../lib/events';
-import { errorText } from '../lib/messages';
+import { errorText, isOffline } from '../lib/messages';
 
 /** How far ahead an event can be put on sale from the form. */
 const DAYS_AHEAD = 365;
@@ -96,7 +96,7 @@ function Form({ rules, event, businessId }: { rules: EventRules; event?: VendorE
     } catch (e) {
       Feedback.error();
       setFailure(errorText(e));
-      attempt.current = newIdempotencyKey();
+      if (!isOffline(e)) attempt.current = newIdempotencyKey();
     } finally {
       setBusy(false);
     }
@@ -292,7 +292,7 @@ function Form({ rules, event, businessId }: { rules: EventRules; event?: VendorE
               onPress={() => setDraft((d) => ({ ...d, questions: [...d.questions, { label: '', required: true }] }))}
             />
           ) : (
-            <Text style={styles.hint}>{`Up to ${rules.maxQuestions} questions.`}</Text>
+            <Text style={styles.hint}>{rules.maxQuestions ? `Up to ${rules.maxQuestions} questions.` : 'Extra questions are turned off on Ruxstar for now.'}</Text>
           )}
           {editing ? null : <Text style={styles.hint}>It’s saved as a draft. Add a poster and publish it from the next screen.</Text>}
         </>

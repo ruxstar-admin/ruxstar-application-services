@@ -104,6 +104,7 @@ function EventView({ event, reload }: { event: EventDetail; reload: () => void }
       Feedback.success();
       reload();
     } catch (err) {
+      Feedback.error();
       setFailure(errorText(err));
     } finally {
       setBusy(false);
@@ -213,7 +214,7 @@ function EventView({ event, reload }: { event: EventDetail; reload: () => void }
       <BottomSheet visible={joining} onClose={() => setJoining(false)} title="Join the waitlist">
         <View style={styles.sheet}>
           <Text style={styles.small}>
-            When tickets free up, they’re offered in the order people joined. You’ll get a notification and they’re held for you for a couple of hours.
+            When tickets free up, they’re offered in the order people joined. You’ll get a notification, and they’re held for you for a limited time. This page shows until when.
           </Text>
           {event.tiers.length > 1 ? (
             <ChoiceChips options={event.tiers.map((t) => ({ key: t.id, label: t.name }))} value={tierId} onChange={setTierId} />

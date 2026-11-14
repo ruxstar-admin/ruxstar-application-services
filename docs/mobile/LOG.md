@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-15 — Events: ticket brightness, awake scanner with sounds, console events and rules
+Prompt:    "finishing the Events business … brightness on the ticket screen, scanner stays awake, scan sounds, console Events with take down, event rules in Modules, fix real bugs"
+Decision:  `expo-brightness` and `expo-keep-awake` added (approved in Architecture 11). Scan tones are three small WAVs made in-repo. Console Events sits under `businesses.view` / `businesses.manage`, like the API.
+Done:      `features/events/hooks/*` (full brightness, awake while focused, scan sounds), `assets/sounds/*`, `EventSales` shared by the organiser's event and the console, console `EventsScreen`, `EventCaseScreen`, `EventRulesForm`, routes `(admin)/events` and `(admin)/event/[id]`; booking and event-create keep their idempotency key after a timeout. Full notes: `Architecture/build-log/events-app.md`.
+Blocked:   nothing.
+Mocks:     none; API_CONTRACTS Events section now lists the real routes.
+Verified by user: no
+Next:      Test on two phones in Expo Go with the checklist in the build log.
+
+---
+
 ## 2026-11-14 — Delivery, phase 1
 Prompt:    "differntiate vendor, employee and delivery partner … add a delivery icon beside edit profile … build the delivery app … vendor can assign orders to delivery partners or team members"
 Decision:  Riders get a separate Ruxstar Delivery app on the same account; this app keeps verification, checkout location, "Who delivers" and the customer's rider card (DECISIONS #45, Architecture decision 57).

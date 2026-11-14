@@ -19,6 +19,7 @@ import { Feedback } from '@/lib/haptics';
 import { EventsService } from '@/services/events-service';
 import type { TicketOrder } from '@/types/events';
 import { TicketPass } from '../components/TicketPass';
+import { useFullBrightness } from '../hooks/use-full-brightness';
 import { openTicketCheckout, ticketReturn } from '../lib/checkout';
 import { ORDER_STATUS, dayText, linesText, timeText, whenLine } from '../lib/events';
 import { errorText } from '../lib/messages';
@@ -71,6 +72,8 @@ function OrderView({ order, reload, openPay, fresh }: { order: TicketOrder; relo
   };
 
   const valid = order.tickets.filter((t) => t.status === 'valid');
+  const showsPasses = !(order.event.online && order.status === 'confirmed');
+  useFullBrightness(showsPasses && valid.some((t) => t.qr));
   const footer = unpaid ? <PrimaryButton label={`Pay ${money(order.price.total)}`} loading={paying} onPress={pay} /> : null;
 
   return (
@@ -122,13 +125,13 @@ function OrderView({ order, reload, openPay, fresh }: { order: TicketOrder; relo
         <PrimaryButton label="Join online" onPress={() => Linking.openURL(order.event.onlineLink!)} />
       ) : null}
 
-      {order.event.online && order.status === 'confirmed' ? null : (
+      {showsPasses ? (
         <View style={styles.passes}>
           {order.tickets.map((t, i) => (
             <TicketPass key={t.id} ticket={t} title={order.event.title} startsAt={order.event.startsAt} index={i} total={order.tickets.length} />
           ))}
         </View>
-      )}
+      ) : null}
 
       <View style={styles.summary}>
         <Text style={styles.label}>{`Booking #${order.orderNo}`}</Text>

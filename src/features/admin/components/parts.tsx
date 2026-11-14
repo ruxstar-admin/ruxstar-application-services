@@ -144,10 +144,11 @@ export function Section({ children }: { children: ReactNode }) {
   return <Text style={styles.section}>{children}</Text>;
 }
 
-/** Asks for a 5 to 300 character reason before a decision the person affected will read. */
+/** Asks for a 5 to 300 character reason before a decision the person affected will read. `message` says what happens. */
 export function ReasonSheet({
   visible,
   title,
+  message,
   prompt,
   placeholder,
   confirmLabel,
@@ -157,6 +158,7 @@ export function ReasonSheet({
 }: {
   visible: boolean;
   title: string;
+  message?: string;
   prompt: string;
   placeholder: string;
   confirmLabel: string;
@@ -173,6 +175,7 @@ export function ReasonSheet({
 
   return (
     <BottomSheet visible={visible} onClose={onCancel} title={title}>
+      {message ? <Text style={styles.sheetMessage}>{message}</Text> : null}
       <InputField
         label={prompt}
         value={reason}
@@ -219,5 +222,6 @@ const styles = StyleSheet.create({
   noteText: { ...Typography.caption, color: Brand.text },
   dangerText: { color: Brand.error },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.three },
+  sheetMessage: { ...Typography.body, color: Brand.textMuted },
   center: { alignItems: 'center' },
 });

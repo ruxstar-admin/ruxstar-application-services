@@ -223,7 +223,21 @@ export interface ModuleSettings {
   gstinRequired: boolean | null;
   /** The delivery module only. */
   delivery: DeliverySettings | null;
+  /** The events module only. */
+  eventRules: EventRuleSettings | null;
   updatedAt: string;
+}
+
+/** Rules every organiser's events follow. */
+export interface EventRuleSettings {
+  /** Customers can cancel for a full refund until this many hours before the start (0 to 720). */
+  refundHours: number;
+  /** How long someone offered seats from the waitlist has to pay (1 to 48). */
+  waitlistHours: number;
+  /** 1 to 10. */
+  maxTicketTypes: number;
+  /** Questions an organiser can ask each ticket holder (0 to 10). */
+  maxQuestions: number;
 }
 
 /** Paise. `riderRate` is what a Ruxstar partner is paid for one trip, out of the shop's share; `shopFeeMax` caps what shops charge. */
@@ -241,7 +255,15 @@ export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 
     minPayout?: number;
     /** Business modules only. Live businesses without one stay live. */
     gstinRequired?: boolean;
+    /** Events only. Send only what changes. */
+    eventRules?: Partial<EventRuleSettings>;
   };
+
+/** Console events list: `q` matches the title or the organiser's name. */
+export interface EventFilter {
+  q?: string;
+  status?: 'draft' | 'live' | 'cancelled';
+}
 
 // Payouts and held money.
 

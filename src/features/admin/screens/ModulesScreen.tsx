@@ -17,6 +17,7 @@ import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
 import type { ModulePatch, ModuleSettings } from '@/types/admin';
 import { useCan } from '../access';
+import { EventRulesForm } from '../components/EventRulesForm';
 import { Card, Fact, Facts, consoleStyles, errorText } from '../components/parts';
 import { MODULE_LABEL } from '../labels';
 
@@ -303,6 +304,7 @@ function Module({ m, onSaved }: { m: ModuleSettings; onSaved: (m: ModuleSettings
       {error ? <ErrorBanner message={error} /> : null}
       {m.payouts ? <Withdrawals m={{ ...m, payouts: m.payouts }} onSaved={onSaved} /> : null}
       {m.delivery ? <DeliveryRates m={{ ...m, delivery: m.delivery }} onSaved={onSaved} /> : null}
+      {m.eventRules ? <EventRulesForm m={{ ...m, eventRules: m.eventRules }} onSaved={onSaved} /> : null}
       <ConfirmSheet
         visible={turningOff}
         title={`Turn ${MODULE_LABEL[m.module]} off?`}
