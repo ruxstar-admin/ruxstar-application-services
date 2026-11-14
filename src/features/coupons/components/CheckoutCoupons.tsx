@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { InputField } from '@/components/ui/InputField';
-import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { money } from '@/features/vendor/lib/pod';
+import { Feedback } from '@/lib/haptics';
 import type { AppliedCoupon, CouponOffer } from '@/types/coupon';
 import { cleanCode } from '../lib/coupons';
 
@@ -43,26 +43,32 @@ export function CheckoutCoupons({ offers, applied, discount, problem, onApply, o
           />
         </View>
       ) : (
-        <View style={styles.gap}>
-          <View style={styles.pair}>
-            <View style={styles.flex}>
-              <InputField
-                label="Coupon code"
-                value={text}
-                onChangeText={(t) => setText(cleanCode(t))}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                maxLength={16}
-                returnKeyType="done"
-                onSubmitEditing={() => text && onApply(text)}
-              />
-            </View>
-            <View style={styles.apply}>
-              <PrimaryButton label="Apply" variant="outline" onPress={() => onApply(text)} disabled={!text} />
-            </View>
-          </View>
-          {problem ? <Text style={styles.error}>{problem}</Text> : null}
-        </View>
+        <InputField
+          label="Coupon code"
+          value={text}
+          onChangeText={(t) => setText(cleanCode(t))}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={16}
+          returnKeyType="done"
+          onSubmitEditing={() => text && onApply(text)}
+          error={problem ?? undefined}
+          accessory={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !text }}
+              disabled={!text}
+              hitSlop={10}
+              onPress={() => {
+                Feedback.tap();
+                onApply(text);
+              }}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <Text style={[styles.applyLabel, !text && styles.applyOff]}>Apply</Text>
+            </Pressable>
+          }
+        />
       )}
 
       {others.map((offer) => {
@@ -97,10 +103,8 @@ export function CheckoutCoupons({ offers, applied, discount, problem, onApply, o
 const styles = StyleSheet.create({
   container: { gap: Spacing.two },
   flex: { flex: 1, gap: 2 },
-  gap: { gap: Spacing.one },
-  error: { ...Typography.caption, color: Brand.error },
-  pair: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two },
-  apply: { width: 110 },
+  applyLabel: { ...Typography.bodyStrong, fontSize: 15, color: Brand.primarySoft },
+  applyOff: { color: Brand.textFaint },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

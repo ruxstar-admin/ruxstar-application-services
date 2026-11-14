@@ -59,7 +59,22 @@ function deliversTo(shop: Shop, city: string) {
   return !name || shop.deliversEverywhere || shop.cities.includes(name) || shop.city.toLowerCase() === name;
 }
 
-function OptionPicker({ product, option, values, value, onChange }: { product: ShopProduct; option: string; values: string[]; value: string; onChange: (v: string) => void }) {
+function OptionPicker({
+  product,
+  option,
+  values,
+  value,
+  onChange,
+  invalid,
+}: {
+  product: ShopProduct;
+  option: string;
+  values: string[];
+  value: string;
+  onChange: (v: string) => void;
+  /** Pay was tapped without choosing this required option. */
+  invalid?: boolean;
+}) {
   const required = option === requiredOption(product);
   const extra = (v: string) => product.extras.find((x) => x.option === option && x.value === v)?.price;
   const choices = [
@@ -68,9 +83,9 @@ function OptionPicker({ product, option, values, value, onChange }: { product: S
   ];
   return (
     <View style={styles.option}>
-      <Text style={styles.label}>
+      <Text style={[styles.label, invalid && styles.invalid]}>
         {OPTION_LABELS[option] ?? option}
-        {required ? <Text style={styles.faint}> · required</Text> : null}
+        {required ? <Text style={invalid ? styles.invalidSmall : styles.faint}>{invalid ? ' · choose one' : ' · required'}</Text> : null}
       </Text>
       <View style={styles.bleed}>
         <ChoiceChips options={choices} value={value} onChange={onChange} secondary />
@@ -96,6 +111,8 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
   const [priced, setPriced] = useState<{ key: string; quote: Quote | null; error: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
+  /** Set once Pay is tapped with something missing; from then on, what's missing shows in red. */
+  const [checked, setChecked] = useState(false);
   const attempt = useRef(newIdempotencyKey());
 
   const qty = Number(quantity) || 0;
@@ -177,17 +194,28 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
   const set = (field: keyof OrderAddress) => (text: string) =>
     setAddress((now) => ({ ...now, [field]: field === 'phone' ? digits(text, 10) : field === 'pincode' ? digits(text, 6) : text }));
   const cityOk = deliversTo(shop, address.city);
-  const addressOk =
-    address.name.trim().length >= 2 &&
-    /^[6-9]\d{9}$/.test(address.phone) &&
-    address.line.trim().length >= 5 &&
-    address.city.trim().length >= 2 &&
-    cityOk &&
-    /^[1-9]\d{5}$/.test(address.pincode);
-  const ready = !!quote && files.length > 0 && addressOk && shop.open && !uploading;
+  const fieldErrors: Partial<Record<keyof OrderAddress, string>> = {
+    ...(address.name.trim().length < 2 ? { name: 'Enter the name to deliver to' } : {}),
+    ...(!/^[6-9]\d{9}$/.test(address.phone) ? { phone: 'Enter a 10-digit mobile number' } : {}),
+    ...(address.line.trim().length < 5 ? { line: 'Enter the house, street and area' } : {}),
+    ...(address.city.trim().length < 2 ? { city: 'Enter the city' } : {}),
+    ...(!/^[1-9]\d{5}$/.test(address.pincode) ? { pincode: 'Enter the 6-digit pincode' } : {}),
+  };
+  const addressOk = Object.keys(fieldErrors).length === 0 && cityOk;
+  const filled = files.length > 0 && !missing && qty >= 1 && !(perPage && !colour) && addressOk;
+  const ready = !!quote && filled && shop.open && !uploading;
+  const show = (message: string | undefined) => (checked ? message : undefined);
 
   const place = async () => {
-    if (!ready) return;
+    if (!filled) {
+      setChecked(true);
+      Feedback.error();
+      return;
+    }
+    if (!ready) {
+      if (quoteError) setError(quoteError);
+      return;
+    }
     setPlacing(true);
     setError(null);
     try {
@@ -230,14 +258,20 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
       title="Place order"
       footer={
         <>
-          {error ? <ErrorBanner message={error} /> : null}
+          {error ? <ErrorBanner message={error} /> : checked && !filled ? <ErrorBanner message="Fill in the fields marked in red to pay." /> : null}
           <View style={styles.bar}>
             <View style={styles.flex}>
-              <Text style={styles.total}>{quote ? money(quote.total) : '—'}</Text>
+              {quote ? (
+                <Text style={styles.total}>{money(quote.total)}</Text>
+              ) : priceable && !quoteError ? (
+                <ActivityIndicator color={Brand.primarySoft} style={styles.totalLoading} accessibilityLabel="Working out the price" />
+              ) : (
+                <Text style={styles.total}>—</Text>
+              )}
               <Text style={styles.faint}>{!shop.open ? 'This shop is closed right now' : (hint ?? readyLine(quote?.turnaroundDays ?? product.turnaroundDays))}</Text>
             </View>
             <View style={styles.payButton}>
-              <PrimaryButton label="Pay" onPress={place} loading={placing} disabled={!ready} />
+              <PrimaryButton label="Pay" onPress={place} loading={placing} disabled={!shop.open || uploading} />
             </View>
           </View>
         </>
@@ -257,6 +291,7 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
           option={option}
           values={values}
           value={options[option] ?? ''}
+          invalid={checked && option === needs && missing}
           onChange={(v) =>
             setOptions((now) => {
               const next = { ...now };
@@ -270,7 +305,10 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
 
       {perPage ? (
         <View style={styles.option}>
-          <Text style={styles.label}>Print in</Text>
+          <Text style={[styles.label, checked && !colour && styles.invalid]}>
+            Print in
+            {checked && !colour ? <Text style={styles.invalidSmall}> · choose one</Text> : null}
+          </Text>
           <View style={styles.bleed}>
             <ChoiceChips
               secondary
@@ -290,6 +328,7 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
         value={quantity}
         onChangeText={(t) => setQuantity(String(Math.min(MAX_QUANTITY, Number(digits(t, 5)) || 0) || ''))}
         keyboardType="number-pad"
+        error={show(qty < 1 ? `Enter how many ${perPage ? 'copies' : 'you want'}` : undefined)}
         hint={product.minQuantity > 1 ? `Minimum ${product.minQuantity}${perPage ? ' pages' : ''}` : perPage ? 'Every page of your files, this many times' : undefined}
       />
 
@@ -317,19 +356,21 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
         </View>
       ))}
       {files.length < MAX_FILES ? (
-        <Pressable accessibilityRole="button" onPress={addFile} disabled={uploading} style={styles.addFile}>
-          {uploading ? <ActivityIndicator color={Brand.primarySoft} /> : <Ionicons name="cloud-upload-outline" size={22} color={Brand.primarySoft} />}
+        <Pressable accessibilityRole="button" onPress={addFile} disabled={uploading} style={[styles.addFile, checked && !files.length && styles.addFileInvalid]}>
+          {uploading ? <ActivityIndicator color={Brand.primarySoft} /> : <Ionicons name="cloud-upload-outline" size={22} color={checked && !files.length ? Brand.error : Brand.primarySoft} />}
           <View style={styles.flex}>
             <Text style={styles.fileName}>{uploading ? 'Uploading…' : files.length ? 'Add another file' : 'Add a file'}</Text>
-            <Text style={styles.faint}>PDF, JPG or PNG, up to 25 MB. Only this shop can open it.</Text>
+            <Text style={checked && !files.length ? styles.invalidSmall : styles.faint}>
+              {checked && !files.length ? 'Add the file you want printed.' : 'PDF, JPG or PNG, up to 25 MB. Only this shop can open it.'}
+            </Text>
           </View>
         </Pressable>
       ) : null}
 
       <Text style={styles.overline}>Deliver to</Text>
-      <InputField label="Name" value={address.name} onChangeText={set('name')} maxLength={80} autoComplete="name" />
-      <InputField label="Phone" value={address.phone} onChangeText={set('phone')} keyboardType="phone-pad" maxLength={10} autoComplete="tel" />
-      <InputField label="House, street and area" value={address.line} onChangeText={set('line')} maxLength={300} multiline />
+      <InputField label="Name" value={address.name} onChangeText={set('name')} maxLength={80} autoComplete="name" error={show(fieldErrors.name)} />
+      <InputField label="Phone" value={address.phone} onChangeText={set('phone')} keyboardType="phone-pad" maxLength={10} autoComplete="tel" error={show(fieldErrors.phone)} />
+      <InputField label="House, street and area" value={address.line} onChangeText={set('line')} maxLength={300} multiline error={show(fieldErrors.line)} />
       <View style={styles.pair}>
         <View style={styles.flex}>
           <InputField
@@ -337,11 +378,11 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
             value={address.city}
             onChangeText={set('city')}
             maxLength={60}
-            error={cityOk ? undefined : `${shop.name} delivers to ${shop.cities.map(titleCase).join(', ') || shop.city} only`}
+            error={cityOk ? show(fieldErrors.city) : `${shop.name} delivers to ${shop.cities.map(titleCase).join(', ') || shop.city} only`}
           />
         </View>
         <View style={styles.pin}>
-          <InputField label="Pincode" value={address.pincode} onChangeText={set('pincode')} keyboardType="number-pad" maxLength={6} />
+          <InputField label="Pincode" value={address.pincode} onChangeText={set('pincode')} keyboardType="number-pad" maxLength={6} error={show(fieldErrors.pincode)} />
         </View>
       </View>
       <InputField label="Note for the shop" value={note} onChangeText={setNote} maxLength={500} multiline showCount placeholder="Optional: colours, placement, deadline…" />
@@ -403,6 +444,8 @@ const styles = StyleSheet.create({
   label: { ...Typography.bodyStrong, fontSize: 14, color: Brand.text },
   faint: { ...Typography.caption, fontSize: 12, color: Brand.textFaint },
   error: { ...Typography.caption, color: Brand.error },
+  invalid: { color: Brand.error },
+  invalidSmall: { ...Typography.caption, fontSize: 12, color: Brand.error },
   option: { gap: Spacing.two, marginTop: Spacing.one },
   /** Chips scroll edge to edge past the screen padding. */
   bleed: { marginHorizontal: -Spacing.three },
@@ -418,10 +461,12 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: Brand.primary,
   },
+  addFileInvalid: { borderColor: Brand.error },
   pair: { flexDirection: 'row', gap: Spacing.two },
   pin: { width: 130 },
   card: { padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   bar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   total: { ...Typography.title, color: Brand.text },
+  totalLoading: { alignSelf: 'flex-start', height: 32 },
   payButton: { width: 150 },
 });
