@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/Badge';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
-import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
@@ -18,31 +17,33 @@ import { newIdempotencyKey } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { TeamService } from '@/services/team-service';
+import type { Contact } from '@/types/chat';
 import type { Team, TeamMember, TeamPermission } from '@/types/team';
 import { PermissionPicker } from '../components/PermissionPicker';
-import { MEMBER_STATUS, cleanUsername, inviteEnds } from '../lib/team';
+import { PersonSearch } from '../components/PersonSearch';
+import { MEMBER_STATUS, inviteEnds } from '../lib/team';
 
 const errorText = (err: unknown) =>
   err instanceof ApiError && err.status > 0 && err.kind !== 'server' ? err.message : 'Could not reach Ruxstar. Check your connection and try again.';
 const retryable = (err: unknown) => err instanceof ApiError && (err.kind === 'network' || err.kind === 'timeout');
-const USERNAME = /^[a-z0-9_.]{3,20}$/;
 
 function Invite({ businessId, team }: { businessId: string; team: Team }) {
   const router = useRouter();
   const token = useAuthToken();
-  const [username, setUsername] = useState('');
+  const [person, setPerson] = useState<Contact | null>(null);
   const [permissions, setPermissions] = useState<TeamPermission[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ field?: string; banner?: string } | null>(null);
   const key = useRef(newIdempotencyKey());
-  const clean = cleanUsername(username);
-  const ready = USERNAME.test(clean) && permissions.length > 0;
+  const taken = useMemo(() => new Set(team.members.map((m) => m.person.id)), [team.members]);
+  const ready = !!person && permissions.length > 0;
 
   const send = async () => {
+    if (!person) return;
     setBusy(true);
     setError(null);
     try {
-      await TeamService.invite(token, businessId, clean, permissions, key.current);
+      await TeamService.invite(token, businessId, person.username, permissions, key.current);
       Feedback.success();
       router.back();
     } catch (err) {
@@ -65,19 +66,14 @@ function Invite({ businessId, team }: { businessId: string; team: Team }) {
         </>
       }
     >
-      <InputField
-        label="Their Ruxstar username"
-        value={username}
-        onChangeText={(v) => {
-          setUsername(v);
+      <PersonSearch
+        picked={person}
+        onPick={(next) => {
+          setPerson(next);
           if (error?.field) setError(null);
         }}
-        placeholder="@username"
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={21}
+        taken={taken}
         error={error?.field}
-        hint="They get a notification and have 7 days to accept."
       />
       <Text style={styles.section}>What they can do</Text>
       <PermissionPicker catalog={team.permissions} value={permissions} onChange={setPermissions} />
