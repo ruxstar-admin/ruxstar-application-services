@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-15 — Shared booking pieces
+Prompt:    "build the shared booking screen pieces … date strip, slot grid, legend, booking bar, refund line, people form, vendor board, roster"
+Decision:  Pieces live in `src/components/booking` with pure logic in `src/lib/booking`. `istParts` / `fromIst` moved to `src/lib/dates.ts`, and `cleanPhone` / `personErrors` to `src/lib/booking/people.ts` (events re-exports them). Amounts are paise.
+Done:      `DateStrip`, `SlotGrid`, `Legend`, `BookingBar`, `RefundLine`, `PeopleForm` / `PersonCard`, `VendorBoard`, `Roster`, `useStableHandler`; Book tickets uses `PeopleForm` and `RefundLine` (same behaviour); dev preview at Settings → Booking pieces (dev) and in the gallery. Full notes: `Architecture/build-log/shared-pieces-app.md`.
+Blocked:   nothing.
+Mocks:     none.
+Verified by user: no
+Next:      Coaching, Sports & Turf and PG screens build on these.
+
+---
+
 ## 2026-11-15 — Events: ticket brightness, awake scanner with sounds, console events and rules
 Prompt:    "finishing the Events business … brightness on the ticket screen, scanner stays awake, scan sounds, console Events with take down, event rules in Modules, fix real bugs"
 Decision:  `expo-brightness` and `expo-keep-awake` added (approved in Architecture 11). Scan tones are three small WAVs made in-repo. Console Events sits under `businesses.view` / `businesses.manage`, like the API.

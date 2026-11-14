@@ -14,6 +14,7 @@ import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ToggleRow } from '@/components/ui/ToggleRow';
 import { Brand, Spacing, Typography } from '@/constants/theme';
+import { BookingDemo } from '../components/BookingDemo';
 
 const LOGIN_TABS = [
   { key: 'password', label: 'Password' },
@@ -83,6 +84,8 @@ export function GalleryScreen() {
             onAction={() => undefined}
           />
         </Section>
+
+        <BookingDemo />
       </ScrollView>
 
       <BottomSheet visible={sheet} onClose={() => setSheet(false)} title="Report Priya Nair">

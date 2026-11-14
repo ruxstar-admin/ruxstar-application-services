@@ -1,7 +1,17 @@
 const DAY_MS = 86_400_000;
+const IST_MS = 330 * 60_000;
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
 const pad = (n: number) => String(n).padStart(2, '0');
+
+/** A moment as India's calendar day and clock: `{ day: 'YYYY-MM-DD', time: 'HH:MM' }`. Bookings are in India, wherever the phone is. */
+export function istParts(iso: string): { day: string; time: string } {
+  const d = new Date(Date.parse(iso) + IST_MS);
+  return { day: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`, time: `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}` };
+}
+
+/** India's `YYYY-MM-DD` and `HH:MM` as an ISO timestamp. */
+export const fromIst = (day: string, time: string) => new Date(`${day}T${time}:00+05:30`).toISOString();
 
 /** Local calendar date as `YYYY-MM-DD`. */
 export const dateKey = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;

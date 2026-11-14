@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { PeopleForm, RefundLine } from '@/components/booking';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { ChoiceChips } from '@/components/ui/ChoiceChips';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -14,11 +14,11 @@ import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey } from '@/lib/api-client';
+import { replacePerson } from '@/lib/booking/people';
 import { Feedback } from '@/lib/haptics';
 import { EventsService } from '@/services/events-service';
 import { useAuthStore } from '@/stores/auth-store';
 import type { EventDetail } from '@/types/events';
-import { PersonCard } from '../components/PersonCard';
 import { StepBar } from '../components/StepBar';
 import { ticketReturn } from '../lib/checkout';
 import { countOf, orderPrice, peopleFor, personErrors, playersFor, refundText, toHolders, whenLine, type PersonDraft, type Selection } from '../lib/events';
@@ -165,16 +165,14 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
       {step === 1 ? (
         <>
           <Text style={styles.lead}>Add each person’s name as on an ID. The gate checks it against the ticket.</Text>
-          {people.map((p, i) => (
-            <PersonCard
-              key={p.key}
-              person={p}
-              heading={team ? `Player ${i + 1}${i === 0 ? ' · captain' : ''}` : `Ticket ${i + 1} · ${event.tiers.find((t) => t.id === p.tierId)?.name ?? ''}`}
-              questions={event.questions}
-              errors={shown ? errors[i]! : {}}
-              onChange={(next) => setPeople((all) => all.map((x) => (x.key === next.key ? next : x)))}
-            />
-          ))}
+          <PeopleForm
+            people={people}
+            heading={(p, i) => (team ? `Player ${i + 1}${i === 0 ? ' · captain' : ''}` : `Ticket ${i + 1} · ${event.tiers.find((t) => t.id === p.tierId)?.name ?? ''}`)}
+            questions={event.questions}
+            phoneHint="For their ticket. Only the organiser sees it."
+            errors={shown ? errors : undefined}
+            onChangePerson={(next) => setPeople((all) => replacePerson(all, next))}
+          />
           {phoneTwice ? <Text style={styles.small}>The same number is on more than one ticket. That’s fine if one person keeps them all.</Text> : null}
         </>
       ) : null}
@@ -201,10 +199,7 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
               <Text key={p.key} style={styles.small}>{`• ${p.name.trim()}`}</Text>
             ))}
           </View>
-          <View style={styles.refund}>
-            <Ionicons name="shield-checkmark-outline" size={18} color={event.refunds.policy === 'none' ? Brand.warning : Brand.success} />
-            <Text style={styles.refundText}>{refundText(event.refunds, free)}</Text>
-          </View>
+          <RefundLine text={refundText(event.refunds, free)} refundable={event.refunds.policy !== 'none'} />
           {free ? null : <Text style={styles.small}>You’ll pay on Cashfree’s secure page. Your tickets are held for 20 minutes while you pay.</Text>}
         </>
       ) : null}
@@ -264,6 +259,4 @@ const styles = StyleSheet.create({
   lineLabel: { ...Typography.body, fontSize: 15, color: Brand.textMuted, flex: 1 },
   lineAmount: { ...Typography.body, fontSize: 15, color: Brand.text },
   people: { gap: 2, paddingHorizontal: Spacing.one },
-  refund: { flexDirection: 'row', gap: Spacing.two, alignItems: 'flex-start', padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Brand.surfaceAlt },
-  refundText: { ...Typography.caption, fontSize: 14, color: Brand.text, flex: 1 },
 });

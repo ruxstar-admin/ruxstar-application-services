@@ -44,6 +44,12 @@ when two features need it.
 
 **Gallery:** in dev, open the deep link `<scheme>://gallery` (route `src/app/(auth)/gallery.tsx`) to see every component.
 
+## Booking pieces (`src/components/booking`, logic in `src/lib/booking`)
+Shared by Events, Coaching, Sports & Turf and PG / Hostels: `DateStrip`, `SlotGrid`, `Legend`, `BookingBar`, `RefundLine`,
+`PeopleForm` / `PersonCard`, `VendorBoard`, `Roster`. Import from `@/components/booking`. Slot and board states share one look
+(`CELL_LOOK`): every state has a colour **and** an icon. Money is in paise (`money()`), days are India's `YYYY-MM-DD`.
+In dev, Settings → **Booking pieces (dev)** shows them all with sample data (also at the bottom of the gallery).
+
 ## Navigation transitions
 Stacks use `STACK_SCREEN_OPTIONS`; every role's tab group uses `TAB_SCREEN_OPTIONS` (cross-fade, same bar styling);
 modals use `BottomSheet`. All three read timings from `Motion`. The customer tab shell is Feed · Discover · Search · Messages · Profile.

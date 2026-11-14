@@ -1,5 +1,7 @@
 import type { Ionicons } from '@expo/vector-icons';
 import { money } from '@/features/vendor/lib/pod';
+import { cleanPhone, type PersonFields } from '@/lib/booking/people';
+import { fromIst, istParts } from '@/lib/dates';
 import type {
   EventCard,
   EventDetail,
@@ -42,14 +44,7 @@ export const EVENT_STATUS: Record<VendorEventStatus, { label: string; tone: Tone
 const IST_MS = 330 * 60_000;
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** A moment as India's calendar day and clock: `{ day: 'YYYY-MM-DD', time: 'HH:MM' }`. Events are in India, wherever the phone is. */
-export function istParts(iso: string): { day: string; time: string } {
-  const d = new Date(Date.parse(iso) + IST_MS);
-  return { day: `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`, time: `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}` };
-}
-
-/** India's `YYYY-MM-DD` and `HH:MM` as an ISO timestamp. */
-export const fromIst = (day: string, time: string) => new Date(`${day}T${time}:00+05:30`).toISOString();
+export { fromIst, istParts };
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -106,12 +101,8 @@ export function orderPrice(selection: Selection, tiers: { id: string; price: num
   return { items, fee, total: items + fee };
 }
 
-export interface PersonDraft {
-  key: string;
+export interface PersonDraft extends PersonFields {
   tierId: string;
-  name: string;
-  phone: string;
-  answers: Record<string, string>;
 }
 
 let keys = 0;
@@ -136,17 +127,7 @@ export function playersFor(count: number, tierId: string, previous: PersonDraft[
   return peopleFor({ [tierId]: count }, [tierId], previous.map((p) => ({ ...p, tierId })), me);
 }
 
-const PHONE = /^[6-9]\d{9}$/;
-export const cleanPhone = (text: string) => text.replace(/\D/g, '').replace(/^(91|0)(?=\d{10}$)/, '');
-
-/** What's wrong on one person's card, by field, in words. */
-export function personErrors(person: PersonDraft, questions: EventQuestion[]): Record<string, string> {
-  const errors: Record<string, string> = {};
-  if (person.name.trim().length < 2) errors.name = 'Add their name as on an ID';
-  if (!PHONE.test(cleanPhone(person.phone))) errors.phone = 'A 10-digit mobile number';
-  for (const q of questions) if (q.required && !person.answers[q.id]?.trim()) errors[q.id] = 'Needed';
-  return errors;
-}
+export { cleanPhone, personErrors } from '@/lib/booking/people';
 
 export const toHolders = (people: PersonDraft[], questions: EventQuestion[]): HolderInput[] =>
   people.map((p) => {
