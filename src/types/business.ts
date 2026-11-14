@@ -4,7 +4,7 @@ import type { Rating } from './review';
 export type BusinessModule = 'pod' | 'events' | 'coaching' | 'stays';
 
 /** Each type belongs to one module; the catalog lists them. */
-export type BusinessType = 'print_shop' | 'concert' | 'sports_event' | 'coaching' | 'pg' | 'hostel';
+export type BusinessType = 'print_shop' | 'concert' | 'sports_event' | 'meetup' | 'coaching' | 'pg' | 'hostel';
 
 export type PodProduct =
   | 'tshirts'

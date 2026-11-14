@@ -13,7 +13,9 @@ export type TeamPermission =
   | 'shop.details'
   | 'coupons.manage'
   | 'posts.create'
-  | 'reviews.reply';
+  | 'reviews.reply'
+  | 'tickets.scan'
+  | 'tickets.guests';
 
 /** One permission as the API describes it. `needs` is given along with it. */
 export interface PermissionInfo {
@@ -21,6 +23,8 @@ export interface PermissionInfo {
   label: string;
   hint: string | null;
   needs: TeamPermission | null;
+  /** Works only once the person's identity is verified; scanning tickets doesn't need it. */
+  verify: boolean;
 }
 
 /** `order` is per order or delivery. */

@@ -212,6 +212,7 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
   };
 
   const catalogRows = !!data?.pod && !data.suspension && can('shop.catalog');
+  const events = data?.module === 'events';
   return (
     <ScreenContainer title={team ? 'Shop' : 'Business'}>
       <AsyncBoundary loading={loading || place.loading} error={error ?? place.error} hasData={!!data} onRetry={reload} skeletonRows={5}>
@@ -302,10 +303,22 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                     />
                   </>
                 ) : null}
-                {!team && data.pod && !data.suspension ? (
+                {!team && events ? (
+                  <>
+                    <Tile
+                      title="Events"
+                      subtitle={data.status === 'live' ? 'Make events, sell tickets, see bookings' : 'Make events now; publish the business to sell'}
+                      icon="calendar-outline"
+                      disabled={!!data.suspension}
+                      onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/events', params: { id } })}
+                    />
+                    <Tile title="Scan tickets" subtitle="Check people in at the gate, even offline" icon="qr-code-outline" onPress={() => router.push('/(customer)/gate')} />
+                  </>
+                ) : null}
+                {!team && (data.pod || events) && !data.suspension ? (
                   <Tile
-                    title="Team"
-                    subtitle="Invite people to help with orders, the shop and posts"
+                    title={events ? 'Team & gate keepers' : 'Team'}
+                    subtitle={events ? 'Invite people to scan tickets or help run events' : 'Invite people to help with orders, the shop and posts'}
                     icon="people-outline"
                     onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/team', params: { id } })}
                   />

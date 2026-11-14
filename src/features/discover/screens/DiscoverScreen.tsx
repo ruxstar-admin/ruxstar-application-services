@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChoiceChips } from '@/components/ui/ChoiceChips';
+import { EventResults } from '@/features/events/components/EventResults';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InputField } from '@/components/ui/InputField';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -20,6 +21,8 @@ import type { ShopFilters } from '@/types/shop';
 
 /** Waits this long after the last keystroke before searching. */
 const SEARCH_DELAY_MS = 350;
+/** Categories customers can already browse here; the rest show "coming soon". */
+const OPEN_MODULES: BusinessModule[] = ['pod', 'events'];
 
 type Filter = 'all' | PodProduct;
 type Category = 'all' | BusinessModule;
@@ -92,6 +95,7 @@ function HeaderButton({ icon, label, onPress }: { icon: keyof typeof Ionicons.gl
 export function DiscoverScreen() {
   const router = useRouter();
   const catalog = useBusinessCatalog();
+  const params = useLocalSearchParams<{ category?: string }>();
   const [text, setText] = useState('');
   const [q, setQ] = useState('');
   const [category, setCategory] = useState<Category>('all');
@@ -102,14 +106,21 @@ export function DiscoverScreen() {
     return () => clearTimeout(t);
   }, [text]);
 
+  const [linked, setLinked] = useState<string | undefined>(undefined);
+  if (params.category !== linked) {
+    setLinked(params.category);
+    if (params.category && params.category in BUSINESS_MODULES) setCategory(params.category as BusinessModule);
+  }
+
   const categories = catalog.data?.categories ?? [];
   const categoryChips: { key: Category; label: string }[] = [
     { key: 'all', label: 'All' },
     ...categories.map((c) => ({ key: c.module, label: BUSINESS_MODULES[c.module].label })),
   ];
   const picked = categories.find((c) => c.module === category);
-  const comingSoon = picked ? !picked.live || picked.module !== 'pod' : false;
+  const comingSoon = picked ? !picked.live || !OPEN_MODULES.includes(picked.module) : false;
   const printOpen = categories.some((c) => c.module === 'pod' && c.live) && category !== 'pod';
+  const eventsOpen = categories.some((c) => c.module === 'events' && c.live);
   const productChips: { key: Filter; label: string }[] = [
     { key: 'all', label: 'All print' },
     ...(catalog.data?.podProducts ?? []).map((p) => ({ key: p.id, label: p.label })),
@@ -128,11 +139,19 @@ export function DiscoverScreen() {
           <Text style={styles.heading}>Discover</Text>
           <Text style={styles.subheading}>Businesses on Ruxstar</Text>
         </View>
+        {eventsOpen ? <HeaderButton icon="ticket-outline" label="Your tickets" onPress={() => router.push('/(customer)/events/tickets')} /> : null}
         <HeaderButton icon="receipt-outline" label="Your orders" onPress={() => router.push('/(customer)/orders')} />
         <HeaderButton icon="wallet-outline" label="Your payments" onPress={() => router.push('/(customer)/payments')} />
       </View>
       <View style={styles.search}>
-        <InputField value={text} onChangeText={setText} placeholder="Shop, what they print, or a city" autoCorrect={false} returnKeyType="search" accessibilityLabel="Search businesses" />
+        <InputField
+          value={text}
+          onChangeText={setText}
+          placeholder={category === 'events' ? 'Event, organiser or city' : 'Shop, what they print, or a city'}
+          autoCorrect={false}
+          returnKeyType="search"
+          accessibilityLabel={category === 'events' ? 'Search events' : 'Search businesses'}
+        />
       </View>
       <View style={styles.filters}>
         <ChoiceChips options={categoryChips} value={category} onChange={pickCategory} />
@@ -146,6 +165,8 @@ export function DiscoverScreen() {
           actionLabel={printOpen ? 'See print shops' : undefined}
           onAction={printOpen ? () => pickCategory('pod') : undefined}
         />
+      ) : category === 'events' ? (
+        <EventResults q={q} />
       ) : (
         <Results key={`${q}|${category}|${product}`} filters={filters} />
       )}

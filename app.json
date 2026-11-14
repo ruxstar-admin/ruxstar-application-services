@@ -102,7 +102,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Ruxstar to use your camera for identity verification."
+          "cameraPermission": "Allow Ruxstar to use your camera for identity verification and to scan event tickets."
         }
       ],
       [

@@ -37,8 +37,9 @@ export function TeamScreen() {
         {data ? (
           <>
             <Text style={styles.muted}>
-              Invite people by their Ruxstar username and choose what each can do. Nothing works for them until their identity verification
-              (Aadhaar, PAN and a selfie) is approved.
+              {data.permissions.some((p) => !p.verify)
+                ? 'Invite people by their Ruxstar username and choose what each can do. Gate keepers who only scan tickets can start once they accept; anything more waits until their identity verification (Aadhaar, PAN and a selfie) is approved.'
+                : 'Invite people by their Ruxstar username and choose what each can do. Nothing works for them until their identity verification (Aadhaar, PAN and a selfie) is approved.'}
             </Text>
             {data.members.length ? (
               <>
@@ -57,7 +58,7 @@ export function TeamScreen() {
                 </View>
               </>
             ) : (
-              <EmptyState icon="people-outline" title="No one yet" message="Invite someone to help with orders, the shop or posts." />
+              <EmptyState icon="people-outline" title="No one yet" message={data.permissions.some((p) => p.key === 'tickets.scan') ? 'Invite gate keepers to scan tickets at your events.' : 'Invite someone to help with orders, the shop or posts.'} />
             )}
           </>
         ) : null}

@@ -2,10 +2,10 @@ import type { PermissionInfo } from '@/types/team';
 import { cleanUsername, inviteEnds, payLine, permissionsLine, togglePermission } from '../team';
 
 const catalog: PermissionInfo[] = [
-  { key: 'orders.view', label: 'See orders', hint: null, needs: null },
-  { key: 'orders.move', label: 'Accept and move orders', hint: null, needs: 'orders.view' },
-  { key: 'earnings.view', label: "See the shop's earnings", hint: null, needs: 'orders.view' },
-  { key: 'shop.open', label: 'Open and close the shop', hint: null, needs: null },
+  { key: 'orders.view', label: 'See orders', hint: null, needs: null, verify: true },
+  { key: 'orders.move', label: 'Accept and move orders', hint: null, needs: 'orders.view', verify: true },
+  { key: 'earnings.view', label: "See the shop's earnings", hint: null, needs: 'orders.view', verify: true },
+  { key: 'shop.open', label: 'Open and close the shop', hint: null, needs: null, verify: true },
 ];
 
 describe('payLine', () => {

@@ -1,3 +1,3 @@
-import { TicketScreen } from '@/features/events/screens/TicketScreen';
+import { TicketOrderScreen } from '@/features/events/screens/TicketOrderScreen';
 
-export default TicketScreen;
+export default TicketOrderScreen;

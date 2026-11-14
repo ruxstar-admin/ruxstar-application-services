@@ -13,6 +13,7 @@ export const TYPE_ICONS: Record<BusinessType, keyof typeof Ionicons.glyphMap> = 
   print_shop: 'print-outline',
   concert: 'musical-notes-outline',
   sports_event: 'trophy-outline',
+  meetup: 'people-outline',
   coaching: 'school-outline',
   pg: 'home-outline',
   hostel: 'bed-outline',

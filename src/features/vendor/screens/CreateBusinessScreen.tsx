@@ -167,7 +167,11 @@ export function CreateBusinessScreen() {
               namePlaceholder={typeInfo.namePlaceholder}
               detailHint={typeInfo.detailHint}
             />
-            <Text style={styles.hint}>You add photos{module === 'pod' ? ', products and prices' : ''} next, then publish it.</Text>
+            <Text style={styles.hint}>
+              {module === 'events'
+                ? 'You add a photo next and publish the business, then make events and sell tickets.'
+                : `You add photos${module === 'pod' ? ', products and prices' : ''} next, then publish it.`}
+            </Text>
             {needsTerms ? (
               <View style={styles.terms}>
                 <Text style={styles.termsTitle}>Payment terms</Text>

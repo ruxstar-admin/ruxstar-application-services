@@ -62,6 +62,13 @@ const WORK_AREAS: {
     href: (p) => ({ pathname: '/(customer)/work/reviews/[id]', params: { id: p.id, name: p.business.name } }),
   },
   {
+    title: 'Scan tickets',
+    subtitle: 'Check people in at this business’s events',
+    icon: 'qr-code-outline',
+    allowed: has('tickets.scan'),
+    href: () => '/(customer)/gate',
+  },
+  {
     title: 'Post as the business',
     subtitle: 'It goes out under the owner’s name',
     icon: 'create-outline',
