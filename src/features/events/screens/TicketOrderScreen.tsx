@@ -10,6 +10,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { OrderInvoices } from '@/features/invoices/components/OrderInvoices';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -139,6 +140,7 @@ function OrderView({ order, reload, openPay, fresh }: { order: TicketOrder; relo
         <Text style={styles.value}>{order.price.total ? `${money(order.price.total)}${order.status === 'awaiting_payment' ? ' to pay' : ''}${order.price.platformFee ? `, including a ${money(order.price.platformFee)} fee` : ''}` : 'Free'}</Text>
         <Text style={styles.label}>{`By ${order.business.name}`}</Text>
       </View>
+      <OrderInvoices refs={order.invoices} />
 
       {order.canCancel && valid.length ? (
         <TextLink muted label={order.price.total ? 'Cancel and get a refund' : 'Cancel my tickets'} onPress={() => setCancelling(true)} />

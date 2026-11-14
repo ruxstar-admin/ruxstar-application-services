@@ -1,4 +1,5 @@
 /** `/v1/events`, `/v1/vendor/events` and the gate (`/v1/events/desk`). Amounts are paise. */
+import type { InvoiceRef } from './invoice';
 
 export type EventKind = 'show' | 'sports' | 'meetup';
 export type RefundPolicy = 'standard' | 'none';
@@ -155,6 +156,8 @@ export interface TicketOrder {
   /** Unpaid orders give their seats back after this. */
   payBy: string | null;
   tickets: TicketView[];
+  /** GST invoices and credit notes, oldest first. Missing on orders paid before invoicing started. */
+  invoices?: InvoiceRef[];
   createdAt: string;
 }
 

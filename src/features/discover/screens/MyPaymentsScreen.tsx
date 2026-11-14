@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { BUSINESS_MODULES } from '@/features/vendor/lib/business-modules';
 import { money } from '@/features/vendor/lib/pod';
@@ -57,7 +58,7 @@ function PaymentRow({ payment, onPress }: { payment: Payment; onPress: () => voi
   );
 }
 
-function PaymentDetails({ payment, onOrder }: { payment: Payment; onOrder: () => void }) {
+function PaymentDetails({ payment, onOrder, onInvoices }: { payment: Payment; onOrder: () => void; onInvoices: () => void }) {
   return (
     <View style={styles.details}>
       <View style={styles.total}>
@@ -88,6 +89,7 @@ function PaymentDetails({ payment, onOrder }: { payment: Payment; onOrder: () =>
         </>
       ) : null}
       <PrimaryButton label="View order" variant="outline" onPress={onOrder} />
+      <PrimaryButton label="Invoices for this order" variant="outline" onPress={onInvoices} />
     </View>
   );
 }
@@ -117,11 +119,18 @@ export function MyPaymentsScreen() {
     if (payment.order.id === openId && router.canGoBack()) router.back();
     else router.push({ pathname: '/(customer)/pod/order/[id]', params: { id: payment.order.id } });
   };
+  const toInvoices = (payment: Payment) => {
+    setOpen(null);
+    router.push({ pathname: '/(customer)/invoices', params: { orderId: payment.order.id, label: `Order #${payment.order.orderNo} · ${payment.business.name}` } });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <ScreenHeader title="Your payments" onBack={() => router.back()} />
+        <View style={styles.invoicesLink}>
+          <TextLink label="GST invoices and credit notes" onPress={() => router.push('/(customer)/invoices')} />
+        </View>
       </View>
       {list.loading ? (
         <View style={styles.skeletons}>
@@ -153,7 +162,7 @@ export function MyPaymentsScreen() {
         />
       )}
       <BottomSheet visible={!!open} onClose={() => setOpen(null)} title="Payment">
-        {open ? <PaymentDetails payment={open} onOrder={() => toOrder(open)} /> : null}
+        {open ? <PaymentDetails payment={open} onOrder={() => toOrder(open)} onInvoices={() => toInvoices(open)} /> : null}
       </BottomSheet>
     </SafeAreaView>
   );
@@ -162,6 +171,7 @@ export function MyPaymentsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Brand.bg },
   header: { paddingHorizontal: Spacing.three },
+  invoicesLink: { alignItems: 'flex-start', marginTop: -Spacing.two, marginBottom: Spacing.two },
   list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five },
   footer: { paddingVertical: Spacing.three },
   skeletons: { gap: Spacing.three, paddingHorizontal: Spacing.three },

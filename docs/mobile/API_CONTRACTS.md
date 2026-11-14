@@ -188,6 +188,18 @@ Every "create" below (order, ticket, enrolment, booking) takes `paymentRef` and 
 | `GET /ruxstar/events` · `GET /ruxstar/events/{id}` · `POST /ruxstar/events/{id}/take-down` | `?status=draft\|live\|cancelled&q&cursor` · – · `{ reason }` (5 to 300) | `Page<VendorEvent>` · `VendorEvent` | `businesses.view` · `businesses.manage`, `Idempotency-Key`. Take-down cancels and refunds everyone; `CONFLICT` once cancelled or ended. `live` includes ended events |
 | `PATCH /ruxstar/modules/events` | `{ eventRules: { refundHours? (0 to 720), waitlistHours? (1 to 48), maxTicketTypes? (1 to 10), maxQuestions? (0 to 10) } }` | `ModuleSettings` with `eventRules` | `modules.manage`. Send only what changes |
 
+## GST invoices (real API — `/v1`, backend commit 78ed288)
+| Path | Request | Response | Notes |
+|---|---|---|---|
+| `GET /account/invoices` · `GET /account/invoices/{id}` | `?kind&orderId&limit&cursor` · – | `Page<Invoice>` · `Invoice` | The customer's own documents. `Order.invoices` and `TicketOrder.invoices` carry `InvoiceRef[]` |
+| `GET /vendor/invoices` · `GET /vendor/invoices/{id}` | `?business&kind&limit&cursor` · – | `Page<Invoice>` · `Invoice` | Newest first. No date filter, so the month chips walk up to 10 pages in the app. `StatementLine.invoice` links a statement line |
+| `GET /vendor/invoices/export` | `?from&to&business` (YYYY-MM-DD, India time, up to a year) | `text/csv` | Up to 5,000 documents. Fetched through the API client so the token refresh still works, then saved and shared |
+| `GET /ruxstar/invoices` · `GET /ruxstar/invoices/{id}` | `?kind&number (exact, up to 16)&orderNo&business&limit&cursor` · – | `Page<Invoice>` · `Invoice` | `orders.view` |
+| `pdfUrl` on every `Invoice` | – | PDF | Signed `/invoice-files/{id}?exp&t`, good for 10 minutes; `&download=1` downloads. The app fetches the invoice again before each open or share |
+| `GET /ruxstar/gst` | – | `GstSettings { seller, modules[] }` | `modules.view` |
+| `PATCH /ruxstar/gst/modules/{module}` | `{ enabled?, code?, codeKind?, rateBps? (0 to 4000), tcsBps? (0 to 200) }` | `GstModuleSettings` | `modules.manage`, `Idempotency-Key`. `pricesIncludeTax: false` is refused, so the app shows it read only. Audited as `gst.module_update` |
+| `PATCH /ruxstar/gst/seller` | `{ legalName?, tradeName?, gstin? \| null, address? \| null, feeCode?, feeRateBps? }` | `GstSellerSettings` | `modules.manage`, `Idempotency-Key`. The GSTIN's state code must match the address state. Audited as `gst.seller_update` |
+
 ## Coaching (`coaching.mocks.ts`)
 | Path | Request | Response | Notes |
 |---|---|---|---|

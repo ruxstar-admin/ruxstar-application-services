@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-15 — GST invoices: customer, vendor and console
+Prompt:    "build the GST invoice screens … customer invoices, vendor invoices with month/kind filters and CSV export, console invoice search and GST settings"
+Decision:  PDFs open through the signed `pdfUrl` (no token in the browser), fetched fresh on each tap. The CSV comes through the API client as text (`apiGetText`), is written with `expo-file-system` and shared. The vendor month filter runs in the app because the list has no date filter. Download-and-share moved to `src/lib/share-file.ts`, and print files use it too. No new packages.
+Done:      `features/invoices/*` (list, detail, body, rows, PDF hook, GSTIN check, GST settings form helpers), routes `(customer)/invoices`, `(vendor)/invoices`, `(admin)/invoices`, `(admin)/gst`; console `InvoicesScreen`, `GstSettingsScreen`, `GstModuleCard`, `GstSellerCard`; links from print order tracking, ticket order, My payments, Settings, vendor Payments, statement lines and the business page; console More rows. Full notes: `Architecture/build-log/gst-app.md`.
+Blocked:   nothing. A vendor `orderId` filter on the backend would make linked credit notes exact.
+Mocks:     none; API_CONTRACTS has a new GST invoices section.
+Verified by user: no
+Next:      Run the test checklist in the build log on a phone in Expo Go.
+
+---
+
 ## 2026-11-15 — Shared booking pieces
 Prompt:    "build the shared booking screen pieces … date strip, slot grid, legend, booking bar, refund line, people form, vendor board, roster"
 Decision:  Pieces live in `src/components/booking` with pure logic in `src/lib/booking`. `istParts` / `fromIst` moved to `src/lib/dates.ts`, and `cleanPhone` / `personErrors` to `src/lib/booking/people.ts` (events re-exports them). Amounts are paise.

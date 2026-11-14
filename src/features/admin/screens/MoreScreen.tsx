@@ -36,6 +36,12 @@ export function MoreScreen() {
         {allows(access, 'modules.view') ? (
           <ListRow icon="apps-outline" title="Modules" subtitle="Live, new vendors, commission and event rules" onPress={() => router.push('/(admin)/modules')} />
         ) : null}
+        {allows(access, 'modules.view') ? (
+          <ListRow icon="calculator-outline" title="GST" subtitle="Ruxstar's GSTIN and address, and each module's GST rates" onPress={() => router.push('/(admin)/gst')} />
+        ) : null}
+        {allows(access, 'orders.view') ? (
+          <ListRow icon="document-text-outline" title="Invoices" subtitle="Every GST invoice and credit note, as PDFs" onPress={() => router.push('/(admin)/invoices')} />
+        ) : null}
         {allows(access, 'businesses.view') ? (
           <ListRow icon="storefront-outline" title="Businesses" subtitle="Every vendor's businesses, and holds" onPress={() => router.push('/(admin)/businesses')} />
         ) : null}

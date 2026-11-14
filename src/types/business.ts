@@ -1,3 +1,4 @@
+import type { InvoiceRef } from './invoice';
 import type { Rating } from './review';
 
 /** The modules a business can be opened in. Each business is in exactly one. */
@@ -288,4 +289,6 @@ export interface StatementLine {
   refund: { id: string; reason: string | null; by: 'customer' | 'vendor' | 'staff' | 'system' } | null;
   /** Set on withdrawal lines. */
   payout: { id: string; to: string; fee: number; status: Payout['status']; utr: string | null } | null;
+  /** The GST invoice on a paid line, the credit note on a refund line, once issued. */
+  invoice?: InvoiceRef | null;
 }

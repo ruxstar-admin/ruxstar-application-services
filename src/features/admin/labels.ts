@@ -1,4 +1,5 @@
 import type { ModuleName, PersonReportReason, ReportReason } from '@/types/admin';
+import type { GstModule } from '@/types/invoice';
 
 export const MODULE_LABEL: Record<ModuleName, string> = {
   pod: 'Print on demand',
@@ -7,6 +8,15 @@ export const MODULE_LABEL: Record<ModuleName, string> = {
   stays: 'PG and hostel stays',
   delivery: 'Delivery',
   ledger: 'Payments and ledger',
+};
+
+export const GST_MODULE_LABEL: Record<GstModule, string> = {
+  pod: MODULE_LABEL.pod,
+  events: MODULE_LABEL.events,
+  coaching: MODULE_LABEL.coaching,
+  stays: MODULE_LABEL.stays,
+  turf: 'Sports and turf',
+  ecommerce: 'Online shop',
 };
 
 export const REASON_LABEL: Record<ReportReason, string> = {
@@ -100,6 +110,8 @@ export const ACTION_LABEL: Record<string, string> = {
   'event.take_down': 'Took an event down',
   'event_order.cancel': 'Cancelled event tickets',
   'event_ticket.check_in': 'Checked a ticket in by hand',
+  'gst.module_update': "Changed a module's GST rules",
+  'gst.seller_update': "Changed Ruxstar's GST details",
 };
 
 export const BUSINESS_STATE_LABEL: Record<'draft' | 'live' | 'suspended', string> = {

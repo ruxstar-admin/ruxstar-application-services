@@ -1,5 +1,6 @@
 import type { PodProduct } from './business';
 import type { AppliedCoupon, CouponOffer } from './coupon';
+import type { InvoiceRef } from './invoice';
 import type { TeamPermission } from './team';
 
 /** POST /v1/pod/files: a file the customer uploaded to print. */
@@ -178,6 +179,8 @@ export interface Order {
   /** The customer can write or change a review until then: 30 days after delivery. Null when it can't be reviewed now. */
   reviewUntil: string | null;
   problem: OrderProblem | null;
+  /** GST invoices and credit notes, oldest first. Missing on orders paid before invoicing started. */
+  invoices?: InvoiceRef[];
   createdAt: string;
   updatedAt: string;
   price: OrderPrice;

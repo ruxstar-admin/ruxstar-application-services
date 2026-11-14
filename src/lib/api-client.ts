@@ -31,6 +31,8 @@ interface RequestOptions {
   headers?: Record<string, string>;
   /** Large uploads need longer than the default. */
   timeoutMs?: number;
+  /** Resolve to the raw body, such as a CSV file, instead of parsed JSON. */
+  text?: boolean;
 }
 
 /** Extra options for writes. */
@@ -53,7 +55,15 @@ const toApiError = (status: number, parsed: unknown): ApiError => {
   return new ApiError(status, message, undefined, code, details);
 };
 
-const realRequest = async <T>({ method, path, body, bytes, token, query, envelope, idempotencyKey, headers: extra, timeoutMs }: RequestOptions): Promise<T> => {
+const parseJson = (raw: string): unknown => {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+};
+
+const realRequest = async <T>({ method, path, body, bytes, token, query, envelope, idempotencyKey, headers: extra, timeoutMs, text }: RequestOptions): Promise<T> => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs ?? REQUEST_TIMEOUT_MS);
   const url = `${API_BASE_URL}${withQuery(path, query)}`;
@@ -66,7 +76,7 @@ const realRequest = async <T>({ method, path, body, bytes, token, query, envelop
     ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
   };
 
-  let res: Pick<Response, 'ok' | 'status' | 'json'>;
+  let res: Pick<Response, 'ok' | 'status' | 'json' | 'text'>;
   try {
     // React Native's fetch cannot send binary bodies; expo/fetch can.
     res = bytes
@@ -76,6 +86,12 @@ const realRequest = async <T>({ method, path, body, bytes, token, query, envelop
     throw err instanceof Error && err.name === 'AbortError' ? ApiError.timeout() : ApiError.network();
   } finally {
     clearTimeout(timer);
+  }
+
+  if (text) {
+    const raw = await res.text().catch(() => '');
+    if (res.ok) return raw as T;
+    throw toApiError(res.status, parseJson(raw));
   }
 
   const parsed = await res.json().catch(() => ({}));
@@ -148,6 +164,10 @@ export const apiPost = <T>(path: string, body?: Json, token?: string, options?: 
 
 export const apiGet = <T>(path: string, token?: string, query?: Query, options: Pick<RequestOptions, 'timeoutMs'> = {}): Promise<T> =>
   request<T>({ method: 'GET', path, token, query, ...options });
+
+/** A file the API sends as text, such as a CSV export. */
+export const apiGetText = (path: string, token: string, query?: Query, options: Pick<RequestOptions, 'timeoutMs'> = {}): Promise<string> =>
+  request<string>({ method: 'GET', path, token, query, text: true, ...options });
 
 /** A list endpoint: its items and the cursor for the next page (null on the last one). */
 export const apiGetPage = async <T>(path: string, token?: string, query?: Query): Promise<{ items: T[]; nextCursor: string | null }> => {

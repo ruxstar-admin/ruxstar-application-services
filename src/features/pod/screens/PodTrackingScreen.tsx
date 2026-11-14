@@ -16,6 +16,7 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { StatusTimeline } from '@/components/ui/StatusTimeline';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { OrderInvoices } from '@/features/invoices/components/OrderInvoices';
 import { FileRow } from '@/features/pod/components/FileRow';
 import { OrderBusiness } from '@/features/pod/components/OrderBusiness';
 import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
@@ -305,6 +306,7 @@ function OrderDetails({ order, onChanged }: { order: Order; onChanged: (order?: 
           />
         </View>
       ) : null}
+      <OrderInvoices refs={order.invoices} />
 
       {cancellable ? (
         <View style={styles.cancel}>

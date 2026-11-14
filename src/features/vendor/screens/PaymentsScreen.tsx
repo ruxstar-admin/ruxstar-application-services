@@ -9,9 +9,11 @@ import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { DetailLine } from '@/components/ui/DetailLine';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
+import { ListRow } from '@/components/ui/ListRow';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Brand, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
+import { KIND_LABEL } from '@/features/invoices/lib/invoices';
 import { digitsOnly, isValidAccountNumber, isValidIfsc } from '@/features/kyc/lib/validators';
 import { VendorTabScreen } from '@/features/vendor/components/VendorTabScreen';
 import { money } from '@/features/vendor/lib/pod';
@@ -292,9 +294,9 @@ function StatementRow({ line, onPress }: { line: StatementLine; onPress: () => v
   );
 }
 
-function LineDetails({ line, onOrder }: { line: StatementLine; onOrder: (id: string) => void }) {
+function LineDetails({ line, onOrder, onInvoice }: { line: StatementLine; onOrder: (id: string) => void; onInvoice: (id: string) => void }) {
   const look = LINE_LOOK[line.kind];
-  const { order, refund, payout } = line;
+  const { order, refund, payout, invoice } = line;
   return (
     <View style={styles.details}>
       <View style={styles.detailsHead}>
@@ -335,6 +337,9 @@ function LineDetails({ line, onOrder }: { line: StatementLine; onOrder: (id: str
         ) : null}
       </View>
       {order ? <PrimaryButton label="View order" variant="outline" onPress={() => onOrder(order.id)} /> : null}
+      {invoice ? (
+        <PrimaryButton label={`${KIND_LABEL[invoice.kind]} ${invoice.number}`} variant="outline" onPress={() => onInvoice(invoice.id)} />
+      ) : null}
     </View>
   );
 }
@@ -427,6 +432,10 @@ export function PaymentsScreen() {
     setLine(null);
     router.push({ pathname: '/(vendor)/sale/[id]', params: { id } });
   };
+  const openInvoice = (id: string) => {
+    setLine(null);
+    router.push({ pathname: '/(vendor)/invoices/[id]', params: { id } });
+  };
   const saved = (payoutMethod: PayoutMethod) => {
     if (data) setData({ ...data, payoutMethod });
     setChanging(false);
@@ -472,6 +481,13 @@ export function PaymentsScreen() {
               </View>
             )}
 
+            <ListRow
+              icon="document-text-outline"
+              title="GST invoices"
+              subtitle="Invoices and credit notes for your sales, as PDFs or a CSV for your return"
+              onPress={() => router.push('/(vendor)/invoices')}
+            />
+
             <View style={styles.tabs}>
               <SegmentedTabs options={TABS} value={tab} onChange={setTab} />
             </View>
@@ -494,7 +510,7 @@ export function PaymentsScreen() {
               {changing ? <MethodForm onSaved={saved} onCancel={() => setChanging(false)} /> : null}
             </BottomSheet>
             <BottomSheet visible={!!line} onClose={() => setLine(null)} title="Payment details">
-              {line ? <LineDetails line={line} onOrder={openOrder} /> : null}
+              {line ? <LineDetails line={line} onOrder={openOrder} onInvoice={openInvoice} /> : null}
             </BottomSheet>
             <BottomSheet visible={!!payout} onClose={() => setPayout(null)} title="Withdrawal">
               {payout ? <PayoutDetails payout={payout} /> : null}

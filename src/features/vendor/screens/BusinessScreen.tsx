@@ -339,6 +339,14 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                     onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/terms', params: { id } })}
                   />
                 ) : null}
+                {!team && (data.pod || events) ? (
+                  <Tile
+                    title="GST invoices"
+                    subtitle="Invoices and credit notes for its sales, and a CSV for your return"
+                    icon="document-text-outline"
+                    onPress={() => router.push({ pathname: '/(vendor)/invoices', params: { business: id, label: data.name } })}
+                  />
+                ) : null}
                 {team ? null : (
                   <Tile
                     title="Activity"
