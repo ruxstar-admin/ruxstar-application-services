@@ -14,7 +14,9 @@ import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { CheckoutCoupons } from '@/features/coupons/components/CheckoutCoupons';
 import { DropLocation } from '@/features/pod/components/DropLocation';
 import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
+import { PaymentTerms } from '@/features/pod/components/PaymentTerms';
 import { checkoutReturn, fileSize, requiredOption } from '@/features/pod/lib/order';
+import { customerTerms } from '@/features/pod/lib/terms';
 import { readyLine } from '@/features/pod/lib/shop';
 import { money, OPTION_LABELS, titleCase } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
@@ -115,6 +117,7 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
   /** Set once Pay is tapped with something missing; from then on, what's missing shows in red. */
   const [checked, setChecked] = useState(false);
   const attempt = useRef(newIdempotencyKey());
+  const terms = useAsyncResource(() => ShopService.terms(token));
 
   const qty = Number(quantity) || 0;
   const fileIds = files.map((f) => f.id);
@@ -427,6 +430,14 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
           <Text style={quoteError ? styles.error : styles.faint}>{quoteError ?? (missing ? `Choose a ${needs === 'size' ? 'size' : 'paper size'} to see the price.` : 'Working out the price…')}</Text>
         )}
       </View>
+
+      {terms.data ? (
+        <>
+          <Text style={styles.overline}>Before you pay</Text>
+          <PaymentTerms terms={customerTerms(terms.data)} />
+          <Text style={styles.faint}>By paying, you agree to these.</Text>
+        </>
+      ) : null}
     </ScreenContainer>
   );
 }

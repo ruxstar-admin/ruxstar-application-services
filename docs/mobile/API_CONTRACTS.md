@@ -93,6 +93,7 @@ Types: `src/types/chat.ts`. Service: `src/services/chat-service.ts`.
 |---|---|---|---|
 | `POST /pod/orders/{id}/problem` | `{ kind: not_received \| wrong_item \| poor_quality \| damaged \| other, note }` | `Order` | `Idempotency-Key`. Only while `canReport` (48 h after delivery, or a late order not yet delivered); `REPORT_CLOSED` after, `CONFLICT` if one exists. Holds the shop's share |
 | `POST /pod/orders/{id}/problem/photos` | image bytes | `Order` | `Idempotency-Key`; up to 3 while the problem is open; re-encoded to JPEG |
+| `GET /pod/terms` | – | `{ commissionBps, platformFee, acceptHours, reportHours, filesDays, refundDays, payoutFee, minPayout }` | Payment conditions, with Ruxstar's current commission and fees. Shown before paying, before creating a print shop (with an "I agree" tick) and on the shop's Payment terms tile |
 | `POST /vendor/orders/{id}/refund` | `{ amount ≥ 100, reason }` | `ShopOrder` | `Idempotency-Key`; at most `refundable` (the shop's share left, before it is released) |
 | `GET /vendor/payments` | – | `Payments` with `upcoming[{ orderId, orderNo, amount, availableAt, held }]`, `withdrawal{ minimum, fee }`, `payouts[{ …, fee, failure }]` | Releases shares that are due and checks a pending payout before answering |
 | `POST /vendor/payouts` | – | `Payout` | `Idempotency-Key`. Withdraws everything available, less the fee. `PAYOUT_METHOD_REQUIRED`, `PAYOUT_TOO_SMALL` (under the minimum), `PAYOUT_IN_PROGRESS`, `PAYOUTS_UNAVAILABLE` |

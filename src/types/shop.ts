@@ -71,3 +71,16 @@ export type ShopFilters = {
   product?: PodProduct;
   q?: string;
 };
+
+/** `/v1/pod/terms`: the payment conditions as Ruxstar has them set now. Amounts in paise. */
+export interface PodTerms {
+  /** 1000 = 10%. */
+  commissionBps: number;
+  platformFee: number;
+  acceptHours: number;
+  reportHours: number;
+  filesDays: number;
+  refundDays: number;
+  payoutFee: number;
+  minPayout: number;
+}

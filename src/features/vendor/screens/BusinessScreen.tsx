@@ -318,6 +318,14 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                     onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/reviews', params: { id } })}
                   />
                 ) : null}
+                {!team && data.pod ? (
+                  <Tile
+                    title="Payment terms"
+                    subtitle="Commission, fees and when you're paid"
+                    icon="document-text-outline"
+                    onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/terms', params: { id } })}
+                  />
+                ) : null}
                 {team ? null : (
                   <Tile
                     title="Activity"

@@ -1,22 +1,27 @@
 import { useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { PaymentTerms } from '@/features/pod/components/PaymentTerms';
+import { vendorTerms } from '@/features/pod/lib/terms';
 import { BusinessProfileFields } from '@/features/vendor/components/BusinessProfileFields';
 import { OptionCard } from '@/features/vendor/components/OptionCard';
 import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
 import { checkProfile, EMPTY_PROFILE, locationOf, profileFieldOf, type ProfileErrors, type ProfileValues } from '@/features/vendor/lib/business-form';
 import { BUSINESS_MODULES, TYPE_ICONS } from '@/features/vendor/lib/business-modules';
+import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { BusinessService } from '@/services/business-service';
+import { ShopService } from '@/services/shop-service';
 import type { BusinessCatalog, BusinessModule, BusinessType } from '@/types/business';
 
 type Category = BusinessCatalog['categories'][number];
@@ -36,6 +41,8 @@ export function CreateBusinessScreen() {
   const [saving, setSaving] = useState(false);
   // One key per attempt to create, so a retry after a dropped connection can't make two.
   const attempt = useRef(newIdempotencyKey());
+  const terms = useAsyncResource(() => ShopService.terms(token));
+  const [agreed, setAgreed] = useState(false);
 
   const category = data?.categories.find((c) => c.module === module) ?? null;
   const typeInfo = category?.types.find((t) => t.id === type) ?? null;
@@ -85,11 +92,16 @@ export function CreateBusinessScreen() {
   };
 
   const step = !category ? 'category' : !typeInfo ? 'type' : 'profile';
+  const needsTerms = module === 'pod';
 
   return (
     <ScreenContainer
       title={step === 'category' ? 'Add a business' : step === 'type' ? category!.label : 'Business profile'}
-      footer={step === 'profile' ? <PrimaryButton label="Create business" loading={saving} onPress={create} /> : undefined}
+      footer={
+        step === 'profile' ? (
+          <PrimaryButton label="Create business" loading={saving} onPress={create} disabled={needsTerms && (!terms.data || !agreed)} />
+        ) : undefined
+      }
     >
       <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={4}>
         {data && step === 'category' ? (
@@ -156,6 +168,26 @@ export function CreateBusinessScreen() {
               detailHint={typeInfo.detailHint}
             />
             <Text style={styles.hint}>You add photos{module === 'pod' ? ', products and prices' : ''} next, then publish it.</Text>
+            {needsTerms ? (
+              <View style={styles.terms}>
+                <Text style={styles.termsTitle}>Payment terms</Text>
+                {terms.data ? (
+                  <>
+                    <PaymentTerms terms={vendorTerms(terms.data)} />
+                    <Checkbox checked={agreed} onChange={setAgreed} accessibilityLabel="I agree to these payment terms">
+                      <Text style={styles.agree}>I agree to these payment terms</Text>
+                    </Checkbox>
+                  </>
+                ) : terms.error ? (
+                  <>
+                    <ErrorBanner message="Could not load the payment terms. Check your connection." />
+                    <PrimaryButton label="Try again" variant="outline" onPress={terms.reload} />
+                  </>
+                ) : (
+                  <ActivityIndicator color={Brand.primarySoft} />
+                )}
+              </View>
+            ) : null}
             {failure ? <ErrorBanner message={failure} /> : null}
           </>
         ) : null}
@@ -182,4 +214,7 @@ const styles = StyleSheet.create({
   chosenLabel: { ...Typography.caption, color: Brand.textMuted },
   chosenType: { ...Typography.bodyStrong, color: Brand.text },
   hint: { ...Typography.caption, color: Brand.textFaint },
+  terms: { gap: Spacing.three, marginTop: Spacing.three },
+  termsTitle: { ...Typography.bodyStrong, color: Brand.text },
+  agree: { ...Typography.body, color: Brand.text },
 });

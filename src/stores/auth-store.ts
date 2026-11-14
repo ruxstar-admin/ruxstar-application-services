@@ -19,6 +19,8 @@ interface AuthState {
   /** 10 digits, without +91. */
   mobile: string | null;
   name: string | null;
+  /** Whether people you chat with see when you were last active. Kept so Settings can show it before the account loads. */
+  showActivity: boolean;
   isAuthenticated: boolean;
   /** Non-persisted: flips true once secure-store rehydration finishes (see AuthGuard). */
   _hasHydrated: boolean;
@@ -27,6 +29,7 @@ interface AuthState {
   setTokens: (tokens: AuthTokens) => void;
   clearAuth: () => void;
   setName: (name: string) => void;
+  setShowActivity: (show: boolean) => void;
   /** Adds a role granted after login (e.g. vendor KYC approval) without a fresh sign-in. */
   addRole: (role: Role) => void;
   setHasHydrated: (value: boolean) => void;
@@ -37,6 +40,7 @@ const identity = (user: AuthUser) => ({
   roles: rolesFrom(user.roles),
   mobile: user.phone.replace(/^\+91/, ''),
   name: user.name,
+  showActivity: user.showActivity ?? true,
 });
 
 const SIGNED_OUT = {
@@ -46,6 +50,7 @@ const SIGNED_OUT = {
   roles: [],
   mobile: null,
   name: null,
+  showActivity: true,
   isAuthenticated: false,
 };
 
@@ -64,6 +69,8 @@ export const useAuthStore = create<AuthState>()(
 
       setName: (name) => set({ name }),
 
+      setShowActivity: (showActivity) => set({ showActivity }),
+
       addRole: (role) => set((state) => (state.roles.includes(role) ? state : { roles: [...state.roles, role] })),
 
       setHasHydrated: (value) => set({ _hasHydrated: value }),
@@ -78,6 +85,7 @@ export const useAuthStore = create<AuthState>()(
         roles: state.roles,
         mobile: state.mobile,
         name: state.name,
+        showActivity: state.showActivity,
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => state?.setHasHydrated(true),

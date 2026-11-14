@@ -22,14 +22,17 @@ export function SettingsScreen() {
   const { allowed: pushAllowed, change: changePush } = usePushPermission();
   const [confirming, setConfirming] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  // Null until loaded, and on an API too old to have the setting, so the row stays hidden.
-  const [showActivity, setShowActivity] = useState<boolean | null>(null);
+  const showActivity = useAuthStore((s) => s.showActivity);
+  const setShowActivity = useAuthStore((s) => s.setShowActivity);
 
+  // Shows the remembered value at once; this only corrects it if it changed elsewhere, like on the website.
   useEffect(() => {
     ProfileService.account(token)
-      .then((user) => setShowActivity(user.showActivity ?? null))
+      .then((user) => {
+        if (user.showActivity !== undefined) setShowActivity(user.showActivity);
+      })
       .catch(() => log.debug('account load failed'));
-  }, [token]);
+  }, [token, setShowActivity]);
 
   const changeActivity = async (show: boolean) => {
     setShowActivity(show);
@@ -65,19 +68,15 @@ export function SettingsScreen() {
           onValueChange={() => void changePush()}
         />
       ) : null}
-      {showActivity !== null ? (
-        <ToggleRow
-          icon="radio-button-on-outline"
-          title="Show activity status"
-          subtitle={
-            showActivity
-              ? 'People you chat with can see when you were last active'
-              : "No one sees when you're active, and you won't see when others are"
-          }
-          value={showActivity}
-          onValueChange={changeActivity}
-        />
-      ) : null}
+      <ToggleRow
+        icon="radio-button-on-outline"
+        title="Show activity status"
+        subtitle={
+          showActivity ? 'People you chat with can see when you were last active' : "No one sees when you're active, and you won't see when others are"
+        }
+        value={showActivity}
+        onValueChange={changeActivity}
+      />
       <ListRow icon="ban-outline" title="Blocked accounts" subtitle="People you blocked" onPress={() => router.push('/(customer)/settings/blocked')} />
       <ListRow icon="shield-checkmark-outline" title="Account & data" subtitle="Delete your account" onPress={() => router.push('/(customer)/settings/account')} />
       <ListRow icon="help-buoy-outline" title="Help & support" subtitle="Message the Ruxstar team" onPress={() => router.push('/(customer)/support')} />
