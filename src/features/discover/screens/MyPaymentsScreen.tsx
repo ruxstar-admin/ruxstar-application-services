@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { Badge } from '@/components/ui/Badge';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { DetailLine } from '@/components/ui/DetailLine';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -57,29 +57,7 @@ function PaymentRow({ payment, onPress }: { payment: Payment; onPress: () => voi
   );
 }
 
-function Line({ label, value, onCopy }: { label: string; value: string; onCopy?: () => void }) {
-  return (
-    <View style={styles.line}>
-      <Text style={styles.lineLabel}>{label}</Text>
-      <View style={styles.lineValueRow}>
-        <Text style={styles.lineValue} selectable>
-          {value}
-        </Text>
-        {onCopy ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={`Copy ${label}`} onPress={onCopy} hitSlop={8}>
-            <Ionicons name="copy-outline" size={16} color={Brand.textMuted} />
-          </Pressable>
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
 function PaymentDetails({ payment, onOrder }: { payment: Payment; onOrder: () => void }) {
-  const copy = async (text: string) => {
-    await Clipboard.setStringAsync(text);
-    Feedback.success();
-  };
   return (
     <View style={styles.details}>
       <View style={styles.total}>
@@ -87,10 +65,10 @@ function PaymentDetails({ payment, onOrder }: { payment: Payment; onOrder: () =>
         <Badge label={STATUS[payment.status].label} tone={STATUS[payment.status].tone} />
       </View>
       <View style={styles.card}>
-        <Line label="Paid to" value={payment.business.name} />
-        <Line label="For" value={`Order #${payment.order.orderNo} · ${payment.order.label}`} />
-        <Line label="Paid on" value={formatDateTime(payment.paidAt)} />
-        {payment.paymentId ? <Line label="Payment ID" value={payment.paymentId} onCopy={() => void copy(payment.paymentId!)} /> : null}
+        <DetailLine label="Paid to" value={payment.business.name} />
+        <DetailLine label="For" value={`Order #${payment.order.orderNo} · ${payment.order.label}`} />
+        <DetailLine label="Paid on" value={formatDateTime(payment.paidAt)} />
+        {payment.paymentId ? <DetailLine label="Payment ID" value={payment.paymentId} copyable /> : null}
       </View>
       {payment.refunds.length ? (
         <>
@@ -197,10 +175,6 @@ const styles = StyleSheet.create({
   total: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   totalAmount: { fontFamily: Fonts.bold, fontSize: 28, color: Brand.text },
   card: { padding: Spacing.three, gap: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.bg, borderWidth: 1, borderColor: Brand.border },
-  line: { gap: 2 },
-  lineLabel: { ...Typography.caption, color: Brand.textMuted },
-  lineValueRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  lineValue: { ...Typography.body, fontSize: 15, color: Brand.text, flexShrink: 1 },
   section: { ...Typography.caption, fontFamily: Fonts.semibold, color: Brand.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 },
   refund: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   refundTitle: { ...Typography.body, fontSize: 15, color: Brand.text },

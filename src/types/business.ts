@@ -268,12 +268,24 @@ export interface Payments {
  */
 export interface StatementLine {
   id: string;
-  kind: 'paid' | 'available' | 'refund' | 'withdrawal' | 'returned';
+  /** `delivery` is a Ruxstar partner's pay for taking the order, out of the share. */
+  kind: 'paid' | 'available' | 'refund' | 'delivery' | 'withdrawal' | 'returned';
   amount: number;
   at: string;
   module: 'pod' | 'events' | 'coaching' | 'stays' | 'delivery' | 'ledger';
-  /** Set on order lines. */
-  order: { id: string; orderNo: number; business: { id: string; name: string } | null } | null;
+  /** Set on order lines. `customer` is the name it was delivered to; `total` what they paid. */
+  order: {
+    id: string;
+    orderNo: number;
+    business: { id: string; name: string } | null;
+    label: string;
+    customer: string;
+    total: number;
+    paymentId: string | null;
+    paidAt: string | null;
+  } | null;
+  /** Set on refund lines. */
+  refund: { id: string; reason: string | null; by: 'customer' | 'vendor' | 'staff' | 'system' } | null;
   /** Set on withdrawal lines. */
-  payout: { id: string; to: string } | null;
+  payout: { id: string; to: string; fee: number; status: Payout['status']; utr: string | null } | null;
 }
