@@ -108,7 +108,7 @@ export function DiscoverScreen() {
         <Text style={styles.subheading}>Businesses on Ruxstar</Text>
       </View>
       <View style={styles.search}>
-        <InputField value={text} onChangeText={setText} placeholder="Search businesses" autoCorrect={false} returnKeyType="search" accessibilityLabel="Search businesses" />
+        <InputField value={text} onChangeText={setText} placeholder="Shop, what they print, or a city" autoCorrect={false} returnKeyType="search" accessibilityLabel="Search businesses" />
       </View>
       <View style={styles.filters}>
         <ChoiceChips options={categoryChips} value={category} onChange={pickCategory} />

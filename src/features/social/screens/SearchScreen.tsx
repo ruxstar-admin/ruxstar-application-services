@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -9,8 +9,11 @@ import { ListRow } from '@/components/ui/ListRow';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { Feedback } from '@/lib/haptics';
 import { ProfileService } from '@/services/profile-service';
 import type { Profile } from '@/types/profile';
+import { useRecentPeople } from '../hooks/use-recent-people';
+import type { RecentPerson } from '../lib/recent-people';
 
 const DEBOUNCE_MS = 350;
 const MIN_QUERY = 2;
@@ -21,15 +24,16 @@ interface Outcome {
   failed: boolean;
 }
 
-const subtitleOf = (p: Profile) => [`@${p.username}`, p.city].filter(Boolean).join(' · ');
+const subtitleOf = (p: Pick<Profile, 'username' | 'city'>) => [`@${p.username}`, p.city].filter(Boolean).join(' · ');
 
 /**
- * Search people by name or @username. Businesses, events, courses and stays join
- * once their modules have a real API. Typing is debounced and stale responses are ignored.
+ * Search people by name or @username; shops are searched in Discover. Before typing it shows the people you
+ * opened from here lately (this device only), then the newest members. Typing is debounced and stale responses are ignored.
  */
 export function SearchScreen() {
   const router = useRouter();
   const token = useAuthToken();
+  const recent = useRecentPeople();
   const [query, setQuery] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
@@ -65,6 +69,45 @@ export function SearchScreen() {
   const current = searchable && outcome?.term === term ? outcome : null;
   const loading = searchable ? !current : newest === null;
   const results = searchable ? (current?.people ?? []) : (newest ?? []);
+  const showRecent = !searchable && recent.people.length > 0;
+
+  const open = (person: RecentPerson) => {
+    recent.add(person);
+    router.push({ pathname: '/(customer)/user/[id]', params: { id: person.id } });
+  };
+
+  const recentList = showRecent ? (
+    <View style={styles.recent}>
+      <View style={styles.sectionRow}>
+        <Text style={styles.section}>Recent</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Clear recent searches"
+          hitSlop={8}
+          onPress={() => {
+            Feedback.select();
+            recent.clear();
+          }}
+        >
+          <Text style={styles.clear}>Clear</Text>
+        </Pressable>
+      </View>
+      {recent.people.map((person) => (
+        <ListRow
+          key={person.id}
+          leading={<Avatar name={person.name} uri={person.avatarUrl} size={40} />}
+          title={person.name}
+          subtitle={subtitleOf(person)}
+          onPress={() => open(person)}
+          right={
+            <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${person.name} from recent`} hitSlop={10} onPress={() => recent.remove(person.id)}>
+              <Ionicons name="close" size={18} color={Brand.textMuted} />
+            </Pressable>
+          }
+        />
+      ))}
+    </View>
+  ) : null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -96,18 +139,25 @@ export function SearchScreen() {
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          ListHeaderComponent={!searchable && results.length > 0 ? <Text style={styles.section}>New on Ruxstar</Text> : null}
+          ListHeaderComponent={
+            !searchable && (showRecent || results.length > 0) ? (
+              <>
+                {recentList}
+                {results.length > 0 ? <Text style={styles.section}>New on Ruxstar</Text> : null}
+              </>
+            ) : null
+          }
           renderItem={({ item }) => (
             <ListRow
               icon="person-outline"
               leading={<Avatar name={item.name} uri={item.avatarUrl} size={40} />}
               title={item.name}
               subtitle={subtitleOf(item)}
-              onPress={() => router.push({ pathname: '/(customer)/user/[id]', params: { id: item.id } })}
+              onPress={() => open({ id: item.id, name: item.name, username: item.username, avatarUrl: item.avatarUrl, city: item.city })}
             />
           )}
           ListEmptyComponent={
-            !searchable ? (
+            showRecent ? null : !searchable ? (
               <EmptyState icon="search-outline" title="Find people on Ruxstar" message="Search by name or @username." />
             ) : current?.failed ? (
               <EmptyState icon="cloud-offline-outline" title="Search failed" message="Check your connection and try again." />
@@ -137,5 +187,8 @@ const styles = StyleSheet.create({
   input: { flex: 1, ...Typography.body, color: Brand.text, paddingVertical: 0 },
   list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five },
   section: { ...Typography.overline, color: Brand.textMuted, paddingBottom: Spacing.two },
+  recent: { paddingBottom: Spacing.three },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  clear: { ...Typography.caption, fontSize: 14, color: Brand.text, paddingBottom: Spacing.two },
   skeletons: { gap: Spacing.three, paddingHorizontal: Spacing.three },
 });
