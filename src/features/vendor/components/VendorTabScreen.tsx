@@ -9,11 +9,13 @@ interface VendorTabScreenProps {
   title: string;
   /** Pull to refresh. */
   onRefresh?: () => Promise<unknown> | void;
+  /** Beside the title, so it stays at the top however long the page is. */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }
 
 /** A vendor portal tab: "Vendor portal" and Exit above the title, then the scrolling page. Exit returns to Profile. */
-export function VendorTabScreen({ title, onRefresh, children }: VendorTabScreenProps) {
+export function VendorTabScreen({ title, onRefresh, action, children }: VendorTabScreenProps) {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -53,7 +55,10 @@ export function VendorTabScreen({ title, onRefresh, children }: VendorTabScreenP
             onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Brand.textMuted} colors={[Brand.primary]} progressBackgroundColor={Brand.surface} /> : undefined
           }
         >
-          <Text style={styles.title}>{title}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{title}</Text>
+            {action}
+          </View>
           {children}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -68,5 +73,6 @@ const styles = StyleSheet.create({
   overline: { ...Typography.overline, color: Brand.textMuted },
   exit: { ...Typography.bodyStrong, color: Brand.primarySoft },
   content: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three },
-  title: { ...Typography.title, color: Brand.text },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three },
+  title: { ...Typography.title, color: Brand.text, flexShrink: 1 },
 });

@@ -12,7 +12,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
-import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { Brand, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
 import { ratingLine } from '@/features/reviews/lib/review';
 import { contactSupport } from '@/features/support/lib/support';
@@ -52,7 +52,8 @@ function Detail({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-function SetupStep({
+/** A big tile for one part of the business. A setup step (`done` set) shows whether it is done. */
+function Tile({
   title,
   subtitle,
   done,
@@ -62,9 +63,8 @@ function SetupStep({
 }: {
   title: string;
   subtitle: string;
-  /** A setup step; rows without it show `icon`. */
   done?: boolean;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof Ionicons.glyphMap;
   disabled?: boolean;
   onPress: () => void;
 }) {
@@ -79,18 +79,26 @@ function SetupStep({
         Feedback.tap();
         onPress();
       }}
-      style={({ pressed }) => [styles.step, disabled && styles.stepDisabled, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.tile, step && !done && styles.tileTodo, disabled && styles.stepDisabled, pressed && styles.pressed]}
     >
-      <Ionicons
-        name={step ? (done ? 'checkmark-circle' : 'ellipse-outline') : (icon ?? 'ellipse-outline')}
-        size={22}
-        color={done ? Brand.success : step ? Brand.textMuted : Brand.text}
-      />
-      <View style={styles.stepText}>
-        <Text style={styles.stepTitle}>{title}</Text>
-        <Text style={styles.muted}>{subtitle}</Text>
+      <View style={styles.tileTop}>
+        <View style={styles.tileIcon}>
+          <Ionicons name={icon} size={26} color={Brand.primarySoft} />
+        </View>
+        {step ? (
+          done ? (
+            <Ionicons name="checkmark-circle" size={20} color={Brand.success} accessibilityElementsHidden />
+          ) : (
+            <Text style={styles.todo}>To do</Text>
+          )
+        ) : null}
       </View>
-      <Ionicons name="chevron-forward" size={18} color={Brand.textFaint} />
+      <Text style={styles.stepTitle} numberOfLines={1}>
+        {title}
+      </Text>
+      <Text style={styles.tileSubtitle} numberOfLines={2}>
+        {subtitle}
+      </Text>
     </Pressable>
   );
 }
@@ -240,7 +248,7 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
               </View>
             ) : null}
 
-            {canOpen(data) && can('shop.open') ? (
+            {team && canOpen(data) && can('shop.open') ? (
               <View style={[styles.openCard, data.open && styles.openCardOn]}>
                 <SegmentedTabs
                   options={OPEN_OPTIONS}
@@ -263,19 +271,24 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
               onAdd={addPhoto}
               onRemove={(photoId) => run(photoId, () => desk.service.removePhoto(token, id, photoId))}
             />
+            {!data.suspension && can('shop.details') ? (
+              <PrimaryButton label="Edit details" variant="outline" onPress={() => router.push({ pathname: desk.routes.details, params: { id } })} />
+            ) : null}
 
             {catalogRows || !team ? (
-              <View style={styles.steps}>
+              <View style={styles.tiles}>
                 {catalogRows && data.pod ? (
                   <>
-                    <SetupStep
+                    <Tile
                       title="Products & delivery"
+                      icon="cube-outline"
                       subtitle={data.pod.products.length ? `${data.pod.products.length} products · ${areaLine(data.pod)}` : 'Choose what you print and where you deliver'}
                       done={!data.missing.includes('products') && !data.missing.includes('area')}
                       onPress={() => router.push({ pathname: desk.routes.products, params: { id } })}
                     />
-                    <SetupStep
+                    <Tile
                       title="Prices"
+                      icon="pricetag-outline"
                       subtitle={
                         !data.pod.products.length
                           ? 'After you choose products'
@@ -290,7 +303,7 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                   </>
                 ) : null}
                 {!team && data.pod && !data.suspension ? (
-                  <SetupStep
+                  <Tile
                     title="Team"
                     subtitle="Invite people to help with orders, the shop and posts"
                     icon="people-outline"
@@ -298,7 +311,7 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                   />
                 ) : null}
                 {!team && data.pod && data.status === 'live' ? (
-                  <SetupStep
+                  <Tile
                     title="Reviews"
                     subtitle={ratingLine(data.rating)}
                     icon="star-outline"
@@ -306,7 +319,7 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                   />
                 ) : null}
                 {team ? null : (
-                  <SetupStep
+                  <Tile
                     title="Activity"
                     subtitle="Who did what: you, your team, customers and Ruxstar"
                     icon="time-outline"
@@ -321,9 +334,6 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
               <Detail label="Phone" value={data.phone} />
               <Detail label="Location" value={addressOf(data.location)} />
               <Detail label="GSTIN" value={data.gstin ? `${data.gstin.number}${data.gstin.legalName ? ` · ${data.gstin.legalName}` : ''}` : null} />
-              {!data.suspension && can('shop.details') ? (
-                <PrimaryButton label="Edit details" variant="outline" onPress={() => router.push({ pathname: desk.routes.details, params: { id } })} />
-              ) : null}
             </View>
 
             {data.status === 'draft' && !data.suspension && !team ? (
@@ -369,8 +379,8 @@ const styles = StyleSheet.create({
   strong: { fontFamily: Typography.bodyStrong.fontFamily, color: Brand.text },
   note: { flexDirection: 'row', gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Brand.surfaceAlt },
   noteText: { ...Typography.caption, fontSize: 14, color: Brand.text, flex: 1 },
-  photos: { flexDirection: 'row', gap: Spacing.two, marginVertical: Spacing.two },
-  photo: { width: 100, height: 100, borderRadius: Radius.md, overflow: 'hidden', backgroundColor: Brand.surfaceAlt },
+  photos: { flexDirection: 'row', gap: Spacing.two },
+  photo: { width: '31.8%', aspectRatio: 1, borderRadius: Radius.lg, overflow: 'hidden', backgroundColor: Brand.surfaceAlt },
   photoImage: { width: '100%', height: '100%' },
   coverTag: {
     position: 'absolute',
@@ -405,9 +415,22 @@ const styles = StyleSheet.create({
   publish: { gap: Spacing.two, paddingTop: Spacing.two },
   openCard: { gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.lg, borderWidth: 1, borderColor: Brand.border, backgroundColor: Brand.surface },
   openCardOn: { borderColor: 'rgba(52,199,89,0.45)' },
-  steps: { borderRadius: Radius.lg, borderWidth: 1, borderColor: Brand.border, backgroundColor: Brand.surface, paddingHorizontal: Spacing.three },
-  step: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, minHeight: 64, paddingVertical: Spacing.two },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: Spacing.three },
+  tile: {
+    width: '48%',
+    minHeight: 140,
+    gap: Spacing.one,
+    padding: Spacing.three,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Brand.border,
+    backgroundColor: Brand.surface,
+  },
+  tileTodo: { borderColor: 'rgba(255,176,32,0.45)' },
+  tileTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: Spacing.two },
+  tileIcon: { width: 48, height: 48, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(180,92,242,0.14)' },
+  todo: { ...Typography.caption, fontSize: 11, fontFamily: Fonts.semibold, color: Brand.warning },
+  tileSubtitle: { ...Typography.caption, fontSize: 12, color: Brand.textMuted },
   stepDisabled: { opacity: 0.5 },
-  stepText: { flex: 1, gap: 2 },
-  stepTitle: { ...Typography.bodyStrong, color: Brand.text },
+  stepTitle: { ...Typography.bodyStrong, fontSize: 15, color: Brand.text },
 });

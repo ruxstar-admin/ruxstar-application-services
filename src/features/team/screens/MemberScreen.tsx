@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Avatar } from '@/components/ui/Avatar';
@@ -9,12 +10,12 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
-import { TextLink } from '@/components/ui/TextLink';
-import { Brand, Spacing, Typography } from '@/constants/theme';
+import { Brand, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
+import { formatDay } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
 import { TeamService } from '@/services/team-service';
 import type { Contact } from '@/types/chat';
@@ -85,6 +86,42 @@ function Invite({ businessId, team }: { businessId: string; team: Team }) {
   );
 }
 
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statValue} numberOfLines={1}>
+        {value}
+      </Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function Notice({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
+  return (
+    <View style={styles.notice}>
+      <Ionicons name={icon} size={18} color={Brand.warning} />
+      <Text style={styles.noticeText}>{text}</Text>
+    </View>
+  );
+}
+
+function Action({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => {
+        Feedback.tap();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+    >
+      <Ionicons name={icon} size={22} color={Brand.primarySoft} />
+      <Text style={styles.actionLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
 function Member({ businessId, team, member }: { businessId: string; team: Team; member: TeamMember }) {
   const router = useRouter();
   const token = useAuthToken();
@@ -150,19 +187,53 @@ function Member({ businessId, team, member }: { businessId: string; team: Team; 
         </>
       }
     >
-      <View style={styles.head}>
-        <Avatar name={member.person.name} uri={member.person.avatar ?? undefined} size={56} />
-        <View style={styles.headText}>
-          <Text style={styles.name}>{member.person.name}</Text>
+      <View style={styles.hero}>
+        <Avatar name={member.person.name} uri={member.person.avatar ?? undefined} size={88} />
+        <View style={styles.heroText}>
+          <Text style={styles.name} numberOfLines={2}>
+            {member.person.name}
+          </Text>
           {member.person.username ? <Text style={styles.muted}>@{member.person.username}</Text> : null}
         </View>
         <Badge label={status.label} tone={status.tone} />
+        <View style={styles.stats}>
+          <Stat label={invited ? 'Invited' : 'Joined'} value={formatDay(invited || !member.joinedAt ? member.invitedAt : member.joinedAt)} />
+          <View style={styles.statDivider} />
+          <Stat label="Can do" value={`${permissions.length} of ${team.permissions.length}`} />
+          <View style={styles.statDivider} />
+          <Stat label="Pay" value={agreed ?? 'Not set'} />
+        </View>
       </View>
       {member.status === 'waiting' ? (
-        <Text style={styles.muted}>They joined, but nothing works for them until their identity verification is approved.</Text>
+        <Notice icon="hourglass-outline" text="They joined, but nothing works for them until their identity verification is approved." />
       ) : invited && member.expiresAt ? (
-        <Text style={styles.muted}>{inviteEnds(member.expiresAt)}. You can change what they&apos;ll be able to do before they accept.</Text>
+        <Notice icon="mail-outline" text={`${inviteEnds(member.expiresAt)}. You can change what they'll be able to do before they accept.`} />
       ) : null}
+      <View style={styles.actions}>
+        <Action
+          icon="chatbubble-outline"
+          label="Message"
+          onPress={() =>
+            router.push({
+              pathname: '/(customer)/chat/with/[userId]',
+              params: { userId: member.person.id, title: member.person.name, username: member.person.username ?? '', avatar: member.person.avatar ?? '' },
+            })
+          }
+        />
+        {member.person.username ? (
+          <Action icon="person-outline" label="Profile" onPress={() => router.push({ pathname: '/(customer)/user/[id]', params: { id: member.person.id } })} />
+        ) : null}
+        {invited ? null : (
+          <Action
+            icon="time-outline"
+            label="Activity"
+            onPress={() =>
+              router.push({ pathname: '/(vendor)/businesses/[id]/activity', params: { id: businessId, by: member.person.id, name: member.person.name } })
+            }
+          />
+        )}
+      </View>
+
       <Text style={styles.section}>What they can do</Text>
       <PermissionPicker catalog={team.permissions} value={permissions} onChange={setPermissions} />
       {permissions.length === 0 ? <Text style={styles.warn}>Pick at least one, or remove them from the team.</Text> : null}
@@ -171,20 +242,15 @@ function Member({ businessId, team, member }: { businessId: string; team: Team; 
       ) : (
         <>
           <Text style={styles.section}>Pay</Text>
-          <Text style={styles.muted}>{agreed ? `${agreed}${member.pay?.note ? ` · ${member.pay.note}` : ''}` : 'None was set with the invite.'}</Text>
-          <Text style={styles.hint}>This is what they accepted, so it can&apos;t change here.</Text>
+          <View style={styles.card}>
+            <Text style={styles.payValue}>{agreed ?? 'None was set with the invite.'}</Text>
+            {member.pay?.note ? <Text style={styles.muted}>{member.pay.note}</Text> : null}
+            <Text style={styles.hint}>This is what they accepted, so it can&apos;t change here.</Text>
+          </View>
         </>
       )}
       <View style={styles.remove}>
-        {invited ? null : (
-          <TextLink
-            label="See what they did"
-            onPress={() =>
-              router.push({ pathname: '/(vendor)/businesses/[id]/activity', params: { id: businessId, by: member.person.id, name: member.person.name } })
-            }
-          />
-        )}
-        <TextLink label={invited ? 'Cancel this invite' : 'Remove from the team'} onPress={() => setConfirming(true)} />
+        <PrimaryButton label={invited ? 'Cancel this invite' : 'Remove from the team'} variant="outline" onPress={() => setConfirming(true)} disabled={!!busy} />
       </View>
       <ConfirmSheet
         visible={confirming}
@@ -219,12 +285,44 @@ export function MemberScreen() {
 }
 
 const styles = StyleSheet.create({
-  head: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingVertical: Spacing.two },
-  headText: { flex: 1, gap: 2 },
-  name: { ...Typography.title, color: Brand.text },
+  hero: {
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingTop: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Radius.xl,
+    backgroundColor: Brand.surface,
+    borderWidth: 1,
+    borderColor: Brand.border,
+    overflow: 'hidden',
+  },
+  heroText: { alignItems: 'center', gap: 2 },
+  name: { ...Typography.title, color: Brand.text, textAlign: 'center' },
   muted: { ...Typography.caption, fontSize: 14, color: Brand.textMuted },
+  stats: { flexDirection: 'row', alignSelf: 'stretch', marginTop: Spacing.two, borderTopWidth: 1, borderTopColor: Brand.border },
+  stat: { flex: 1, alignItems: 'center', gap: 2, paddingVertical: Spacing.three, paddingHorizontal: Spacing.one },
+  statValue: { ...Typography.bodyStrong, fontSize: 15, color: Brand.text },
+  statLabel: { ...Typography.caption, fontSize: 12, color: Brand.textMuted },
+  statDivider: { width: 1, backgroundColor: Brand.border },
+  notice: { flexDirection: 'row', gap: Spacing.two, padding: Spacing.three, borderRadius: Radius.md, backgroundColor: Brand.surfaceAlt },
+  noticeText: { ...Typography.caption, fontSize: 14, color: Brand.text, flex: 1 },
+  actions: { flexDirection: 'row', gap: Spacing.two },
+  action: {
+    flex: 1,
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.three,
+    borderRadius: Radius.lg,
+    backgroundColor: Brand.surface,
+    borderWidth: 1,
+    borderColor: Brand.border,
+  },
+  actionLabel: { ...Typography.caption, fontFamily: Fonts.semibold, color: Brand.text },
+  pressed: { opacity: 0.7 },
+  card: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
+  payValue: { ...Typography.bodyStrong, color: Brand.text },
   warn: { ...Typography.caption, color: Brand.warning },
   hint: { ...Typography.caption, color: Brand.textFaint },
   section: { ...Typography.bodyStrong, color: Brand.text, marginTop: Spacing.three },
-  remove: { alignItems: 'flex-start', gap: Spacing.three, marginTop: Spacing.three },
+  remove: { marginTop: Spacing.four },
 });

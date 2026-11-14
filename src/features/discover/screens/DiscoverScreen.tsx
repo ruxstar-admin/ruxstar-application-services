@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ChoiceChips } from '@/components/ui/ChoiceChips';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InputField } from '@/components/ui/InputField';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Brand, Spacing, Typography } from '@/constants/theme';
+import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { ShopCardView } from '@/features/pod/components/ShopCardView';
 import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
 import { BUSINESS_MODULES } from '@/features/vendor/lib/business-modules';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
+import { Feedback } from '@/lib/haptics';
 import { ShopService } from '@/services/shop-service';
 import type { BusinessModule, PodProduct } from '@/types/business';
 import type { ShopFilters } from '@/types/shop';
@@ -69,8 +71,26 @@ function Results({ filters }: { filters: ShopFilters }) {
   );
 }
 
+function HeaderButton({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={() => {
+        Feedback.tap();
+        onPress();
+      }}
+      hitSlop={6}
+      style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+    >
+      <Ionicons name={icon} size={20} color={Brand.text} />
+    </Pressable>
+  );
+}
+
 /** Businesses customers can order from: a category first, then what it offers. Only print on demand has businesses so far. */
 export function DiscoverScreen() {
+  const router = useRouter();
   const catalog = useBusinessCatalog();
   const [text, setText] = useState('');
   const [q, setQ] = useState('');
@@ -104,8 +124,12 @@ export function DiscoverScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.heading}>Discover</Text>
-        <Text style={styles.subheading}>Businesses on Ruxstar</Text>
+        <View style={styles.titles}>
+          <Text style={styles.heading}>Discover</Text>
+          <Text style={styles.subheading}>Businesses on Ruxstar</Text>
+        </View>
+        <HeaderButton icon="receipt-outline" label="Your orders" onPress={() => router.push('/(customer)/orders')} />
+        <HeaderButton icon="wallet-outline" label="Your payments" onPress={() => router.push('/(customer)/payments')} />
       </View>
       <View style={styles.search}>
         <InputField value={text} onChangeText={setText} placeholder="Shop, what they print, or a city" autoCorrect={false} returnKeyType="search" accessibilityLabel="Search businesses" />
@@ -131,7 +155,19 @@ export function DiscoverScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Brand.bg, gap: Spacing.three },
-  header: { paddingHorizontal: Spacing.three, paddingTop: Spacing.three, gap: 2 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingTop: Spacing.three },
+  titles: { flex: 1, gap: 2 },
+  headerButton: {
+    width: 42,
+    height: 42,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Brand.surface,
+    borderWidth: 1,
+    borderColor: Brand.border,
+  },
+  pressed: { opacity: 0.7 },
   heading: { ...Typography.title, color: Brand.text },
   subheading: { ...Typography.caption, color: Brand.textMuted },
   search: { paddingHorizontal: Spacing.three },
