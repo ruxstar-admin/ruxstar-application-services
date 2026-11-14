@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -19,7 +19,7 @@ import type { PersonCase, PersonReportReason, ReportCase, ReportReason, ReportSt
 import { useCan } from '../access';
 import { OrderProblemsQueue } from '../components/OrderProblems';
 import { ReviewReportsQueue } from '../components/ReviewReports';
-import { Card, ConsoleScreen, Fact, Facts, Note, ReasonSheet, Row, consoleStyles, errorText } from '../components/parts';
+import { Card, ConsoleScreen, Fact, Facts, ListFooter, Note, ReasonSheet, Row, consoleStyles, errorText } from '../components/parts';
 import { PERSON_REASON_LABEL, REASON_LABEL, shortDate } from '../labels';
 
 const TABS = [
@@ -145,7 +145,7 @@ function Queue({ status }: { status: ReportStatus }) {
       onEndReachedThreshold={0.5}
       ListHeaderComponent={done ? <Note>{done}</Note> : null}
       ListEmptyComponent={<EmptyState icon="flag-outline" title={status === 'open' ? 'No reported posts' : 'Nothing closed yet'} message={status === 'open' ? 'Posts people report show up here.' : undefined} />}
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item: c }) => {
         const author = c.post?.author;
         const when = status === 'open' ? c.lastAt : (c.closedAt ?? c.lastAt);
@@ -267,7 +267,7 @@ function PeopleQueue({ status }: { status: ReportStatus }) {
       ListEmptyComponent={
         <EmptyState icon="person-outline" title={status === 'open' ? 'No reported people' : 'Nothing closed yet'} message={status === 'open' ? 'People others report show up here.' : undefined} />
       }
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item: c }) => {
         const when = status === 'open' ? c.lastAt : (c.closedAt ?? c.lastAt);
         const expanded = open === c.userId;

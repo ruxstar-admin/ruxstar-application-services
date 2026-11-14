@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Badge } from '@/components/ui/Badge';
@@ -19,7 +19,7 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { timeAgo } from '@/lib/time';
 import { SupportDeskService } from '@/services/support-service';
 import type { QueueFilter, QueueStatus, StaffTicket, SupportCategory } from '@/types/support';
-import { Card, Row, consoleStyles, errorText } from '../components/parts';
+import { Card, ListFooter, Row, consoleStyles, errorText } from '../components/parts';
 
 const STATUSES = [
   { key: 'open', label: 'Open' },
@@ -82,7 +82,7 @@ function Results({ filter }: { filter: QueueFilter }) {
           message={filter.status === 'open' ? 'Tickets waiting for Ruxstar show up here.' : undefined}
         />
       }
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item: t }) => (
         <Card>
           <Row

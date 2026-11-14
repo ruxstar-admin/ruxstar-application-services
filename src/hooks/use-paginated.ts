@@ -5,7 +5,7 @@ import type { Page } from '@/types/social';
  * Cursor-paginated list: first page on mount (and on `retry()`), `refresh()` for pull-to-refresh,
  * `loadMore()` for endless scroll. One request at a time, so a fast scroll can never fetch the same
  * page twice. `setItems` supports optimistic edits (likes, deletes) without refetching. `loadedAt` is when the first
- * page last arrived.
+ * page last arrived. `moreFailed` is true while the last next-page load failed.
  */
 export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>) {
   const loadRef = useRef(loadPage);
@@ -18,6 +18,7 @@ export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>)
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<unknown>(undefined);
   const [hasMore, setHasMore] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [loadedAt, setLoadedAt] = useState(0);
 
@@ -27,6 +28,7 @@ export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>)
 
   const settle = useCallback((page: Page<T> | null, failure?: unknown, append = false) => {
     if (page) {
+      setMoreFailed(false);
       cursorRef.current = page.nextCursor;
       setHasMore(page.nextCursor !== null);
       setItems((prev) => (append ? [...prev, ...page.items] : page.items));
@@ -68,7 +70,10 @@ export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>)
     loadRef
       .current(cursorRef.current)
       .then((page) => settle(page, undefined, true))
-      .catch((err) => settle(null, err));
+      .catch((err) => {
+        setMoreFailed(true);
+        settle(null, err);
+      });
   }, [settle]);
 
   const retry = useCallback(() => {
@@ -76,5 +81,5 @@ export function usePaginated<T>(loadPage: (cursor?: string) => Promise<Page<T>>)
     setAttempt((n) => n + 1);
   }, []);
 
-  return { items, setItems, loadedAt, loading, refreshing, loadingMore, hasMore, error, refresh, loadMore, retry };
+  return { items, setItems, loadedAt, loading, refreshing, loadingMore, hasMore, moreFailed, error, refresh, loadMore, retry };
 }

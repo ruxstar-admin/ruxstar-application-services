@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,7 +18,7 @@ import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
 import type { AuditEntry, AuditFilter } from '@/types/admin';
 import { useCan } from '../access';
-import { Card, Row, consoleStyles, errorText } from '../components/parts';
+import { Card, ListFooter, Row, consoleStyles, errorText } from '../components/parts';
 import { ACTION_LABEL, AREA_LABEL } from '../labels';
 
 const show = (value: unknown) => (value === undefined || value === null ? '—' : typeof value === 'string' ? value : JSON.stringify(value));
@@ -92,7 +92,7 @@ function Log({ filter }: { filter: AuditFilter }) {
       onEndReached={list.loadMore}
       onEndReachedThreshold={0.5}
       ListEmptyComponent={<EmptyState icon="time-outline" title="Nothing logged" message="Nothing matches this filter yet." />}
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item }) => <Entry e={item} />}
     />
   );

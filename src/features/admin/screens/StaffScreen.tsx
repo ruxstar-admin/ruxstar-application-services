@@ -204,7 +204,7 @@ function Member({ m, onChanged }: { m: StaffMember; onChanged: (m: StaffMember, 
                 keys.current.save = newIdempotencyKey();
                 Feedback.success();
                 setOpen(false);
-                onChanged(done, active ? 'Saved.' : `${name} are back on staff.`);
+                onChanged(done, active ? 'Saved.' : m.user.name ? `${m.user.name} is back on staff.` : 'Back on staff.');
               } catch (err) {
                 Feedback.error();
                 setError(errorText(err));

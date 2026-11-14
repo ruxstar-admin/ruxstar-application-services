@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Linking, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Linking, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Badge } from '@/components/ui/Badge';
 import { ChoiceChips } from '@/components/ui/ChoiceChips';
@@ -17,7 +17,7 @@ import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
 import type { CaseStatus, ReviewCase, ReviewStatus, ReviewTrack } from '@/types/admin';
 import { useCan } from '../access';
-import { Card, ConsoleScreen, Fact, Facts, Note, ReasonSheet, Row, Section, consoleStyles, errorText } from '../components/parts';
+import { Card, ConsoleScreen, Fact, Facts, ListFooter, Note, ReasonSheet, Row, Section, consoleStyles, errorText } from '../components/parts';
 import { shortDate } from '../labels';
 
 const TRACKS = [
@@ -118,7 +118,7 @@ function CaseDetail({ c, onDecided }: { c: ReviewCase; onDecided: (done: ReviewC
         <Fact label="Phone" value={c.user.phone} />
         <Fact label="Member since" value={shortDate(c.user.memberSince)} />
         <Fact label="Name on Aadhaar" value={id.aadhaarName ?? '—'} warn={!!id.aadhaarName && id.aadhaarName.toLowerCase() !== c.user.name.toLowerCase()} />
-        <Fact label="Aadhaar" value={id.aadhaarLast4 ? `XXXX ${id.aadhaarLast4}` : '—'} />
+        <Fact label="Aadhaar" value={id.aadhaarLast4 ? `XXXX XXXX ${id.aadhaarLast4}` : '—'} />
         <Fact label="PAN" value={id.panMasked ?? '—'} />
         <Fact label="Name on PAN" value={id.panName ?? '—'} />
         <Fact label="Name match" value={id.nameMatch ? (MATCH[id.nameMatch] ?? id.nameMatch) : '—'} warn={id.nameMatch !== 'DIRECT_MATCH'} />
@@ -185,7 +185,7 @@ function Queue({ status, track }: { status: ReviewStatus; track: ReviewTrack }) 
       onEndReachedThreshold={0.5}
       ListHeaderComponent={done ? <Note>{done}</Note> : null}
       ListEmptyComponent={<EmptyState icon="shield-checkmark-outline" title={status === 'submitted' ? 'Nothing waiting' : 'No cases here'} message={status === 'submitted' ? (track === 'delivery' ? 'New delivery partner requests show up here.' : 'New verification requests show up here.') : undefined} />}
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item: c }) => {
         const [label, tone] = STATUS[c.status];
         const expanded = open === c.id;

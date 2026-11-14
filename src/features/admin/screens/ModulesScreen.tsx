@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Badge } from '@/components/ui/Badge';
+import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
@@ -208,6 +209,7 @@ function Module({ m, onSaved }: { m: ModuleSettings; onSaved: (m: ModuleSettings
   const [fee, setFee] = useState(rupeesOf(m.platformFee));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [turningOff, setTurningOff] = useState(false);
   const key = useRef(newIdempotencyKey());
 
   const bps = Math.round(Number(commission) * 100);
@@ -248,7 +250,7 @@ function Module({ m, onSaved }: { m: ModuleSettings; onSaved: (m: ModuleSettings
 
       {canManage ? (
         <>
-          <ToggleRow title="Live" subtitle="Off hides it everywhere, for everyone." value={m.live} onValueChange={(live) => save({ live })} />
+          <ToggleRow title="Live" subtitle="Off hides it everywhere, for everyone." value={m.live} onValueChange={(live) => (live ? save({ live }) : setTurningOff(true))} />
           <ToggleRow title="New vendors can join" subtitle="Off keeps current vendors working but stops new ones joining." value={m.signupsOpen} onValueChange={(signupsOpen) => save({ signupsOpen })} />
           <ToggleRow title="Delivery" subtitle="Orders can be sent with a Ruxstar delivery partner." value={m.deliveryEnabled} onValueChange={(deliveryEnabled) => save({ deliveryEnabled })} />
           {m.gstinRequired !== null ? (
@@ -301,6 +303,18 @@ function Module({ m, onSaved }: { m: ModuleSettings; onSaved: (m: ModuleSettings
       {error ? <ErrorBanner message={error} /> : null}
       {m.payouts ? <Withdrawals m={{ ...m, payouts: m.payouts }} onSaved={onSaved} /> : null}
       {m.delivery ? <DeliveryRates m={{ ...m, delivery: m.delivery }} onSaved={onSaved} /> : null}
+      <ConfirmSheet
+        visible={turningOff}
+        title={`Turn ${MODULE_LABEL[m.module]} off?`}
+        message="It's hidden everywhere, for everyone, at once. You can turn it back on any time."
+        confirmLabel="Turn off"
+        loading={busy === 'live'}
+        onConfirm={async () => {
+          await save({ live: false });
+          setTurningOff(false);
+        }}
+        onCancel={() => setTurningOff(false)}
+      />
     </Card>
   );
 }

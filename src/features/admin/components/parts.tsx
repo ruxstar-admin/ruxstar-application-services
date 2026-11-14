@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
@@ -128,6 +129,17 @@ export function Needs({ need, children }: { need: Need; children: ReactNode }) {
   );
 }
 
+/** Under a paged list: a spinner while the next page loads, or a way to try again when it failed. */
+export function ListFooter({ list }: { list: { loadingMore: boolean; moreFailed: boolean; loadMore: () => void } }) {
+  if (list.loadingMore) return <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} />;
+  if (!list.moreFailed) return null;
+  return (
+    <View style={[consoleStyles.footer, styles.center]}>
+      <TextLink muted label="Couldn't load more. Tap to try again" onPress={list.loadMore} />
+    </View>
+  );
+}
+
 export function Section({ children }: { children: ReactNode }) {
   return <Text style={styles.section}>{children}</Text>;
 }
@@ -207,4 +219,5 @@ const styles = StyleSheet.create({
   noteText: { ...Typography.caption, color: Brand.text },
   dangerText: { color: Brand.error },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.three },
+  center: { alignItems: 'center' },
 });

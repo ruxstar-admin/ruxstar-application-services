@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -17,7 +17,7 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { AdminService } from '@/services/admin-service';
 import type { CouponFunder } from '@/types/coupon';
 import { useCan } from '../access';
-import { Note, consoleStyles, errorText } from '../components/parts';
+import { ListFooter, Note, consoleStyles, errorText } from '../components/parts';
 
 const TABS = [
   { key: 'ruxstar', label: 'Ruxstar' },
@@ -65,7 +65,7 @@ function Coupons({ funder, code }: { funder: CouponFunder; code: string | undefi
           message={!code && funder === 'ruxstar' ? 'Ruxstar pays for these, at every print shop.' : undefined}
         />
       }
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item }) => (
         <CouponCard
           coupon={item}

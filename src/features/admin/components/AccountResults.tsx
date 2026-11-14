@@ -1,4 +1,4 @@
-import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -7,7 +7,7 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { AdminService } from '@/services/admin-service';
 import type { AccountRow, AccountStatus } from '@/types/admin';
-import { Card, Row, consoleStyles, errorText } from './parts';
+import { Card, ListFooter, Row, consoleStyles, errorText } from './parts';
 
 export const roleText = (a: Pick<AccountRow, 'roles'>) =>
   [a.roles.admin && 'Admin', a.roles.ruxstarStaff && 'Staff', a.roles.vendor && 'Vendor', a.roles.delivery && 'Delivery'].filter(Boolean).join(', ') || 'Member';
@@ -46,7 +46,7 @@ export function AccountResults({ q, status, onPick }: { q: string; status?: Acco
       onEndReached={list.loadMore}
       onEndReachedThreshold={0.5}
       ListEmptyComponent={<EmptyState icon="people-outline" title="No one found" message={q.trim() ? 'Try a different name, @username or phone number.' : undefined} />}
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item: a }) => (
         <Card>
           <Row

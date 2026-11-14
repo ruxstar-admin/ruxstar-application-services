@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
@@ -17,7 +17,7 @@ import { ReviewReportService } from '@/services/review-service';
 import type { ReportStatus } from '@/types/admin';
 import type { ReviewCase } from '@/types/review';
 import { useCan } from '../access';
-import { Card, Fact, Facts, Note, ReasonSheet, Row, consoleStyles, errorText } from './parts';
+import { Card, Fact, Facts, ListFooter, Note, ReasonSheet, Row, consoleStyles, errorText } from './parts';
 import { shortDate } from '../labels';
 
 const reasonText = (c: ReviewCase) =>
@@ -133,7 +133,7 @@ export function ReviewReportsQueue({ status }: { status: ReportStatus }) {
       ListEmptyComponent={
         <EmptyState icon="star-outline" title={status === 'open' ? 'No reported reviews' : 'Nothing closed yet'} message={status === 'open' ? 'Shop reviews people report show up here.' : undefined} />
       }
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item: c }) => {
         const review = c.review;
         const when = status === 'open' ? c.lastAt : (c.closedAt ?? c.lastAt);

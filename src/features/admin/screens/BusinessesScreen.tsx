@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Badge } from '@/components/ui/Badge';
@@ -17,7 +17,7 @@ import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
 import type { BusinessFilter, BusinessState } from '@/types/admin';
 import type { BusinessModule } from '@/types/business';
-import { Card, Row, consoleStyles, errorText } from '../components/parts';
+import { Card, ListFooter, Row, consoleStyles, errorText } from '../components/parts';
 
 const STATES = [
   { key: 'all', label: 'All' },
@@ -65,7 +65,7 @@ function Results({ filter }: { filter: BusinessFilter }) {
       ListEmptyComponent={
         <EmptyState icon="storefront-outline" title="No businesses here" message={filter.q ? 'Try a different name, or paste a business or owner id.' : 'Businesses vendors create show up here.'} />
       }
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item: { business: b, owner } }) => (
         <Card>
           <Row

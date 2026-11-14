@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Badge } from '@/components/ui/Badge';
@@ -21,7 +21,7 @@ import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
 import type { HeldOrder, PayoutStatus, StaffPayout } from '@/types/admin';
 import { useCan } from '../access';
-import { Card, Fact, Facts, Note, ReasonSheet, Row, consoleStyles, errorText } from '../components/parts';
+import { Card, Fact, Facts, ListFooter, Note, ReasonSheet, Row, consoleStyles, errorText } from '../components/parts';
 
 type Tab = PayoutStatus | 'held';
 
@@ -122,7 +122,7 @@ function Payouts({ status }: { status: PayoutStatus }) {
           message={status === 'pending' ? 'Withdrawals vendors and delivery partners ask for show up here until the bank answers.' : undefined}
         />
       }
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item: p }) => {
         const expanded = open === p.id;
         return (
@@ -268,7 +268,7 @@ function HeldList({ orderNo, token }: { orderNo: number | undefined; token: stri
           message={orderNo ? 'It may not be delivered yet, or its share is already available.' : 'Delivered orders wait here until their hold is over.'}
         />
       }
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item: o }) => {
         const expanded = open === o.id;
         return (

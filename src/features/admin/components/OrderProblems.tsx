@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Badge } from '@/components/ui/Badge';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -19,7 +19,7 @@ import { timeAgo } from '@/lib/time';
 import { AdminService, type SettleOutcome } from '@/services/admin-service';
 import type { StaffOrder } from '@/types/order';
 import { useCan } from '../access';
-import { Card, Fact, Facts, Note, Row, consoleStyles, errorText } from './parts';
+import { Card, Fact, Facts, ListFooter, Note, Row, consoleStyles, errorText } from './parts';
 
 const SETTLE_TITLE: Record<SettleOutcome, string> = {
   refund_full: 'Refund in full',
@@ -169,7 +169,7 @@ export function OrderProblemsQueue({ status }: { status: 'open' | 'resolved' }) 
           message={status === 'open' ? 'Problems customers report with print orders show up here.' : undefined}
         />
       }
-      ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={consoleStyles.footer} /> : null}
+      ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item: o }) => {
         const expanded = open === o.id;
         const resolution = o.problem?.resolution;
