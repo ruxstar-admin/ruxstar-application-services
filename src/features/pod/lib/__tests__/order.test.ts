@@ -1,5 +1,5 @@
 import type { OrderPrice } from '@/types/order';
-import { nextSteps, priceLines, tripActive, vehicleLine } from '../order';
+import { filesKept, nextSteps, priceLines, tripActive, vehicleLine } from '../order';
 
 const price = (over: Partial<OrderPrice> = {}): OrderPrice => ({
   units: 2,
@@ -13,6 +13,23 @@ const price = (over: Partial<OrderPrice> = {}): OrderPrice => ({
   deliveryKm: null,
   total: 1000,
   ...over,
+});
+
+describe('filesKept', () => {
+  const now = Date.parse('2026-11-14T12:00:00Z');
+  const daysAgo = (days: number) => new Date(now - days * 24 * 60 * 60_000).toISOString();
+
+  it('keeps files while the order is open and for 30 days after delivery', () => {
+    expect(filesKept({ status: 'printing', deliveredAt: null }, now)).toBe(true);
+    expect(filesKept({ status: 'delivered', deliveredAt: daysAgo(29) }, now)).toBe(true);
+    expect(filesKept({ status: 'delivered', deliveredAt: daysAgo(31) }, now)).toBe(false);
+  });
+
+  it('drops them once the order is turned down, cancelled or refunded', () => {
+    expect(filesKept({ status: 'rejected', deliveredAt: null }, now)).toBe(false);
+    expect(filesKept({ status: 'cancelled', deliveredAt: null }, now)).toBe(false);
+    expect(filesKept({ status: 'refunded', deliveredAt: daysAgo(1) }, now)).toBe(false);
+  });
 });
 
 describe('tripActive', () => {

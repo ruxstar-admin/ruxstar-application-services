@@ -142,10 +142,13 @@
         "onesignal-expo-plugin",
         {
           "mode": "development",
-          "smallIcons": ["./assets/images/ic_stat_onesignal_default.png"],
+          "smallIcons": [
+            "./assets/images/ic_stat_onesignal_default.png"
+          ],
           "smallIconAccentColor": "#B45CF2"
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": false,

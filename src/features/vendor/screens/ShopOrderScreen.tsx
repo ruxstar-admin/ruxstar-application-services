@@ -15,7 +15,8 @@ import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { TextLink } from '@/components/ui/TextLink';
 import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
 import { ProblemCard } from '@/features/pod/components/ProblemCard';
-import { choiceLine, isClosed, nextSteps, progressOf, quantityLine, SHOP_STATUS_LABEL, STATUS_TONE, STEP_ACTION } from '@/features/pod/lib/order';
+import { choiceLine, filesKept, isClosed, nextSteps, progressOf, quantityLine, SHOP_STATUS_LABEL, STATUS_TONE, STEP_ACTION } from '@/features/pod/lib/order';
+import { saveFile } from '@/features/pod/lib/save-file';
 import { FileRow } from '@/features/pod/components/FileRow';
 import { contactSupport } from '@/features/support/lib/support';
 import { DeliverySection, type DeliveryDesk } from '@/features/vendor/components/DeliverySection';
@@ -23,6 +24,7 @@ import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey, type WriteOptions } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-error';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
@@ -54,6 +56,7 @@ export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk,
   const [refundReason, setRefundReason] = useState('');
   const [refunding, setRefunding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
   const keys = useRef<Partial<Record<ShopStatus, string>>>({});
   const refundKey = useRef(newIdempotencyKey());
 
@@ -85,6 +88,20 @@ export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk,
     }
   };
 
+  const downloadFile = async (file: PrintFile) => {
+    setError(null);
+    setDownloading(file.id);
+    try {
+      const { url } = await desk.fileLink(token, order.id, file.id);
+      await saveFile(url, file);
+    } catch (err) {
+      Feedback.error();
+      setError(err instanceof ApiError ? err.message : 'Could not download the file. Try again.');
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   const refund = async () => {
     setRefunding(true);
     setError(null);
@@ -107,6 +124,7 @@ export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk,
 
   const steps = nextSteps(order).filter((status) => can(status === 'rejected' ? 'orders.reject' : 'orders.move'));
   const closed = isClosed(order.status);
+  const kept = filesKept(order);
   const { address } = order;
   const refundPaise = Math.round(Number(refundAmount || '0') * 100);
   const refundValid = refundPaise >= 100 && refundPaise <= order.refundable && refundReason.trim().length >= 5;
@@ -204,8 +222,15 @@ export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk,
         {order.note ? <Text style={styles.text}>{`Note: ${order.note}`}</Text> : null}
       </View>
       {order.files.map((file) => (
-        <FileRow key={file.id} file={file} onOpen={closed ? undefined : () => openFile(file)} />
+        <FileRow
+          key={file.id}
+          file={file}
+          onOpen={kept ? () => openFile(file) : undefined}
+          onDownload={kept ? () => downloadFile(file) : undefined}
+          downloading={downloading === file.id}
+        />
       ))}
+      {!kept && order.status === 'delivered' ? <Text style={styles.muted}>Files are kept for 30 days after delivery.</Text> : null}
 
       <Text style={styles.section}>Deliver to</Text>
       <View style={styles.card}>
