@@ -8,6 +8,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { Composer } from '@/features/chat/components/Composer';
 import { MessageBubble } from '@/features/chat/components/MessageBubble';
@@ -41,8 +42,9 @@ function useMinute() {
   return now;
 }
 
+/** The API's own reason, such as a chat that is gone; a network or server failure gets the generic line. */
 const failureOf = (err: unknown) =>
-  err instanceof ApiError && err.code !== 'INTERNAL' && err.message ? err.message : 'Could not open the chat. Please try again.';
+  err instanceof ApiError && err.status > 0 && err.kind !== 'server' && err.message ? err.message : 'Check your connection and try again.';
 
 function ThreadHeader({ title, subtitle, live, icon, onInfo }: { title: string; subtitle: string; live?: boolean; icon: ReactNode; onInfo?: () => void }) {
   const router = useRouter();
@@ -293,7 +295,7 @@ function ChatThread({ id, titleParam, initial }: { id: string; titleParam?: stri
         {thread.loading ? (
           <ThreadSkeleton />
         ) : thread.error ? (
-          <EmptyState icon="cloud-offline-outline" title="Could not load this chat" actionLabel="Try again" onAction={thread.reload} />
+          <EmptyState icon="cloud-offline-outline" title="Could not load this chat" message={failureOf(thread.error)} actionLabel="Try again" onAction={thread.reload} />
         ) : (
           <FlatList
             inverted
@@ -305,7 +307,15 @@ function ChatThread({ id, titleParam, initial }: { id: string; titleParam?: stri
             onEndReached={thread.loadOlder}
             onEndReachedThreshold={0.3}
             ListHeaderComponent={<TypingBubble people={thread.typing} showName={isGroup} />}
-            ListFooterComponent={thread.loadingOlder ? <ActivityIndicator color={Brand.primarySoft} style={styles.older} /> : null}
+            ListFooterComponent={
+              thread.loadingOlder ? (
+                <ActivityIndicator color={Brand.primarySoft} style={styles.older} />
+              ) : thread.olderFailed ? (
+                <View style={styles.older}>
+                  <TextLink muted label="Couldn't load older messages. Tap to try again" onPress={thread.loadOlder} />
+                </View>
+              ) : null
+            }
             ListEmptyComponent={
               // The list is inverted, and it turns its empty state back the right way up through `style`, which EmptyState doesn't take.
               <View>
@@ -320,7 +330,7 @@ function ChatThread({ id, titleParam, initial }: { id: string; titleParam?: stri
         {chat?.state === 'request' ? (
           <View style={styles.request}>
             <Text style={styles.requestText}>
-              {isGroup ? `You were invited to ${chat.title}. Join to read and reply.` : `${chat.title} wants to message you. They won't know you've seen it until you accept.`}
+              {isGroup ? `You were invited to ${chat.title}. Join to reply.` : `${chat.title} wants to message you. They won't know you've seen it until you accept.`}
             </Text>
             <View style={styles.requestButtons}>
               <View style={styles.flex}>
@@ -364,7 +374,7 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.three },
   skeletons: { padding: Spacing.three, gap: Spacing.three },
   mine: { alignSelf: 'flex-end' },
-  older: { marginVertical: Spacing.three },
+  older: { marginVertical: Spacing.three, alignItems: 'center' },
   cameraOff: { ...Typography.caption, color: Brand.textMuted, textAlign: 'center', paddingHorizontal: Spacing.four, paddingTop: Spacing.two },
   request: {
     gap: Spacing.three,

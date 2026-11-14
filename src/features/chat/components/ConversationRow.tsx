@@ -12,8 +12,8 @@ interface ConversationRowProps {
   onPress: (chat: Chat) => void;
 }
 
-const previewOf = ({ kind, members, last }: Chat) => {
-  if (!last) return kind === 'group' ? `${members} people` : '';
+const previewOf = ({ kind, members, last, state }: Chat) => {
+  if (!last) return state === 'request' ? 'Wants to message you' : kind === 'group' ? `${members} people` : 'No messages yet';
   return last.mine && last.kind !== 'event' ? `You: ${last.text}` : last.text;
 };
 

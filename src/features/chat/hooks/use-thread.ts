@@ -46,8 +46,9 @@ export function useThread(id: string, initial?: ChatDetail) {
   const [typing, setTyping] = useState<Author[]>([]);
   const [olderCursor, setOlderCursor] = useState<string | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [olderFailed, setOlderFailed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
   const since = useRef<string | null>(null);
   const latest = useRef<PendingMessage[]>([]);
@@ -81,13 +82,13 @@ export function useThread(id: string, initial?: ChatDetail) {
         setOlderCursor(page.nextCursor);
         // Server time, so a phone clock that is off never skips messages.
         since.current = page.items[0]?.createdAt ?? detail.createdAt;
-        setError(false);
+        setError(null);
         setLoading(false);
         markRead();
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (cancelled) return;
-        setError(true);
+        setError(err ?? new Error('chat failed'));
         setLoading(false);
       });
     return () => {
@@ -278,12 +279,16 @@ export function useThread(id: string, initial?: ChatDetail) {
   const loadOlder = useCallback(() => {
     if (!olderCursor || loadingOlder) return;
     setLoadingOlder(true);
+    setOlderFailed(false);
     ChatService.messages(token, id, olderCursor)
       .then((page) => {
         setMessages((prev) => mergeOlder(prev, page.items));
         setOlderCursor(page.nextCursor);
       })
-      .catch(() => log.debug('older messages failed'))
+      .catch(() => {
+        log.debug('older messages failed');
+        setOlderFailed(true);
+      })
       .finally(() => setLoadingOlder(false));
   }, [token, id, olderCursor, loadingOlder]);
 
@@ -310,5 +315,6 @@ export function useThread(id: string, initial?: ChatDetail) {
     noteTyping,
     loadOlder,
     loadingOlder,
+    olderFailed,
   };
 }

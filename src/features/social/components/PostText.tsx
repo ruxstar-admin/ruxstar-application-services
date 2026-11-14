@@ -4,8 +4,11 @@ import { useRouter } from 'expo-router';
 import { Brand } from '@/constants/theme';
 import { richText } from '@/features/social/lib/rich-text';
 
-/** Post or comment text with @mentions opening that person's profile and web links opening in the browser. */
-export function PostText({ text, style }: { text: string; style?: StyleProp<TextStyle> }) {
+/**
+ * Post, comment or chat text with @mentions opening that person's profile and web links opening in the browser.
+ * `linkStyle` suits links to the background, such as your own chat bubble.
+ */
+export function PostText({ text, style, linkStyle }: { text: string; style?: StyleProp<TextStyle>; linkStyle?: StyleProp<TextStyle> }) {
   const router = useRouter();
   const parts = useMemo(() => richText(text), [text]);
   return (
@@ -17,7 +20,7 @@ export function PostText({ text, style }: { text: string; style?: StyleProp<Text
           <Text
             key={i}
             accessibilityRole="link"
-            style={styles.link}
+            style={[styles.link, linkStyle]}
             onPress={() =>
               part.kind === 'mention'
                 ? router.push({ pathname: '/(customer)/user/[id]', params: { id: part.username } })

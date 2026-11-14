@@ -78,7 +78,7 @@ Types: `src/types/social.ts`. Service: `src/services/social-service.ts`.
 | `GET /chats` · `GET /chats/unread` | `?box=chats\|requests&cursor&limit` · – | `Page<Chat>` · `{ unread, requests }` | Newest message first; the list and badge refresh every 15 s |
 | `POST /chats/dm` · `POST /chats/groups` | `{ userId }` · `{ title, userIds[] }` | `ChatDetail` | Starting a 1:1 chat is idempotent; groups hold up to 50 (`CHAT_GROUP_FULL`) |
 | `GET /chats/{id}` · `GET /chats/{id}/messages` | – · `?cursor&limit` | `ChatDetail` · `Page<ChatMessage>` newest first | Group members see messages from when they joined |
-| `GET /chats/{id}/updates` | `?since` (server time) | `{ messages, unsent, seenAt, changed, now }` | Polled every 3 s while a thread is open; pass back `now` |
+| `GET /chats/{id}/updates` | `?since` (server time) | `{ messages, unsent, seenAt, changed, now }` | Polled every 3 s while a thread is open; pass back `now`. Up to 100 messages a call; after a full page `now` points just past it, so the next poll brings the rest |
 | `POST /chats/{id}/messages` · `POST /chats/{id}/photos` | `{ text }` or `{ postId }` · image bytes | `ChatMessage` | `Idempotency-Key` required. `CHAT_REQUEST_PENDING` until a request is accepted |
 | `DELETE /chats/{id}/messages/{messageId}` | – | `{ done: true }` | Unsend your own message |
 | `POST /chats/{id}/read` · `/accept` · `/decline` · `PUT /chats/{id}/mute` | – · – · – · `{ muted }` | `{ done: true }`, except accept: `ChatDetail` | |

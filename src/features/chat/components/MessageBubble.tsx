@@ -9,6 +9,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Motion } from '@/constants/motion';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { VoiceNote } from '@/features/chat/components/VoiceNote';
+import { PostText } from '@/features/social/components/PostText';
 import type { BubblePosition } from '@/features/chat/lib/thread-layout';
 import type { ChatPhoto, PendingMessage } from '@/types/chat';
 
@@ -95,7 +96,9 @@ export const MessageBubble = memo(function MessageBubble({
 
   // Rebuilt each render so the handlers see this render's message; the bubble itself is memoised.
   const gesture = (() => {
+    // Off when a tap has nothing to do, so a tap on a link or @mention in the text reaches it.
     const single = Gesture.Tap()
+      .enabled(failed || !!message.photo || !!message.post?.available)
       .maxDistance(TAP_SLOP)
       .onEnd((_e, ok) => ok && scheduleOnRN(tapAction));
     const double = Gesture.Tap()
@@ -242,7 +245,7 @@ export const MessageBubble = memo(function MessageBubble({
                 </View>
               ) : null}
 
-              {message.text ? <Text style={styles.text}>{message.text}</Text> : null}
+              {message.text ? <PostText text={message.text} style={styles.text} linkStyle={message.mine ? styles.linkMine : undefined} /> : null}
               {pending ? <Text style={[styles.meta, failed && styles.failed]}>{failed ? 'Not sent · tap to retry' : 'Sending…'}</Text> : null}
             </View>
           </GestureDetector>
@@ -290,6 +293,7 @@ const styles = StyleSheet.create({
   quoteText: { ...Typography.caption, color: Brand.textMuted },
   quoteGone: { fontStyle: 'italic' },
   text: { ...Typography.body, color: Brand.text },
+  linkMine: { color: Brand.text, textDecorationLine: 'underline' },
   photo: { borderRadius: Radius.md, backgroundColor: Brand.surface },
   post: { width: PHOTO_WIDTH, borderRadius: Radius.md, backgroundColor: 'rgba(0,0,0,0.18)', padding: Spacing.two, gap: Spacing.one },
   postAuthor: { ...Typography.caption, color: Brand.text, fontFamily: Typography.bodyStrong.fontFamily },
