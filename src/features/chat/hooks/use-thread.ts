@@ -36,11 +36,12 @@ export interface Recording {
  * One chat: its details and messages. Loads the latest page, then keeps one /updates call open while the
  * screen is focused, which answers the moment anything changes (new messages, unsent ones, reactions, typing,
  * Seen, changes to a group). Sends optimistically: a failed send stays in the list with a retry that reuses
- * its idempotency key, so it is never sent twice.
+ * its idempotency key, so it is never sent twice. `initial` is the chat's details when the caller already has them,
+ * so the first load only fetches messages.
  */
-export function useThread(id: string) {
+export function useThread(id: string, initial?: ChatDetail) {
   const token = useAuthToken();
-  const [chat, setChat] = useState<ChatDetail | null>(null);
+  const [chat, setChat] = useState<ChatDetail | null>(initial ?? null);
   const [messages, setMessages] = useState<PendingMessage[]>([]);
   const [typing, setTyping] = useState<Author[]>([]);
   const [olderCursor, setOlderCursor] = useState<string | null>(null);
@@ -71,7 +72,8 @@ export function useThread(id: string) {
   useEffect(() => {
     let cancelled = false;
     since.current = null;
-    Promise.all([ChatService.get(token, id), ChatService.messages(token, id)])
+    const known = attempt === 0 && initial?.id === id ? initial : undefined;
+    Promise.all([known ?? ChatService.get(token, id), ChatService.messages(token, id)])
       .then(([detail, page]) => {
         if (cancelled) return;
         setChat(detail);
@@ -91,7 +93,7 @@ export function useThread(id: string) {
     return () => {
       cancelled = true;
     };
-  }, [token, id, attempt, markRead]);
+  }, [token, id, attempt, markRead, initial]);
 
   const apply = useCallback(
     (update: ChatUpdates) => {

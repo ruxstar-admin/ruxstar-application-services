@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, FlatList, KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,6 +18,7 @@ import { seenMessageId } from '@/features/chat/lib/merge-messages';
 import { activeLabel, layoutThread, type ThreadRow } from '@/features/chat/lib/thread-layout';
 import { PhotoViewer } from '@/features/social/components/PhotoViewer';
 import { useAuthToken } from '@/hooks/use-auth-token';
+import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { useOpenChat } from '@/lib/open-chat';
 import { ChatService } from '@/services/chat-service';
@@ -40,12 +41,107 @@ function useMinute() {
   return now;
 }
 
-/** A chat. Newest message at the bottom (inverted list); tap a photo to see it full screen, hold a message for its menu. */
+const failureOf = (err: unknown) =>
+  err instanceof ApiError && err.code !== 'INTERNAL' && err.message ? err.message : 'Could not open the chat. Please try again.';
+
+function ThreadHeader({ title, subtitle, live, icon, onInfo }: { title: string; subtitle: string; live?: boolean; icon: ReactNode; onInfo?: () => void }) {
+  const router = useRouter();
+  return (
+    <View style={styles.header}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} onPress={() => router.back()}>
+        <Ionicons name="chevron-back" size={26} color={Brand.text} />
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${title}, chat details`} onPress={onInfo} style={styles.headerMain} disabled={!onInfo}>
+        {icon}
+        <View style={styles.headerText}>
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text style={[styles.subtitle, live && styles.subtitleLive]} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+      </Pressable>
+      {onInfo ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Chat details" hitSlop={12} onPress={onInfo}>
+          <Ionicons name="information-circle-outline" size={24} color={Brand.text} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function ThreadSkeleton() {
+  return (
+    <View style={styles.skeletons}>
+      {[0, 1, 2].map((i) => (
+        <Skeleton key={i} width={i % 2 ? '55%' : '70%'} height={44} radius={16} style={i % 2 ? styles.mine : undefined} />
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Opened from someone's profile (`chat/with/[userId]`): shows who straight away while the API finds your chat with them,
+ * or starts it, then becomes the chat.
+ */
+function StartChat({ userId, name, username, avatarUrl }: { userId: string; name: string; username?: string; avatarUrl?: string }) {
+  const token = useAuthToken();
+  const [chat, setChat] = useState<ChatDetail | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let live = true;
+    ChatService.startDm(token, userId).then(
+      (started) => live && setChat(started),
+      (err) => {
+        if (!live) return;
+        Feedback.error();
+        setFailure(failureOf(err));
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [token, userId, attempt]);
+
+  if (chat) return <ChatThread id={chat.id} titleParam={chat.title} initial={chat} />;
+  return (
+    <SafeAreaView style={styles.container}>
+      <ThreadHeader title={name} subtitle={username ? `@${username}` : ''} icon={<Avatar name={name} uri={avatarUrl || undefined} size={36} />} />
+      {failure ? (
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="Could not open this chat"
+          message={failure}
+          actionLabel="Try again"
+          onAction={() => {
+            setFailure(null);
+            setAttempt((n) => n + 1);
+          }}
+        />
+      ) : (
+        <ThreadSkeleton />
+      )}
+    </SafeAreaView>
+  );
+}
+
+/** A chat by its id, or (from a profile) with a person, started if needed. */
 export function ThreadScreen() {
+  const { id, userId, title, username, avatar } = useLocalSearchParams<{ id?: string; userId?: string; title?: string; username?: string; avatar?: string }>();
+  if (userId) return <StartChat userId={userId} name={title ?? ''} username={username} avatarUrl={avatar} />;
+  return <ChatThread id={id!} titleParam={title} />;
+}
+
+/** A chat. Newest message at the bottom (inverted list); tap a photo to see it full screen, hold a message for its menu. */
+function ChatThread({ id, titleParam, initial }: { id: string; titleParam?: string; initial?: ChatDetail }) {
   const router = useRouter();
   const token = useAuthToken();
-  const { id, title: titleParam } = useLocalSearchParams<{ id: string; title?: string }>();
-  const thread = useThread(id);
+  const thread = useThread(id, initial);
   useOpenChat(id);
   const { chat } = thread;
   const [menuFor, setMenuFor] = useState<PendingMessage | null>(null);
@@ -178,42 +274,24 @@ export function ThreadScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={styles.flex} behavior="padding">
-        <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Back" hitSlop={12} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={26} color={Brand.text} />
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={`${title}, chat details`} onPress={openInfo} style={styles.headerMain} disabled={!chat}>
-            {chat?.kind === 'dm' ? (
+        <ThreadHeader
+          title={title}
+          subtitle={subtitle}
+          live={!!typingLine}
+          icon={
+            chat?.kind === 'dm' ? (
               <Avatar name={title} uri={chat.peer?.avatarUrl} size={36} />
             ) : (
               <View style={styles.groupIcon}>
                 <Ionicons name="people" size={18} color={Brand.primarySoft} />
               </View>
-            )}
-            <View style={styles.headerText}>
-              <Text style={styles.title} numberOfLines={1}>
-                {title}
-              </Text>
-              {subtitle ? (
-                <Text style={[styles.subtitle, typingLine && styles.subtitleLive]} numberOfLines={1}>
-                  {subtitle}
-                </Text>
-              ) : null}
-            </View>
-          </Pressable>
-          {chat ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Chat details" hitSlop={12} onPress={openInfo}>
-              <Ionicons name="information-circle-outline" size={24} color={Brand.text} />
-            </Pressable>
-          ) : null}
-        </View>
+            )
+          }
+          onInfo={chat ? openInfo : undefined}
+        />
 
         {thread.loading ? (
-          <View style={styles.skeletons}>
-            {[0, 1, 2].map((i) => (
-              <Skeleton key={i} width={i % 2 ? '55%' : '70%'} height={44} radius={16} style={i % 2 ? styles.mine : undefined} />
-            ))}
-          </View>
+          <ThreadSkeleton />
         ) : thread.error ? (
           <EmptyState icon="cloud-offline-outline" title="Could not load this chat" actionLabel="Try again" onAction={thread.reload} />
         ) : (
@@ -228,7 +306,12 @@ export function ThreadScreen() {
             onEndReachedThreshold={0.3}
             ListHeaderComponent={<TypingBubble people={thread.typing} showName={isGroup} />}
             ListFooterComponent={thread.loadingOlder ? <ActivityIndicator color={Brand.primarySoft} style={styles.older} /> : null}
-            ListEmptyComponent={<EmptyState icon="chatbubble-ellipses-outline" title="Say hello" message="Your messages will appear here." />}
+            ListEmptyComponent={
+              // The list is inverted, and it turns its empty state back the right way up through `style`, which EmptyState doesn't take.
+              <View>
+                <EmptyState icon="chatbubble-ellipses-outline" title="Say hello" message="Your messages will appear here." />
+              </View>
+            }
           />
         )}
 
