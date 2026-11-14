@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { TextLink } from '@/components/ui/TextLink';
-import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
-import { ReviewItem } from '@/features/reviews/components/ReviewItem';
-import { StarPicker } from '@/features/reviews/components/Stars';
+import { Brand, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
+import { StarPicker, Stars } from '@/features/reviews/components/Stars';
 import { REVIEW_TEXT_MAX, STAR_WORDS } from '@/features/reviews/lib/review';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -25,6 +24,7 @@ function WriteSheet({
   visible,
   onClose,
   onSaved,
+  onDelete,
 }: {
   order: Order;
   review: MyReview | null;
@@ -32,6 +32,7 @@ function WriteSheet({
   visible: boolean;
   onClose: () => void;
   onSaved: (review: MyReview) => void;
+  onDelete: () => void;
 }) {
   const token = useAuthToken();
   const [rating, setRating] = useState(start);
@@ -72,11 +73,12 @@ function WriteSheet({
       <Text style={styles.faint}>Your name and photo show with your review.</Text>
       {error ? <ErrorBanner message={error} /> : null}
       <PrimaryButton label={review ? 'Save changes' : 'Post review'} onPress={save} loading={saving} disabled={!rating} />
+      {review ? <PrimaryButton label="Delete review" variant="outline" onPress={onDelete} disabled={saving} /> : null}
     </BottomSheet>
   );
 }
 
-/** On a delivered order: "Rate your order" until it's reviewed, then the review, changeable for 30 days after delivery. */
+/** On a delivered order: "Rate your order" until it's reviewed, then just the stars given, changeable for 30 days after delivery. */
 export function RateOrderCard({ order }: { order: Order }) {
   const token = useAuthToken();
   const { data, setData } = useAsyncResource(() => ReviewService.mine(token, order.id), order.id);
@@ -116,6 +118,10 @@ export function RateOrderCard({ order }: { order: Order }) {
           setWriting(null);
           setData(next);
         }}
+        onDelete={() => {
+          setWriting(null);
+          setDeleting(true);
+        }}
       />
     ) : null;
 
@@ -145,16 +151,27 @@ export function RateOrderCard({ order }: { order: Order }) {
 
   return (
     <>
-      <Text style={styles.section}>Your review</Text>
-      <ReviewItem review={review}>
+      <View style={styles.done}>
+        <View style={styles.doneText}>
+          <Text style={styles.strong}>{`You rated it ${review.rating} ${review.rating === 1 ? 'star' : 'stars'}`}</Text>
+          <Stars value={review.rating} size={16} />
+          {open ? <Text style={styles.faint}>{`You can change it until ${formatDateTime(order.reviewUntil!)}`}</Text> : null}
+        </View>
         {open ? (
-          <View style={styles.actions}>
-            <TextLink label="Edit" onPress={() => setWriting(review.rating)} />
-            <TextLink label="Delete" muted onPress={() => setDeleting(true)} />
-            <Text style={[styles.faint, styles.flex]}>{`Until ${formatDateTime(order.reviewUntil!)}`}</Text>
-          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Change your review"
+            onPress={() => {
+              Feedback.tap();
+              setWriting(review.rating);
+            }}
+            style={({ pressed }) => [styles.change, pressed && styles.pressed]}
+          >
+            <Ionicons name="create-outline" size={16} color={Brand.text} />
+            <Text style={styles.changeText}>Change</Text>
+          </Pressable>
         ) : null}
-      </ReviewItem>
+      </View>
       {error ? <ErrorBanner message={error} /> : null}
       {sheet}
       <ConfirmSheet
@@ -171,7 +188,31 @@ export function RateOrderCard({ order }: { order: Order }) {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, textAlign: 'right' },
+  done: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.three,
+    marginTop: Spacing.three,
+    borderRadius: Radius.lg,
+    backgroundColor: Brand.surface,
+    borderWidth: 1,
+    borderColor: Brand.border,
+  },
+  doneText: { flex: 1, gap: Spacing.one },
+  change: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Brand.border,
+    backgroundColor: Brand.surfaceAlt,
+  },
+  changeText: { ...Typography.caption, fontFamily: Fonts.semibold, color: Brand.text },
+  pressed: { opacity: 0.7 },
   strong: { ...Typography.bodyStrong, color: Brand.text },
   muted: { ...Typography.caption, color: Brand.textMuted },
   faint: { ...Typography.caption, fontSize: 12, color: Brand.textFaint },
@@ -187,5 +228,4 @@ const styles = StyleSheet.create({
   },
   removed: { gap: Spacing.one, padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surfaceAlt },
   pick: { alignItems: 'center', gap: Spacing.one, paddingVertical: Spacing.two },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
 });

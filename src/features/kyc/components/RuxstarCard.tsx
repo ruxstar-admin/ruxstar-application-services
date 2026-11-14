@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { StyleSheet, Text, View, type LayoutChangeEvent, type TextStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -40,7 +40,8 @@ const C = {
   faint: '#52525B',
   line: 'rgba(255,255,255,0.09)',
 } as const;
-const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' });
+/** Every digit the same width, so numbers line up like on a bank card. */
+const DIGITS: TextStyle['fontVariant'] = ['tabular-nums'];
 
 const memberSince = (iso: string) => {
   const d = new Date(iso);
@@ -236,7 +237,7 @@ export function RuxstarCard({ card }: { card: Card }) {
               </View>
             </View>
 
-            <Text style={[styles.number, { fontSize: 18 * s }]} numberOfLines={1} adjustsFontSizeToFit>
+            <Text style={[styles.number, { fontSize: 19 * s }]} numberOfLines={1} adjustsFontSizeToFit>
               {card.id.split('-').join('  ')}
             </Text>
 
@@ -310,21 +311,21 @@ const styles = StyleSheet.create({
   bottom: { alignItems: 'flex-end', gap: 12 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   star: { color: C.champagne, opacity: 0.8 },
-  brand: { fontFamily: Fonts.medium, letterSpacing: 3.9, color: C.text },
+  brand: { fontFamily: Fonts.bold, letterSpacing: 4, color: C.text },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', backgroundColor: 'rgba(255,255,255,0.03)' },
   dot: { backgroundColor: C.champagne, opacity: 0.7 },
-  pillText: { fontFamily: Fonts.medium, letterSpacing: 1.2, color: C.champagne },
+  pillText: { fontFamily: Fonts.semibold, letterSpacing: 1.2, color: C.champagne },
   chipGroup: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   chip: { borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', gap: 1 },
   chipRow: { flex: 1, flexDirection: 'row', gap: 1 },
   chipCell: { flex: 1, borderRadius: 1, backgroundColor: 'rgba(196,180,154,0.16)' },
   photo: { borderWidth: 1, borderColor: 'rgba(196,180,154,0.45)' },
-  number: { fontFamily: MONO, letterSpacing: 2.5, color: 'rgba(196,180,154,0.9)' },
-  label: { fontFamily: Fonts.medium, letterSpacing: 2, textTransform: 'uppercase', color: C.faint },
-  value: { fontFamily: Fonts.medium, letterSpacing: 1, color: C.text, marginTop: 3 },
+  number: { fontFamily: Fonts.semibold, fontVariant: DIGITS, letterSpacing: 2, color: 'rgba(196,180,154,0.95)' },
+  label: { fontFamily: Fonts.semibold, letterSpacing: 1.6, textTransform: 'uppercase', color: C.muted },
+  value: { fontFamily: Fonts.semibold, fontVariant: DIGITS, letterSpacing: 0.8, color: C.text, marginTop: 3 },
   flex: { flex: 1, minWidth: 0 },
   end: { alignItems: 'flex-end' },
-  small: { fontFamily: MONO, letterSpacing: 1, color: C.soft, marginTop: 3 },
+  small: { fontFamily: Fonts.medium, fontVariant: DIGITS, letterSpacing: 1.2, color: C.soft, marginTop: 3 },
   stripe: { position: 'absolute', left: 0, right: 0, backgroundColor: '#050505' },
   back: { flex: 1, flexDirection: 'row', alignItems: 'flex-end' },
   qrTile: { backgroundColor: '#F4F1EA' },
