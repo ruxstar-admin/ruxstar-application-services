@@ -127,6 +127,18 @@ Order clocks (`acceptBy` 6 h, `readyBy`, release 48 h after delivery, delivered 
 
 Every team call checks the place, the permission, approved identity KYC and the business hold. A member's business post is the usual `POST /social/posts` with the shop's `businessId` (`posts.create`) and goes out under the owner's name. Types: `src/types/team.ts`. Services: `src/services/team-service.ts` (`TeamService`, `WorkService`, `TeamShopService`, `TeamCouponService`), `TeamOrderService` in `order-service.ts`, `AdminService.businessTeam` and `removeFromTeam`.
 
+## Print shop reviews (real API — `/v1`, decision 43)
+| Path | Request | Response | Notes |
+|---|---|---|---|
+| `GET\|PUT\|DELETE /pod/orders/{id}/review` | – · `{ rating (1 to 5), text? (500, null clears) }` · – | `MyReview` or null · `MyReview` · `{ done }` | The order's customer, while `reviewUntil` (on every order) is set. 30 writes an hour. A removed review can't change (`CONFLICT`) |
+| `GET /pod/shops/{id}/reviews` | `?cursor` | `Page<Review>` | Live reviews of a live shop, newest first |
+| `POST /pod/reviews/{id}/report` | `{ reason (spam, fake, abuse, other), note? (300) }` | `{ done }` | Not your own. One open report per person and review |
+| `GET /vendor/businesses/{id}/reviews` · `PUT\|DELETE .../reviews/{reviewId}/reply` | `?cursor` · `{ text }` (2 to 500) · – | `Page<ShopReview>` · `ShopReview` | Owner. Listing works on hold; replying doesn't. The customer is told about the first reply |
+| `GET /employment/{id}/reviews` · `PUT\|DELETE .../reviews/{reviewId}/reply` | the same | the same | `reviews.reply` |
+| `GET /ruxstar/reports/reviews` · `POST .../reports/reviews/{reviewId}/keep\|remove` | `?status&cursor` · – or `{ reason }` (5 to 300) | `Page<ReviewCase>` · `ReviewCase` | `reports.view` · `reports.act`, `Idempotency-Key`. Remove tells the customer the reason |
+
+`rating { average, count }` is on `ShopCard`, `Shop` and `Business`: `average` is to one decimal and null until 3 live reviews. `overview.reports.reviews` counts reviews with open reports. Types: `src/types/review.ts`. Services: `src/services/review-service.ts`.
+
 ## Payments, Discover, orders (all mocked — `src/services/mock/commerce.mocks.ts`)
 | Path | Request | Response | Notes |
 |---|---|---|---|
