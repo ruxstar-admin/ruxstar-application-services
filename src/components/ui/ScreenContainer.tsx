@@ -8,6 +8,8 @@ interface ScreenContainerProps {
   title: string;
   /** Pinned below the scrolling content (primary button). */
   footer?: React.ReactNode;
+  /** At the right of the header, such as a menu button. */
+  headerRight?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -15,14 +17,14 @@ interface ScreenContainerProps {
  * Standard pushed screen: back header, scrolling body, optional pinned footer. Back is `router.back()`.
  * The keyboard pushes the footer up instead of covering it and the field being typed in.
  */
-export function ScreenContainer({ title, footer, children }: ScreenContainerProps) {
+export function ScreenContainer({ title, footer, headerRight, children }: ScreenContainerProps) {
   const router = useRouter();
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <View style={styles.header}>
-          <ScreenHeader title={title} onBack={() => router.back()} />
+          <ScreenHeader title={title} onBack={() => router.back()} right={headerRight} />
         </View>
         <ScrollView
           style={styles.flex}

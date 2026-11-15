@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -17,8 +18,13 @@ import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
 import type { AccountRow, Permission, StaffMember } from '@/types/admin';
 import { useAccess } from '../access';
+import { PeopleSearch } from '../components/filters';
 import { Card, Note, Row, Section, consoleStyles, errorText } from '../components/parts';
 import { PERMISSION_AREA } from '../labels';
+import { matchesPerson } from '../lib/filters';
+
+/** Lists longer than this get a filter box. */
+const FILTER_FROM = 5;
 
 /** A title plus the permissions it carries, grouped by section. */
 function Grant({
@@ -85,35 +91,13 @@ function Grant({
   );
 }
 
-/** Find the person to add. Admins and current staff are left out. */
+/** Find the person to add. Admins and current staff show but can't be picked. */
 function AddMember({ staff, onAdded, onCancel }: { staff: StaffMember[]; onAdded: (m: StaffMember) => void; onCancel: () => void }) {
   const token = useAuthToken();
-  const [text, setText] = useState('');
-  const [results, setResults] = useState<AccountRow[] | null>(null);
   const [chosen, setChosen] = useState<AccountRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const key = useRef(newIdempotencyKey());
-
-  useEffect(() => {
-    const q = text.trim();
-    if (q.length < 2) return;
-    let live = true;
-    const t = setTimeout(() => {
-      AdminService.findAccounts(token, q, 'active').then(
-        (page) => {
-          if (!live) return;
-          const current = new Set(staff.filter((m) => m.status === 'active').map((m) => m.user.id));
-          setError(null);
-          setResults(page.items.filter((u) => !u.roles.admin && !current.has(u.id)).slice(0, 8));
-        },
-        (err) => live && setError(errorText(err)),
-      );
-    }, 300);
-    return () => {
-      live = false;
-      clearTimeout(t);
-    };
-  }, [text, staff, token]);
+  const current = useMemo(() => new Set(staff.filter((m) => m.status === 'active').map((m) => m.user.id)), [staff]);
 
   if (chosen) {
     const before = staff.find((m) => m.user.id === chosen.id);
@@ -143,28 +127,16 @@ function AddMember({ staff, onAdded, onCancel }: { staff: StaffMember[]; onAdded
   return (
     <Card>
       <Text style={styles.subtitle}>Add a team member</Text>
-      <InputField
-        label="Find their account"
-        hint="Phone number, @username or name. They need a Ruxstar account first."
-        value={text}
-        onChangeText={(value) => {
-          setText(value);
-          if (value.trim().length < 2) setResults(null);
-        }}
+      <Text style={consoleStyles.muted}>They need a Ruxstar account first.</Text>
+      <PeopleSearch
         autoFocus
-        autoCapitalize="none"
-        autoCorrect={false}
+        status="active"
+        noteFor={(u) => (u.roles.admin ? 'Admin' : current.has(u.id) ? 'Already staff' : null)}
+        onPick={(u) => {
+          setError(null);
+          setChosen(u);
+        }}
       />
-      {error ? <ErrorBanner message={error} /> : null}
-      {results ? (
-        results.length === 0 ? (
-          <Text style={consoleStyles.muted}>Nobody to add matches that.</Text>
-        ) : (
-          results.map((u) => (
-            <Row key={u.id} name={u.name || u.username} avatarUrl={u.avatarUrl} title={u.name || 'No name'} subtitle={`@${u.username} · ${u.phone}`} onPress={() => setChosen(u)} />
-          ))
-        )
-      ) : null}
       <PrimaryButton label="Cancel" variant="outline" onPress={onCancel} />
     </Card>
   );
@@ -256,6 +228,8 @@ function StaffList() {
   const { data: staff, loading, error, reload, setData } = useAsyncResource(() => AdminService.staff(token));
   const [adding, setAdding] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const shown = useMemo(() => (staff ?? []).filter((m) => matchesPerson(m.user, query)), [staff, query]);
 
   const put = (m: StaffMember) => {
     const rest = (staff ?? []).filter((x) => x.user.id !== m.user.id);
@@ -282,10 +256,23 @@ function StaffList() {
             ) : (
               <PrimaryButton label="Add a team member" onPress={() => setAdding(true)} />
             )}
+            {staff.length > FILTER_FROM ? (
+              <InputField
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Filter by name or @username"
+                accessibilityLabel="Filter staff"
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessory={<Ionicons name="search" size={18} color={Brand.textMuted} />}
+              />
+            ) : null}
             {staff.length === 0 ? (
               <EmptyState icon="people-outline" title="No staff yet" message="Add someone to share the work." />
+            ) : shown.length === 0 ? (
+              <Text style={consoleStyles.muted}>Nobody on staff matches that.</Text>
             ) : (
-              staff.map((m) => (
+              shown.map((m) => (
                 <Member
                   key={m.user.id}
                   m={m}

@@ -423,4 +423,8 @@ export interface AuditFilter {
   action?: string;
   actor?: string;
   target?: string;
+  /** ISO date-time, inclusive. */
+  from?: string;
+  /** ISO date-time, exclusive. */
+  to?: string;
 }

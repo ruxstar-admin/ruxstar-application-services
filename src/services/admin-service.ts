@@ -151,5 +151,6 @@ export const AdminService = {
   updateSport: (token: string, sportKey: string, patch: { name?: string; active?: boolean; order?: number }) =>
     apiPatch<ConsoleSport>(`/v1/ruxstar/turf/sports/${sportKey}`, { ...patch }, token),
 
+  /** Newest first. `from` is inclusive and `to` exclusive. */
   audit: (token: string, filter: AuditFilter, cursor?: string) => apiGetPage<AuditEntry>('/v1/ruxstar/audit', token, { ...filter, cursor }),
 };

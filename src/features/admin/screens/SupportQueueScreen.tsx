@@ -1,25 +1,26 @@
 import { useEffect, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Badge } from '@/components/ui/Badge';
-import { ChoiceChips } from '@/components/ui/ChoiceChips';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InputField } from '@/components/ui/InputField';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Spacing } from '@/constants/theme';
-import { CATEGORIES, CATEGORY_LABEL, PRIORITY } from '@/features/support/lib/support';
+import { CATEGORIES, DESK_STATUS, PRIORITY } from '@/features/support/lib/support';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { timeAgo } from '@/lib/time';
 import { SupportDeskService } from '@/services/support-service';
-import type { QueueFilter, QueueStatus, StaffTicket, SupportCategory } from '@/types/support';
+import type { QueueFilter, QueueStatus, StaffTicket, SupportCategory, SupportSummary } from '@/types/support';
+import { FilterBar, FilterButton, OptionSheet } from '../components/filters';
 import { Card, ListFooter, Row, consoleStyles, errorText } from '../components/parts';
+import { QUEUE_DEFAULT, queueFiltered, queueQuery, type Assigned, type QueueChoice } from '../lib/filters';
 
 const STATUSES = [
   { key: 'open', label: 'Open' },
@@ -27,26 +28,31 @@ const STATUSES = [
   { key: 'resolved', label: 'Resolved' },
 ] as const satisfies readonly { key: QueueStatus; label: string }[];
 
-type Who = 'all' | 'me' | 'none';
-const WHO = [
-  { key: 'all', label: 'Everyone' },
-  { key: 'me', label: 'Mine' },
-  { key: 'none', label: 'Nobody on it' },
-] as const satisfies readonly { key: Who; label: string }[];
+const ASSIGNED = [
+  { key: 'all', label: 'Anyone' },
+  { key: 'me', label: 'Me' },
+  { key: 'none', label: 'Nobody' },
+] as const satisfies readonly { key: Assigned; label: string }[];
 
 const TOPICS: readonly { key: SupportCategory | 'all'; label: string }[] = [{ key: 'all', label: 'Every topic' }, ...CATEGORIES];
 
 /** Waits this long after the last keystroke before searching. */
 const SEARCH_DELAY_MS = 350;
 
-/** Past its reply-by time first, then how urgent it is; nothing for normal and low. */
-function Flag({ t }: { t: StaffTicket }) {
-  if (t.overdue) return <Badge label="Overdue" tone="error" />;
-  if (t.status === 'open' && (t.priority === 'urgent' || t.priority === 'high')) return <Badge {...PRIORITY[t.priority]} />;
-  return null;
+const labelOf = <K extends string>(options: readonly { key: K; label: string }[], key: K) => options.find((o) => o.key === key)?.label ?? key;
+
+/** Status, then past its reply-by time or how urgent it is. */
+function Flags({ t }: { t: StaffTicket }) {
+  const status = t.status === 'waiting' ? { label: 'Waiting', tone: DESK_STATUS.waiting.tone } : DESK_STATUS[t.status];
+  return (
+    <View style={styles.flags}>
+      <Badge {...status} />
+      {t.overdue ? <Badge label="Overdue" tone="error" /> : <Badge {...PRIORITY[t.priority]} />}
+    </View>
+  );
 }
 
-function Results({ filter }: { filter: QueueFilter }) {
+function Results({ filter, filtered }: { filter: QueueFilter; filtered: boolean }) {
   const router = useRouter();
   const token = useAuthToken();
   const list = usePaginated((cursor) => SupportDeskService.queue(token, filter, cursor));
@@ -78,8 +84,8 @@ function Results({ filter }: { filter: QueueFilter }) {
       ListEmptyComponent={
         <EmptyState
           icon="help-buoy-outline"
-          title={filter.q ? 'No ticket with that number' : 'Nothing here'}
-          message={filter.status === 'open' ? 'Tickets waiting for Ruxstar show up here.' : undefined}
+          title={filter.q ? 'No ticket with that number' : filtered ? 'No tickets for these filters' : 'Nothing here'}
+          message={!filtered ? 'Tickets waiting for Ruxstar show up here.' : undefined}
         />
       }
       ListFooterComponent={<ListFooter list={list} />}
@@ -88,8 +94,8 @@ function Results({ filter }: { filter: QueueFilter }) {
           <Row
             name={t.requester.name}
             title={t.subject}
-            subtitle={`${t.number} · ${CATEGORY_LABEL[t.category]} · ${t.assignee?.name ?? 'Nobody'} · ${timeAgo(t.lastAt)}`}
-            right={<Flag t={t} />}
+            subtitle={`${t.number} · ${timeAgo(t.lastAt)} · ${t.requester.name || `@${t.requester.username}`}`}
+            right={<Flags t={t} />}
             onPress={() => router.push({ pathname: '/(admin)/support/[id]', params: { id: t.id } })}
           />
         </Card>
@@ -98,6 +104,11 @@ function Results({ filter }: { filter: QueueFilter }) {
   );
 }
 
+const countsLine = (s: SupportSummary) =>
+  [`${s.open} open`, s.overdue ? `${s.overdue} overdue` : null, s.unassigned ? `${s.unassigned} with nobody on them` : null, s.mine ? `${s.mine} yours` : null]
+    .filter(Boolean)
+    .join(' · ');
+
 /** Help tickets for the Ruxstar team, latest activity first, filtered by state, topic and who has them. */
 export function SupportQueueScreen() {
   const router = useRouter();
@@ -105,17 +116,17 @@ export function SupportQueueScreen() {
   const summary = useAsyncResource(() => SupportDeskService.summary(token));
   useRefetchOnFocus(summary.reload);
   const [text, setText] = useState('');
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState<QueueStatus>('open');
-  const [who, setWho] = useState<Who>('all');
-  const [topic, setTopic] = useState<SupportCategory | 'all'>('all');
+  const [choice, setChoice] = useState<QueueChoice>(QUEUE_DEFAULT);
+  const [sheet, setSheet] = useState<'status' | 'assigned' | 'topic' | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setQ(text.trim()), SEARCH_DELAY_MS);
+    const t = setTimeout(() => setChoice((c) => (c.q === text.trim() ? c : { ...c, q: text.trim() })), SEARCH_DELAY_MS);
     return () => clearTimeout(t);
   }, [text]);
 
-  const filter: QueueFilter = { status, ...(q ? { q } : {}), ...(who === 'all' ? {} : { assignee: who }), ...(topic === 'all' ? {} : { category: topic }) };
+  const change = (patch: Partial<QueueChoice>) => setChoice((c) => ({ ...c, ...patch }));
+  const filter = queueQuery(choice);
+  const filtered = queueFiltered(choice);
   const s = summary.data;
 
   return (
@@ -124,27 +135,56 @@ export function SupportQueueScreen() {
         <ScreenHeader title="Help tickets" onBack={() => router.back()} />
       </View>
       <View style={styles.controls}>
-        {s ? (
-          <View style={styles.counts}>
-            <Badge label={`${s.open} open`} tone="accent" />
-            {s.overdue ? <Badge label={`${s.overdue} overdue`} tone="error" /> : null}
-            {s.unassigned ? <Badge label={`${s.unassigned} with nobody on them`} tone="warning" /> : null}
-            {s.mine ? <Badge label={`${s.mine} yours`} /> : null}
-          </View>
-        ) : null}
-        <InputField value={text} onChangeText={setText} placeholder="Ticket number, like RX-1042" autoCapitalize="characters" autoCorrect={false} returnKeyType="search" accessibilityLabel="Find a ticket" />
-        <SegmentedTabs options={STATUSES} value={status} onChange={setStatus} />
-        <ChoiceChips options={WHO} value={who} onChange={setWho} secondary />
-        <ChoiceChips options={TOPICS} value={topic} onChange={setTopic} secondary />
-        <TextLink muted label="Reply-by times" onPress={() => router.push('/(admin)/support/settings')} />
+        <View style={styles.top}>
+          <Text style={[consoleStyles.muted, styles.flex]} numberOfLines={1}>
+            {s ? countsLine(s) : ' '}
+          </Text>
+          <TextLink muted label="Reply-by times" onPress={() => router.push('/(admin)/support/settings')} />
+        </View>
+        <InputField
+          value={text}
+          onChangeText={setText}
+          placeholder="Ticket number, like RX-1042"
+          autoCapitalize="characters"
+          autoCorrect={false}
+          returnKeyType="search"
+          accessibilityLabel="Find a ticket"
+          accessory={<Ionicons name="search" size={18} color={Brand.textMuted} />}
+        />
       </View>
-      <Results key={`${q}|${status}|${who}|${topic}`} filter={filter} />
+      <FilterBar
+        clearLabel="Clear"
+        onClear={
+          filtered
+            ? () => {
+                setText('');
+                setChoice(QUEUE_DEFAULT);
+              }
+            : undefined
+        }
+      >
+        <FilterButton label={labelOf(STATUSES, choice.status)} active={choice.status !== QUEUE_DEFAULT.status} onPress={() => setSheet('status')} />
+        <FilterButton
+          icon="person-outline"
+          label={choice.assigned === 'all' ? 'Assigned: Anyone' : `Assigned: ${labelOf(ASSIGNED, choice.assigned)}`}
+          active={choice.assigned !== 'all'}
+          onPress={() => setSheet('assigned')}
+        />
+        <FilterButton label={labelOf(TOPICS, choice.topic)} active={choice.topic !== 'all'} onPress={() => setSheet('topic')} />
+      </FilterBar>
+      <Results key={JSON.stringify(filter)} filter={filter} filtered={filtered} />
+
+      <OptionSheet visible={sheet === 'status'} title="Status" options={STATUSES} value={choice.status} onPick={(status) => change({ status })} onClose={() => setSheet(null)} />
+      <OptionSheet visible={sheet === 'assigned'} title="Assigned to" options={ASSIGNED} value={choice.assigned} onPick={(assigned) => change({ assigned })} onClose={() => setSheet(null)} />
+      <OptionSheet visible={sheet === 'topic'} title="Topic" options={TOPICS} value={choice.topic} onPick={(topic) => change({ topic })} onClose={() => setSheet(null)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Brand.bg },
-  controls: { gap: Spacing.two, paddingHorizontal: Spacing.three, paddingBottom: Spacing.two },
-  counts: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  flex: { flex: 1 },
+  controls: { paddingHorizontal: Spacing.three },
+  top: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingBottom: Spacing.two },
+  flags: { alignItems: 'flex-end', gap: Spacing.one },
 });
