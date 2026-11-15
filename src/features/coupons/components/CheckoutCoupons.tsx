@@ -7,7 +7,7 @@ import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { money } from '@/features/vendor/lib/pod';
 import { Feedback } from '@/lib/haptics';
 import type { AppliedCoupon, CouponOffer } from '@/types/coupon';
-import { cleanCode } from '../lib/coupons';
+import { cleanCode, offerLabel } from '../lib/coupons';
 
 interface CheckoutCouponsProps {
   /** Null until the order is priced. */
@@ -19,10 +19,12 @@ interface CheckoutCouponsProps {
   problem: string | null;
   onApply: (code: string) => void;
   onRemove: () => void;
+  /** Who runs the business, for "Organiser offer": Shop by default. */
+  owner?: string;
 }
 
 /** At checkout: the coupon on the order, a box for a code, and the offers the customer can tap. */
-export function CheckoutCoupons({ offers, applied, discount, problem, onApply, onRemove }: CheckoutCouponsProps) {
+export function CheckoutCoupons({ offers, applied, discount, problem, onApply, onRemove, owner }: CheckoutCouponsProps) {
   const [text, setText] = useState('');
   const others = (offers ?? []).filter((o) => o.code !== applied?.code);
 
@@ -90,7 +92,7 @@ export function CheckoutCoupons({ offers, applied, discount, problem, onApply, o
             <Ionicons name="pricetag-outline" size={18} color={usable ? Brand.primarySoft : Brand.textFaint} />
             <View style={styles.flex}>
               <Text style={styles.strong}>{offer.label}</Text>
-              <Text style={styles.faint}>{[offer.code, offer.fundedBy === 'ruxstar' ? 'Ruxstar offer' : 'Shop offer', offer.terms].filter(Boolean).join(' · ')}</Text>
+              <Text style={styles.faint}>{[offer.code, offerLabel(offer.fundedBy, owner), offer.terms].filter(Boolean).join(' · ')}</Text>
               {offer.problem ? <Text style={styles.muted}>{offer.problem}</Text> : null}
             </View>
             {usable ? <Text style={styles.save}>{`Save ${money(offer.discount)}`}</Text> : null}

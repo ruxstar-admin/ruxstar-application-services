@@ -23,7 +23,8 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
-import { TurfReviewService, TurfService } from '@/services/turf-service';
+import { reviewsOf } from '@/services/review-service';
+import { TurfService } from '@/services/turf-service';
 import type { TurfBooking } from '@/types/turf';
 import { OccurrenceRows } from '../components/OccurrenceRows';
 import { openTurfCheckout, turfReturn } from '../lib/checkout';
@@ -178,8 +179,9 @@ function BookingView({ booking, reload, openPay, fresh }: { booking: TurfBooking
             id: booking.id,
             name: booking.ground.name,
             reviewUntil: booking.reviewUntil ?? null,
-            api: TurfReviewService,
+            api: reviewsOf('turf'),
             noun: 'booking',
+            ask: 'Rate this game',
             placeholder: 'The pitch, the lights, the staff, how easy it was to find',
           }}
         />

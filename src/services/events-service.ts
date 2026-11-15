@@ -1,4 +1,5 @@
 import { apiDelete, apiGet, apiGetPage, apiPatch, apiPost, apiPostBytes, type WriteOptions } from '@/lib/api-client';
+import type { CouponCheck } from '@/types/coupon';
 import type {
   Booking,
   BookTicketsBody,
@@ -29,6 +30,9 @@ export const EventsService = {
   rules: (token: string) => apiGet<EventRules>('/v1/events/rules', token),
   list: (token: string, filters: EventFilters, cursor?: string) => apiGetPage<EventCard>('/v1/events', token, { ...filters, cursor }),
   get: (token: string, eventId: string) => apiGet<EventDetail>(`/v1/events/${id(eventId)}`, token),
+  /** Coupons for `items` paise of tickets, before the platform fee; with `code`, that code is checked too. */
+  offers: (token: string, eventId: string, items: number, code?: string) =>
+    apiGet<CouponCheck>(`/v1/events/${id(eventId)}/offers`, token, { items, ...(code ? { code } : {}) }),
   /** Free tickets come back confirmed with no checkout link. */
   book: (token: string, eventId: string, body: BookTicketsBody, options: WriteOptions) =>
     apiPost<{ order: TicketOrder; checkoutUrl: string | null }>(`/v1/events/${id(eventId)}/tickets`, { ...body }, token, options),

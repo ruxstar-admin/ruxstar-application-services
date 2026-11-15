@@ -357,7 +357,7 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                     onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/team', params: { id } })}
                   />
                 ) : null}
-                {!team && data.pod && data.status === 'live' ? (
+                {!team && (data.pod || events || coaching || turf) && data.status === 'live' ? (
                   <Tile
                     title="Reviews"
                     subtitle={ratingLine(data.rating)}

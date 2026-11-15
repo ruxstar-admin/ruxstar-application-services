@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { ReviewItem } from '@/features/reviews/components/ReviewItem';
-import { REPLY_TEXT_MAX } from '@/features/reviews/lib/review';
+import { REPLY_TEXT_MAX, orderLabel, reviewLink } from '@/features/reviews/lib/review';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
@@ -68,8 +68,8 @@ function ReplySheet({
 }
 
 /**
- * A shop's reviews with its replies: the owner's from the vendor portal (`id` is the business), or the team's from Work
- * (`id` is the place, and it needs "Reply to reviews").
+ * A business's reviews with its replies, from print orders, events, courses or grounds: the owner's from the vendor portal
+ * (`id` is the business), or the team's from Work (`id` is the place, and it needs "Reply to reviews").
  */
 export function ReplyReviewsScreen({ team = false }: { team?: boolean }) {
   const router = useRouter();
@@ -85,12 +85,11 @@ export function ReplyReviewsScreen({ team = false }: { team?: boolean }) {
     list.setItems((items) => items.map((r) => (r.id === next.id ? next : r)));
   };
 
-  const openOrder = (review: ShopReview) =>
-    router.push(team ? { pathname: '/(customer)/work/order/[id]', params: { id: review.orderId } } : { pathname: '/(vendor)/sale/[id]', params: { id: review.orderId } });
-
   return (
     <ScreenContainer title={name ? `${name} reviews` : 'Reviews'}>
-      <Text style={styles.muted}>Customers review delivered orders for 30 days. Only Ruxstar can remove a review.</Text>
+      <Text style={styles.muted}>
+        Customers can review for 30 days after delivery, the event, the last class or the game. Only Ruxstar can remove a review.
+      </Text>
       {list.loading ? (
         <View style={styles.list}>
           {[0, 1, 2].map((i) => (
@@ -100,17 +99,20 @@ export function ReplyReviewsScreen({ team = false }: { team?: boolean }) {
       ) : list.error && !list.items.length ? (
         <EmptyState icon="cloud-offline-outline" title="Could not load the reviews" message={messageOf(list.error)} actionLabel="Try again" onAction={list.retry} />
       ) : !list.items.length ? (
-        <EmptyState icon="star-outline" title="No reviews yet" message="Customers are asked to rate their order once it's delivered." />
+        <EmptyState icon="star-outline" title="No reviews yet" message="Customers are asked for a rating once they've had what they bought." />
       ) : (
         <View style={styles.list}>
-          {list.items.map((review) => (
-            <ReviewItem key={review.id} review={review} extra={`#${review.orderNo}`}>
-              <View style={styles.actions}>
-                <TextLink label={review.reply ? 'Edit reply' : 'Reply'} onPress={() => setReplying(review)} />
-                <TextLink label="Open order" muted onPress={() => openOrder(review)} />
-              </View>
-            </ReviewItem>
-          ))}
+          {list.items.map((review) => {
+            const link = reviewLink(review, team);
+            return (
+              <ReviewItem key={review.id} review={review} extra={orderLabel(review)}>
+                <View style={styles.actions}>
+                  <TextLink label={review.reply ? 'Edit reply' : 'Reply'} onPress={() => setReplying(review)} />
+                  {link ? <TextLink label={link.label} muted onPress={() => router.push(link.href)} /> : null}
+                </View>
+              </ReviewItem>
+            );
+          })}
           {list.hasMore ? <PrimaryButton label="Show more" variant="outline" onPress={list.loadMore} loading={list.loadingMore} /> : null}
         </View>
       )}

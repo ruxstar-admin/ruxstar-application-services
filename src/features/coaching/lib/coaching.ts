@@ -2,7 +2,6 @@ import type { Ionicons } from '@expo/vector-icons';
 import { dayLabel, dayText } from '@/features/events/lib/events';
 import { money } from '@/features/vendor/lib/pod';
 import type {
-  BatchOffers,
   BatchStatus,
   BatchView,
   Child,
@@ -96,16 +95,6 @@ export function orderPrice(fee: number, platformFee: number, discount = 0) {
   const off = Math.min(Math.max(discount, 0), fee);
   return { items: fee, discount: off, fee: charge, total: fee - off + charge };
 }
-
-/** The coupon to show and send for `code`: applied when the API's check of that same code found no problem. */
-export function couponState(result: BatchOffers | null | undefined, code: string | null) {
-  const checked = code && result?.checked?.code === code ? result.checked : null;
-  if (!checked || checked.problem !== null) return { applied: null, discount: 0, problem: checked?.problem ?? null };
-  const offer = result?.offers.find((o) => o.code === checked.code);
-  const label = offer ? (offer.fundedBy === 'ruxstar' ? 'Ruxstar offer' : 'Shop offer') : null;
-  return { applied: { code: checked.code, label }, discount: checked.discount, problem: null };
-}
-
 /** Batches a parent can still enrol in, soonest first. */
 export const openBatches = (course: Pick<CourseDetail, 'batches'>) =>
   course.batches.filter((b) => b.status === 'open' && b.seatsLeft > 0).sort((a, b) => a.firstAt.localeCompare(b.firstAt));

@@ -10,6 +10,7 @@ import { StepBar } from '@/components/ui/StepBar';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { CheckoutCoupons } from '@/features/coupons/components/CheckoutCoupons';
+import { couponState } from '@/features/coupons/lib/coupons';
 import { errorText, isOffline } from '@/features/events/lib/messages';
 import { whenLine } from '@/features/events/lib/events';
 import { money } from '@/features/vendor/lib/pod';
@@ -25,7 +26,7 @@ import { ChildForm } from '../components/ChildForm';
 import { Card, Divider, PickCard, PriceLine } from '../components/Parts';
 import { coachingReturn } from '../lib/checkout';
 import { MAX_CHILDREN } from '../lib/children';
-import { ME, childIdOf, classesLine, couponState, feeText, openBatches, orderPrice, seatsLine, studentOptions } from '../lib/coaching';
+import { ME, childIdOf, classesLine, feeText, openBatches, orderPrice, seatsLine, studentOptions } from '../lib/coaching';
 
 const STEPS = { batch: ['Batch', 'Student', 'Pay'], demo: ['Demo class', 'Student', 'Pay'] } as const;
 
@@ -54,7 +55,7 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
     () => (onPayStep ? CoachingService.offers(token, picked, code ?? undefined) : Promise.resolve(null)),
     onPayStep ? `${picked}|${code ?? ''}` : 'none',
   );
-  const coupon = couponState(offers.data, code);
+  const coupon = couponState(offers.data, code, 'Institute');
   const checking = !!code && offers.loading;
   const couponProblem = coupon.problem ?? (code && !offers.loading && offers.error ? errorText(offers.error) : null);
   const price = orderPrice(fee, course.platformFee, coupon.discount);
@@ -189,6 +190,7 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
               problem={couponProblem}
               onApply={applyCode}
               onRemove={() => setCode(null)}
+              owner="Institute"
             />
           ) : null}
           <Card>

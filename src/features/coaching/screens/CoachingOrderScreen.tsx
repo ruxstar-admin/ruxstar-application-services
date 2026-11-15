@@ -14,7 +14,9 @@ import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { dayText, timeText, whenLine } from '@/features/events/lib/events';
 import { errorText } from '@/features/events/lib/messages';
+import { discountLine } from '@/features/coupons/lib/coupons';
 import { OrderInvoices } from '@/features/invoices/components/OrderInvoices';
+import { RateOrderCard } from '@/features/reviews/components/RateOrderCard';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -22,6 +24,7 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { CoachingService } from '@/services/coaching-service';
+import { reviewsOf } from '@/services/review-service';
 import type { CoachingOrder } from '@/types/coaching';
 import { ClassRow } from '../components/ClassRow';
 import { JoinButton } from '../components/JoinButton';
@@ -199,10 +202,24 @@ function OrderView({ order, reload, openPay, fresh }: { order: CoachingOrder; re
             ? `${money(order.price.total)}${unpaid ? ' to pay' : ''}${order.price.platformFee ? `, including a ${money(order.price.platformFee)} platform fee` : ''}`
             : 'Free'}
         </Text>
-        {order.price.discount ? <Text style={styles.label}>{`${money(order.price.discount)} off${order.coupon ? ` with ${order.coupon.code}` : ''}`}</Text> : null}
+        {order.price.discount ? <Text style={styles.label}>{discountLine(order.price.discount, order.coupon, 'Institute')}</Text> : null}
         <Text style={styles.label}>{`By ${order.business.name}`}</Text>
       </View>
       <OrderInvoices refs={order.invoices} />
+
+      {order.canReview ? (
+        <RateOrderCard
+          order={{
+            id: order.id,
+            name: order.course.title,
+            reviewUntil: order.reviewUntil ?? null,
+            api: reviewsOf('coaching'),
+            noun: demo ? 'demo class' : 'enrolment',
+            ask: demo ? 'Rate the demo class' : 'Rate this course',
+            placeholder: 'The teaching, the classes, how the institute was to deal with',
+          }}
+        />
+      ) : null}
 
       {order.status !== 'cancelled' ? <Text style={styles.muted}>{cancelText(order)}</Text> : null}
       {order.canCancel ? <TextLink muted label={unpaid ? 'Cancel' : order.price.total ? 'Cancel and get a refund' : 'Cancel'} onPress={() => setCancelling(true)} /> : null}

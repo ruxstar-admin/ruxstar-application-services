@@ -9,9 +9,7 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { Fact, Facts, Notice, Section } from '@/features/coaching/components/Parts';
-import { ReviewItem } from '@/features/reviews/components/ReviewItem';
-import { Stars } from '@/features/reviews/components/Stars';
-import { ratingLine } from '@/features/reviews/lib/review';
+import { ListingReviews } from '@/features/reviews/components/ListingReviews';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -21,27 +19,6 @@ import type { GroundDetail } from '@/types/turf';
 import { CourtCard } from '../components/CourtCard';
 import { PhotoStrip } from '../components/PhotoStrip';
 import { AMENITY, mapsUrl, refundTiers, sportsText } from '../lib/turf';
-
-/** Reviews shown on the ground page. */
-const FIRST_REVIEWS = 3;
-
-function Reviews({ ground }: { ground: GroundDetail }) {
-  const token = useAuthToken();
-  const { data } = useAsyncResource(() => TurfService.reviews(token, ground.id), ground.id);
-  if (!ground.rating) return null;
-  return (
-    <>
-      <Section title="Reviews" />
-      <View style={styles.rating}>
-        {ground.rating.average !== null ? <Stars value={Math.round(ground.rating.average)} size={18} /> : null}
-        <Text style={styles.text}>{ratingLine(ground.rating)}</Text>
-      </View>
-      {(data?.items ?? []).slice(0, FIRST_REVIEWS).map((r) => (
-        <ReviewItem key={r.id} review={r} />
-      ))}
-    </>
-  );
-}
 
 function GroundView({ ground }: { ground: GroundDetail }) {
   const router = useRouter();
@@ -97,7 +74,7 @@ function GroundView({ ground }: { ground: GroundDetail }) {
       <RefundLine tiers={refundTiers(ground.refunds)} what="the slot starts" />
       <Text style={styles.small}>If the ground cancels, you get everything back.</Text>
 
-      <Reviews ground={ground} />
+      <ListingReviews module="turf" listing={{ type: 'ground', id: ground.id }} business={ground.business.name} rating={ground.rating} />
 
       {ground.description ? (
         <>
@@ -146,6 +123,5 @@ const styles = StyleSheet.create({
     borderColor: Brand.border,
   },
   amenityText: { ...Typography.caption, fontSize: 13, color: Brand.text },
-  rating: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   description: { ...Typography.body, lineHeight: 24, color: Brand.textMuted },
 });

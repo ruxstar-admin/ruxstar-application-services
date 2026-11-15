@@ -47,13 +47,18 @@ export interface CouponTerms {
   listed?: boolean;
 }
 
+/** What a Ruxstar coupon can work on. The API also takes `stays`. */
+export type CouponModule = 'pod' | 'events' | 'coaching' | 'turf';
+
 export interface NewCoupon extends CouponTerms {
   code: string;
   kind: CouponKind;
   value: number;
   cap?: number | null;
-  /** Vendors only: their print shops it works at. */
+  /** Vendors only: their businesses it works at. */
   businessIds?: string[];
+  /** Ruxstar only: what it works on, print only when left out. It can't change later. */
+  modules?: CouponModule[];
 }
 
 export interface CouponPatch extends CouponTerms {
@@ -79,4 +84,10 @@ export interface AppliedCoupon {
   code: string;
   fundedBy: CouponFunder;
   label: string;
+}
+
+/** Coupons that work on an order, best first, and `checked`: the code asked about, if any. */
+export interface CouponCheck {
+  offers: CouponOffer[];
+  checked: { code: string; discount: number; problem: string | null } | null;
 }

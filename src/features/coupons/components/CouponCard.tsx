@@ -13,7 +13,7 @@ import { dateKey, formatDay } from '@/lib/dates';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import type { CouponPatch, ManagedCoupon } from '@/types/coupon';
-import { draftErrors, draftOf, patchOf, perCustomerLine, STATE, usesLine } from '../lib/coupons';
+import { draftErrors, draftOf, patchOf, perCustomerLine, STATE, usesLine, worksAtLine } from '../lib/coupons';
 import { CouponFields } from './CouponFields';
 
 const errorText = (err: unknown) =>
@@ -100,7 +100,7 @@ export function CouponCard({ coupon: c, canEdit, canSwitch, shops, showVendor, s
           ) : (
             <View style={styles.facts}>
               {showVendor && c.vendor ? <Fact label="Vendor" value={c.vendor.name} /> : null}
-              <Fact label="Works at" value={c.businesses.length ? c.businesses.map((b) => b.name).join(', ') : 'Every print shop'} />
+              <Fact label="Works at" value={worksAtLine(c)} />
               <Fact label="Smallest order" value={c.minOrder ? money(c.minOrder) : 'None'} />
               <Fact label="Starts" value={c.startsAt ? formatDay(c.startsAt) : 'When made'} />
               <Fact label="Ends" value={c.endsAt ? formatDay(c.endsAt) : 'No end date'} />

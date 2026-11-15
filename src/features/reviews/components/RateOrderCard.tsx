@@ -18,13 +18,15 @@ import type { MyReview } from '@/types/review';
 
 type ReviewApi = Pick<typeof ReviewService, 'mine' | 'write' | 'remove'>;
 
-/** What's being reviewed: a print order by default, or a ground booking with its own `api`. */
+/** What's being reviewed: a print order by default, or a booking or enrolment with its module's `api`. */
 interface RateTarget {
   id: string;
   name: string;
   reviewUntil: string | null;
   api?: ReviewApi;
   noun?: string;
+  /** The card's heading before it's reviewed, such as "Rate this event". */
+  ask?: string;
   placeholder?: string;
 }
 
@@ -89,7 +91,7 @@ function WriteSheet({
   );
 }
 
-/** On a delivered order or a played booking: "Rate your order" until it's reviewed, then just the stars given, changeable until reviews close. */
+/** On a delivered order, an event, a course or a played booking: "Rate your order" until it's reviewed, then just the stars given, changeable until reviews close. */
 export function RateOrderCard({ order: target }: { order: RateTarget }) {
   const token = useAuthToken();
   const order = { ...target, api: target.api ?? ReviewService };
@@ -142,9 +144,10 @@ export function RateOrderCard({ order: target }: { order: RateTarget }) {
     if (!open) return null;
     return (
       <View style={styles.ask}>
-        <Text style={styles.strong}>{`Rate your ${noun}`}</Text>
+        <Text style={styles.strong}>{target.ask ?? `Rate your ${noun}`}</Text>
         <Text style={styles.muted}>{`How was ${order.name}? It helps other customers choose.`}</Text>
         <StarPicker value={0} onChange={setWriting} />
+        <Text style={styles.faint}>{`You can review it until ${formatDateTime(order.reviewUntil!)}`}</Text>
         {sheet}
       </View>
     );

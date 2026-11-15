@@ -6,7 +6,7 @@ import { MultiChoiceChips } from '@/components/ui/MultiChoiceChips';
 import { ToggleRow } from '@/components/ui/ToggleRow';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { formatDay, upcomingDays } from '@/lib/dates';
-import { cleanAmount, cleanCode, cleanCount, type CouponDraft, type DraftErrors } from '../lib/coupons';
+import { WORKS_ON, cleanAmount, cleanCode, cleanCount, type CouponDraft, type DraftErrors } from '../lib/coupons';
 
 const START_DAYS = 60;
 const END_DAYS = 180;
@@ -21,6 +21,8 @@ interface CouponFieldsProps {
   canMoveStart: boolean;
   /** Vendors pick which of their businesses it works at. */
   shops?: { id: string; name: string }[];
+  /** Ruxstar picks what a new coupon works on. */
+  pickModules?: boolean;
 }
 
 function Label({ children, hint, error }: { children: string; hint?: string; error?: string }) {
@@ -33,7 +35,7 @@ function Label({ children, hint, error }: { children: string; hint?: string; err
 }
 
 /** The coupon form's fields. Amounts are typed in rupees; the draft keeps them as typed. */
-export function CouponFields({ draft, onChange, errors, creating, canMoveStart, shops }: CouponFieldsProps) {
+export function CouponFields({ draft, onChange, errors, creating, canMoveStart, shops, pickModules }: CouponFieldsProps) {
   const set = <K extends keyof CouponDraft>(key: K, value: CouponDraft[K]) => onChange({ ...draft, [key]: value });
   const percent = draft.kind === 'percent';
 
@@ -89,6 +91,15 @@ export function CouponFields({ draft, onChange, errors, creating, canMoveStart, 
               </View>
             ) : null}
           </View>
+        </>
+      ) : null}
+
+      {creating && pickModules ? (
+        <>
+          <Label hint="It can't change later" error={errors.modules}>
+            Works on
+          </Label>
+          <MultiChoiceChips options={WORKS_ON} value={draft.modules} onChange={(modules) => set('modules', modules)} />
         </>
       ) : null}
 

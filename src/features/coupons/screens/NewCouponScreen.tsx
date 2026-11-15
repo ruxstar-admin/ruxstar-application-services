@@ -30,14 +30,14 @@ function Form({ who, shops, placeId }: { who: 'ruxstar' | 'vendor' | 'team'; sho
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const key = useRef(newIdempotencyKey());
-  const errors = draftErrors(draft, { creating: true, needsShops: who === 'vendor', today: dateKey(new Date()) });
+  const errors = draftErrors(draft, { creating: true, needsShops: who === 'vendor', needsModules: who === 'ruxstar', today: dateKey(new Date()) });
   const ready = Object.keys(errors).length === 0;
 
   const create = async () => {
     setBusy(true);
     setError(null);
     try {
-      const body = newCouponOf(draft, who === 'vendor');
+      const body = newCouponOf(draft, who === 'vendor', who === 'ruxstar');
       await (who === 'ruxstar'
         ? AdminService.createCoupon(token, body, key.current)
         : who === 'team'
@@ -66,12 +66,12 @@ function Form({ who, shops, placeId }: { who: 'ruxstar' | 'vendor' | 'team'; sho
     >
       <Text style={styles.muted}>
         {who === 'ruxstar'
-          ? 'Ruxstar pays for the discount, at every print shop. Shops still get their full share.'
+          ? 'Ruxstar pays for the discount, at every business of the kinds you pick. Businesses still get their full share.'
           : who === 'team'
             ? 'It works at this shop only. The discount comes out of the shop’s share, and Ruxstar’s commission is on the price after it.'
             : 'You pay for the discount: it comes out of your share, and Ruxstar’s commission is on the price after it.'}
       </Text>
-      <CouponFields draft={draft} onChange={setDraft} errors={errors} creating canMoveStart shops={shops} />
+      <CouponFields draft={draft} onChange={setDraft} errors={errors} creating canMoveStart shops={shops} pickModules={who === 'ruxstar'} />
     </ScreenContainer>
   );
 }

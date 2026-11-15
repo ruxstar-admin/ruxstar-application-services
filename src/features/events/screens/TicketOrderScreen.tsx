@@ -10,7 +10,9 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { discountLine } from '@/features/coupons/lib/coupons';
 import { OrderInvoices } from '@/features/invoices/components/OrderInvoices';
+import { RateOrderCard } from '@/features/reviews/components/RateOrderCard';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -18,6 +20,7 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { EventsService } from '@/services/events-service';
+import { reviewsOf } from '@/services/review-service';
 import type { TicketOrder } from '@/types/events';
 import { TicketPass } from '../components/TicketPass';
 import { useFullBrightness } from '../hooks/use-full-brightness';
@@ -138,9 +141,24 @@ function OrderView({ order, reload, openPay, fresh }: { order: TicketOrder; relo
         <Text style={styles.label}>{`Booking #${order.orderNo}`}</Text>
         <Text style={styles.value}>{order.team ? `${order.team} · ${order.tickets.length} players` : linesText(order.lines)}</Text>
         <Text style={styles.value}>{order.price.total ? `${money(order.price.total)}${order.status === 'awaiting_payment' ? ' to pay' : ''}${order.price.platformFee ? `, including a ${money(order.price.platformFee)} fee` : ''}` : 'Free'}</Text>
+        {order.price.discount ? <Text style={styles.label}>{discountLine(order.price.discount, order.coupon, 'Organiser')}</Text> : null}
         <Text style={styles.label}>{`By ${order.business.name}`}</Text>
       </View>
       <OrderInvoices refs={order.invoices} />
+
+      {order.canReview ? (
+        <RateOrderCard
+          order={{
+            id: order.id,
+            name: order.event.title,
+            reviewUntil: order.reviewUntil ?? null,
+            api: reviewsOf('events'),
+            noun: 'booking',
+            ask: 'Rate this event',
+            placeholder: 'The show, the venue, how it was run',
+          }}
+        />
+      ) : null}
 
       {order.canCancel && valid.length ? (
         <TextLink muted label={order.price.total ? 'Cancel and get a refund' : 'Cancel my tickets'} onPress={() => setCancelling(true)} />

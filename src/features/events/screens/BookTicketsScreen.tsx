@@ -11,14 +11,18 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { StepBar } from '@/components/ui/StepBar';
 import { Stepper } from '@/components/ui/Stepper';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { CheckoutCoupons } from '@/features/coupons/components/CheckoutCoupons';
+import { couponState } from '@/features/coupons/lib/coupons';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-error';
 import { replacePerson } from '@/lib/booking/people';
 import { Feedback } from '@/lib/haptics';
 import { EventsService } from '@/services/events-service';
 import { useAuthStore } from '@/stores/auth-store';
+import type { CouponCheck } from '@/types/coupon';
 import type { EventDetail } from '@/types/events';
 import { ticketReturn } from '../lib/checkout';
 import { countOf, orderPrice, peopleFor, personErrors, playersFor, refundText, toHolders, whenLine, type PersonDraft, type Selection } from '../lib/events';
@@ -45,12 +49,25 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
   const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [code, setCode] = useState<string | null>(null);
   const attempt = useRef(newIdempotencyKey());
 
   const picked = team ? { [teamTier]: 1 } : selection;
   const count = team ? players : countOf(selection);
-  const price = orderPrice(picked, event.tiers, event.platformFee, !!team);
+  const items = orderPrice(picked, event.tiers, event.platformFee, !!team).items;
+  const onPayStep = step === 2 && items > 0;
+  const offersKey = onPayStep ? `${items}|${code ?? ''}` : 'none';
+  const offers = useAsyncResource<{ key: string; result: CouponCheck | null }>(
+    () => (onPayStep ? EventsService.offers(token, event.id, items, code ?? undefined) : Promise.resolve(null)).then((result) => ({ key: offersKey, result })),
+    offersKey,
+  );
+  const offersNow = offers.data?.key === offersKey ? offers.data.result : undefined;
+  const coupon = couponState(offersNow, code, 'Organiser');
+  const checking = !!code && onPayStep && offers.data?.key !== offersKey && !offers.error;
+  const couponProblem = coupon.problem ?? (code && offers.error && offers.data?.key !== offersKey ? errorText(offers.error) : null);
+  const price = orderPrice(picked, event.tiers, event.platformFee, !!team, coupon.discount);
   const free = price.total === 0;
+  const applyCode = (next: string) => (next === code ? offers.reload() : setCode(next));
   const errors = useMemo(() => people.map((p) => personErrors(p, event.questions)), [people, event.questions]);
   const phoneTwice = useMemo(() => {
     const seen = new Map<string, number>();
@@ -90,6 +107,7 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
           tickets: toHolders(people, event.questions),
           ...(team ? { team: { tierId: teamTier, name: teamName.trim() } } : {}),
           ...(offer ? { waitlistId: offer.id } : {}),
+          ...(coupon.applied ? { coupon: coupon.applied.code } : {}),
           returnTo: ticketReturn(),
         },
         { idempotencyKey: attempt.current },
@@ -98,7 +116,12 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
       router.replace({ pathname: '/(customer)/events/ticket/[id]', params: { id: order.id, ...(checkoutUrl ? { pay: '1' } : { fresh: '1' }) } });
     } catch (err) {
       Feedback.error();
-      setFailure(errorText(err));
+      if (err instanceof ApiError && err.code === 'COUPON_INVALID') {
+        setCode(null);
+        setFailure(`${err.message} We took the coupon off, so the total is ${money(orderPrice(picked, event.tiers, event.platformFee, !!team).total)} now.`);
+      } else {
+        setFailure(errorText(err));
+      }
       // A booking that timed out may have been placed; trying again with the same key returns it instead of holding seats twice.
       if (!isOffline(err)) attempt.current = newIdempotencyKey();
     } finally {
@@ -113,7 +136,7 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
     ) : step === 1 ? (
       <PrimaryButton label="Continue" onPress={toPay} />
     ) : (
-      <PrimaryButton label={free ? 'Get my free tickets' : `Pay ${money(price.total)}`} loading={busy} onPress={place} />
+      <PrimaryButton label={free ? 'Get my free tickets' : `Pay ${money(price.total)}`} loading={busy} disabled={checking} onPress={place} />
     );
 
   return (
@@ -179,6 +202,17 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
 
       {step === 2 ? (
         <>
+          {items > 0 ? (
+            <CheckoutCoupons
+              offers={offersNow?.offers ?? null}
+              applied={coupon.applied}
+              discount={coupon.discount}
+              problem={couponProblem}
+              onApply={applyCode}
+              onRemove={() => setCode(null)}
+              owner="Organiser"
+            />
+          ) : null}
           <View style={styles.summary}>
             <Text style={styles.rowTitle}>{event.title}</Text>
             <Text style={styles.small}>{whenLine(event.startsAt, event.endsAt)}</Text>
@@ -190,6 +224,7 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
                 .filter((t) => selection[t.id])
                 .map((t) => <Line key={t.id} label={`${selection[t.id]} × ${t.name}`} amount={t.price * selection[t.id]!} />)
             )}
+            {price.discount && coupon.applied ? <Line label={`Coupon ${coupon.applied.code}`} amount={price.discount} minus /> : null}
             {price.fee ? <Line label="Platform fee" amount={price.fee} /> : null}
             <View style={styles.divider} />
             <Line label="Total" amount={price.total} strong />
@@ -217,11 +252,11 @@ function Back({ onPress }: { onPress: () => void }) {
   );
 }
 
-function Line({ label, amount, strong }: { label: string; amount: number; strong?: boolean }) {
+function Line({ label, amount, strong, minus }: { label: string; amount: number; strong?: boolean; minus?: boolean }) {
   return (
     <View style={styles.line}>
       <Text style={strong ? styles.rowTitle : styles.lineLabel}>{label}</Text>
-      <Text style={strong ? styles.rowTitle : styles.lineAmount}>{amount === 0 ? 'Free' : money(amount)}</Text>
+      <Text style={strong ? styles.rowTitle : minus ? styles.lineOff : styles.lineAmount}>{minus ? `−${money(amount)}` : amount === 0 ? 'Free' : money(amount)}</Text>
     </View>
   );
 }
@@ -258,5 +293,6 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row', justifyContent: 'space-between', gap: Spacing.two },
   lineLabel: { ...Typography.body, fontSize: 15, color: Brand.textMuted, flex: 1 },
   lineAmount: { ...Typography.body, fontSize: 15, color: Brand.text },
+  lineOff: { ...Typography.body, fontSize: 15, color: Brand.success },
   people: { gap: 2, paddingHorizontal: Spacing.one },
 });

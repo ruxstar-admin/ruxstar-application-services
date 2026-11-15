@@ -95,10 +95,11 @@ export type Selection = Record<string, number>;
 
 export const countOf = (selection: Selection) => Object.values(selection).reduce((sum, n) => sum + n, 0);
 
-export function orderPrice(selection: Selection, tiers: { id: string; price: number }[], platformFee: number, team = false) {
+export function orderPrice(selection: Selection, tiers: { id: string; price: number }[], platformFee: number, team = false, discount = 0) {
   const items = tiers.reduce((sum, t) => sum + (team ? (selection[t.id] ? t.price : 0) : t.price * (selection[t.id] ?? 0)), 0);
   const fee = items > 0 ? platformFee : 0;
-  return { items, fee, total: items + fee };
+  const off = Math.min(Math.max(discount, 0), items);
+  return { items, discount: off, fee, total: items - off + fee };
 }
 
 export interface PersonDraft extends PersonFields {

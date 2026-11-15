@@ -15,6 +15,7 @@ import { Stepper } from '@/components/ui/Stepper';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { ShopCover } from '@/features/pod/components/ShopCover';
+import { ListingReviews } from '@/features/reviews/components/ListingReviews';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -201,6 +202,8 @@ function EventView({ event, reload }: { event: EventDetail; reload: () => void }
         <Ionicons name="shield-checkmark-outline" size={18} color={event.refunds.policy === 'none' ? Brand.warning : Brand.success} />
         <Text style={styles.refundText}>{refundText(event.refunds, allFree)}</Text>
       </View>
+
+      <ListingReviews module="events" listing={{ type: 'event', id: event.id }} business={event.business.name} rating={event.rating} />
 
       {event.description ? (
         <>

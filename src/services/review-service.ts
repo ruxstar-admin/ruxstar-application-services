@@ -1,24 +1,41 @@
 import { apiDelete, apiGet, apiGetPage, apiPost, apiPut, type WriteOptions } from '@/lib/api-client';
-import type { MyReview, Review, ReviewCase, ReviewReportReason, ShopReview } from '@/types/review';
+import type { MyReview, Review, ReviewCase, ReviewModule, ReviewReportReason, ShopReview } from '@/types/review';
 
 const id = (value: string) => encodeURIComponent(value);
 type Done = { done: true };
 
-/** `/v1/pod`: customers review their delivered orders and read a shop's reviews. */
-export const ReviewService = {
-  /** Null until the customer reviews the order. */
-  mine: (token: string, orderId: string) => apiGet<MyReview | null>(`/v1/pod/orders/${id(orderId)}/review`, token),
-  /** For 30 days after delivery. Leaving out `text` keeps it; null clears it. */
-  write: (token: string, orderId: string, body: { rating: number; text?: string | null }) =>
-    apiPut<MyReview>(`/v1/pod/orders/${id(orderId)}/review`, token, { ...body }),
-  remove: (token: string, orderId: string) => apiDelete<Done>(`/v1/pod/orders/${id(orderId)}/review`, token),
-  forShop: (token: string, shopId: string, cursor?: string) => apiGetPage<Review>(`/v1/pod/shops/${id(shopId)}/reviews`, token, { cursor }),
-  /** One open report per review; the writer isn't told. */
-  report: (token: string, reviewId: string, body: { reason: ReviewReportReason; note?: string }) =>
-    apiPost<Done>(`/v1/pod/reviews/${id(reviewId)}/report`, { ...body }, token),
+/** Modules whose customer review routes the app calls. */
+export type ReviewRoutes = Exclude<ReviewModule, 'stays'>;
+
+/**
+ * `/v1/{module}`: the customer's review of one of their orders, bookings or enrolments, a listing's reviews (an event,
+ * course or ground) and reporting a review. Each module opens its orders for review at its own time; `reviewUntil` on the order says until when.
+ */
+export const reviewsOf = (module: ReviewRoutes) => {
+  const base = `/v1/${module}`;
+  return {
+    /** Null until the customer reviews it. */
+    mine: (token: string, orderId: string) => apiGet<MyReview | null>(`${base}/orders/${id(orderId)}/review`, token),
+    /** Leaving out `text` keeps it; null clears it. */
+    write: (token: string, orderId: string, body: { rating: number; text?: string | null }) =>
+      apiPut<MyReview>(`${base}/orders/${id(orderId)}/review`, token, { ...body }),
+    remove: (token: string, orderId: string) => apiDelete<Done>(`${base}/orders/${id(orderId)}/review`, token),
+    /** No sign-in needed. Not for print, whose reviews are per shop. */
+    forListing: (token: string, listingId: string, cursor?: string, limit?: number) =>
+      apiGetPage<Review>(`${base}/${id(listingId)}/reviews`, token, { cursor, limit }),
+    /** One open report per review; the writer isn't told. */
+    report: (token: string, reviewId: string, body: { reason: ReviewReportReason; note?: string }) =>
+      apiPost<Done>(`${base}/reviews/${id(reviewId)}/report`, { ...body }, token),
+  };
 };
 
-/** `/v1/vendor/businesses/{id}/reviews`: a vendor's shop reviews and its replies. */
+/** `/v1/pod`: customers review their delivered orders and read a shop's reviews. */
+export const ReviewService = {
+  ...reviewsOf('pod'),
+  forShop: (token: string, shopId: string, cursor?: string) => apiGetPage<Review>(`/v1/pod/shops/${id(shopId)}/reviews`, token, { cursor }),
+};
+
+/** `/v1/vendor/businesses/{id}/reviews`: a business's reviews of every kind, and its replies. */
 export const ShopReviewService = {
   list: (token: string, businessId: string, cursor?: string) =>
     apiGetPage<ShopReview>(`/v1/vendor/businesses/${id(businessId)}/reviews`, token, { cursor }),

@@ -1,6 +1,7 @@
 /** `/v1/coaching`, `/v1/coaching/desk` and the owner's `/v1/vendor` course routes. Amounts are paise; days are India's `YYYY-MM-DD`. */
-import type { AppliedCoupon, CouponOffer } from './coupon';
+import type { AppliedCoupon, CouponCheck } from './coupon';
 import type { InvoiceRef } from './invoice';
+import type { Rating } from './review';
 
 export type CourseCategory = 'tuition' | 'exam_prep' | 'music' | 'dance' | 'sports' | 'fitness' | 'art' | 'languages' | 'tech' | 'other';
 /** `offline`: at the institute's venue. `online`: live classes on a meeting link. */
@@ -122,6 +123,8 @@ export interface CourseDetail extends CourseCard {
   myOrders: { id: string; orderNo: number; kind: OrderKind; status: CoachingOrderStatus; student: StudentRef; batchId: string }[];
   /** Students who have had, or booked, this course's demo. */
   demoTaken: StudentRef[];
+  /** The business's rating across all its reviews. */
+  rating?: Rating;
 }
 
 // Enrolling and demos.
@@ -132,11 +135,8 @@ export interface EnrolBody {
   returnTo: string;
 }
 
-/** Coupons that work on a batch's fee, best first. `checked` is the code asked about, if any. Demo classes take none. */
-export interface BatchOffers {
-  offers: CouponOffer[];
-  checked: { code: string; discount: number; problem: string | null } | null;
-}
+/** Coupons that work on a batch's fee. Demo classes take none. */
+export type BatchOffers = CouponCheck;
 
 export interface DemoBody {
   sessionId: string;
@@ -202,6 +202,10 @@ export interface CoachingOrder {
   attendance: { attended: number; held: number; percent: number; needed: number };
   certificate: CertificateRef | null;
   invoices?: InvoiceRef[];
+  /** Open for a review now: write or change it. */
+  canReview?: boolean;
+  /** The last moment to write or change the review; null when it can't be reviewed now. */
+  reviewUntil?: string | null;
   createdAt: string;
 }
 

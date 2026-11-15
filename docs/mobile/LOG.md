@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-15 — Reviews for events, courses and grounds; event coupons; console coupons per module
+Prompt:    "Reviews for events/coaching/turf (rate, list, report, reply, console) and event coupons; console coupon form picks the modules it works on"
+Decision:  One module-aware review service (`reviewsOf(module)`) replaces the turf-only one; event, course and ground pages share `ListingReviews` (the business's rating and reviews, paged, with Report). TicketOrder, the coaching order and the turf booking reuse `RateOrderCard` with a module-specific heading. Event coupons use the shared `CheckoutCoupons` box; offer results are tagged with their key so an old answer never shows for new tickets. `couponState` moved to the coupons lib with the funder's word (Organiser, Institute, Shop). Ruxstar coupons pick "Works on" when created.
+Done:      `types/{review,coupon,events,coaching,turf}.ts`, `services/{review,events,turf}-service.ts`, `features/reviews/{lib/review.ts,components/{ListingReviews,RateOrderCard,ReportReviewSheet,ReviewItem}.tsx,screens/ReplyReviewsScreen.tsx}`, `features/coupons/{lib/coupons.ts,components/{CheckoutCoupons,CouponFields,CouponCard}.tsx,screens/NewCouponScreen.tsx}`, `EventDetailScreen`, `BookTicketsScreen`, `TicketOrderScreen`, `CourseDetailScreen`, `CoachingOrderScreen`, `BookCourseScreen`, `GroundScreen`, `BookGroundScreen`, `TurfBookingScreen`, `admin/components/ReviewReports.tsx`, `admin/screens/CouponsScreen.tsx`, `BusinessScreen`, `WorkPlaceScreen` (+ tests). Notes: `Architecture/build-log/reviews-coupons-app.md`.
+Blocked:   stays reviews and coupons (no stays flows in the app yet).
+Mocks:     none; API_CONTRACTS reviews section now covers every module, plus event offers and coupon `modules`.
+Verified by user: no
+Next:      Run the Expo Go checklist in the build log.
+
+---
+
 ## 2026-11-15 — Owner UI fixes: solved button, console More tiles, one-screen metrics, modules split
 Prompt:    "Change the my problem is solved button position. In the admin dashboard add a layout like this for all the more options in app. All the metrics in one place. In the modules page first just show all the module names then options to edit — too much of scrolling."
 Decision:  "My problem is solved" is a full-width outline button at the top of the reply footer (same confirm sheet), shown while the ticket is open or waiting. Console More is grouped icon tiles (4 a row, sized from screen width, same permission checks as each screen). The dashboard groups every count the API has; payouts have no count route, so their queues are counted from the first page of each list ("20+"). Modules is a short list; each module has its own screen (`(admin)/modules/[module]`) and links to GST filtered to that module (`(admin)/gst?module=`).

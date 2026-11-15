@@ -56,7 +56,7 @@ const WORK_AREAS: {
   },
   {
     title: 'Reviews',
-    subtitle: 'What customers said, and the shop’s replies',
+    subtitle: 'What customers said, and the business’s replies',
     icon: 'star-outline',
     allowed: has('reviews.reply'),
     href: (p) => ({ pathname: '/(customer)/work/reviews/[id]', params: { id: p.id, name: p.business.name } }),

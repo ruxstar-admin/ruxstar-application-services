@@ -1,6 +1,6 @@
 import { money } from '@/features/vendor/lib/pod';
 import type { Child, CourseDetail } from '@/types/coaching';
-import { couponState, feeLine, orderPrice, seatsLine, studentOptions } from '../coaching';
+import { feeLine, orderPrice, seatsLine, studentOptions } from '../coaching';
 import { childErrors, childLine } from '../children';
 
 describe('orderPrice', () => {
@@ -12,28 +12,6 @@ describe('orderPrice', () => {
   it('takes a coupon off the fee, never below nothing, and keeps the platform fee', () => {
     expect(orderPrice(200000, 500, 20000)).toEqual({ items: 200000, discount: 20000, fee: 500, total: 180500 });
     expect(orderPrice(10000, 500, 50000)).toEqual({ items: 10000, discount: 10000, fee: 500, total: 500 });
-  });
-});
-
-describe('couponState', () => {
-  const offer = { code: 'SAVE20', fundedBy: 'vendor', label: '20% off', terms: null, discount: 40000, problem: null } as const;
-
-  it('applies a code the API checked and found fine', () => {
-    const result = { offers: [offer], checked: { code: 'SAVE20', discount: 40000, problem: null } };
-    expect(couponState(result, 'SAVE20')).toEqual({ applied: { code: 'SAVE20', label: 'Shop offer' }, discount: 40000, problem: null });
-    expect(couponState({ offers: [], checked: { code: 'HIDDEN', discount: 1000, problem: null } }, 'HIDDEN').applied).toEqual({ code: 'HIDDEN', label: null });
-  });
-
-  it('gives the reason a code fails, in the API’s words', () => {
-    const result = { offers: [offer], checked: { code: 'OLD10', discount: 0, problem: 'This coupon has ended.' } };
-    expect(couponState(result, 'OLD10')).toEqual({ applied: null, discount: 0, problem: 'This coupon has ended.' });
-  });
-
-  it('applies nothing while a different code, or none, is checked', () => {
-    const result = { offers: [offer], checked: { code: 'SAVE20', discount: 40000, problem: null } };
-    expect(couponState(result, 'OTHER')).toEqual({ applied: null, discount: 0, problem: null });
-    expect(couponState(result, null).applied).toBeNull();
-    expect(couponState(undefined, 'SAVE20').applied).toBeNull();
   });
 });
 

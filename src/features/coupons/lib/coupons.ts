@@ -1,5 +1,6 @@
+import { money } from '@/features/vendor/lib/pod';
 import type { Business, BusinessModule } from '@/types/business';
-import type { CouponKind, CouponPatch, CouponState, ManagedCoupon, NewCoupon } from '@/types/coupon';
+import type { AppliedCoupon, CouponCheck, CouponFunder, CouponKind, CouponModule, CouponPatch, CouponState, ManagedCoupon, NewCoupon } from '@/types/coupon';
 
 /** Businesses whose orders take coupons; the API refuses a vendor coupon for any other. */
 const COUPON_MODULES: readonly BusinessModule[] = ['pod', 'events', 'coaching', 'turf'];
@@ -7,6 +8,39 @@ const COUPON_MODULES: readonly BusinessModule[] = ['pod', 'events', 'coaching', 
 /** The vendor's businesses a coupon can work at. */
 export const couponShops = (businesses: readonly Pick<Business, 'id' | 'name' | 'module'>[]) =>
   businesses.filter((b) => COUPON_MODULES.includes(b.module)).map((b) => ({ id: b.id, name: b.name }));
+
+/** What a Ruxstar coupon can work on, as the console offers it. */
+export const WORKS_ON: { key: CouponModule; label: string; what: string }[] = [
+  { key: 'pod', label: 'Print orders', what: 'print orders' },
+  { key: 'events', label: 'Event tickets', what: 'event tickets' },
+  { key: 'coaching', label: 'Coaching fees', what: 'coaching fees' },
+  { key: 'turf', label: 'Ground bookings', what: 'ground bookings' },
+];
+
+const andList = (words: string[]) => (words.length < 2 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`);
+
+/** Where a coupon works: the vendor's businesses, or for Ruxstar's, what it works on. */
+export function worksAtLine(c: Pick<ManagedCoupon, 'businesses' | 'modules'>): string {
+  if (c.businesses.length) return c.businesses.map((b) => b.name).join(', ');
+  const on = WORKS_ON.filter((m) => c.modules.includes(m.key));
+  if (!on.length || (on.length === 1 && on[0]!.key === 'pod')) return 'Every print shop';
+  return `Every business, on ${andList(on.map((m) => m.what))}`;
+}
+
+/** "Organiser offer", or "Ruxstar offer" when Ruxstar pays for it. `owner` is who runs the business: Shop, Organiser, Institute. */
+export const offerLabel = (fundedBy: CouponFunder, owner = 'Shop') => (fundedBy === 'ruxstar' ? 'Ruxstar offer' : `${owner} offer`);
+
+/** The coupon to show and send for `code`: applied when the API's check of that same code found no problem. */
+export function couponState(result: CouponCheck | null | undefined, code: string | null, owner = 'Shop') {
+  const checked = code && result?.checked?.code === code ? result.checked : null;
+  if (!checked || checked.problem !== null) return { applied: null, discount: 0, problem: checked?.problem ?? null };
+  const offer = result?.offers.find((o) => o.code === checked.code);
+  return { applied: { code: checked.code, label: offer ? offerLabel(offer.fundedBy, owner) : null }, discount: checked.discount, problem: null };
+}
+
+/** "₹50 off with SAVE50 · Organiser offer", for an order that had a discount. */
+export const discountLine = (discount: number, coupon: Pick<AppliedCoupon, 'code' | 'fundedBy'> | null | undefined, owner = 'Shop') =>
+  `${money(discount)} off${coupon ? ` with ${coupon.code} · ${offerLabel(coupon.fundedBy, owner)}` : ''}`;
 
 export const STATE: Record<CouponState, { label: string; tone: 'neutral' | 'success' | 'warning' }> = {
   active: { label: 'Active', tone: 'success' },
@@ -55,6 +89,8 @@ export interface CouponDraft {
   firstOrderOnly: boolean;
   listed: boolean;
   businessIds: string[];
+  /** Ruxstar's coupons only. */
+  modules: CouponModule[];
 }
 
 export const emptyDraft = (): CouponDraft => ({
@@ -70,6 +106,7 @@ export const emptyDraft = (): CouponDraft => ({
   firstOrderOnly: false,
   listed: true,
   businessIds: [],
+  modules: ['pod'],
 });
 
 export const draftOf = (c: ManagedCoupon): CouponDraft => ({
@@ -85,13 +122,21 @@ export const draftOf = (c: ManagedCoupon): CouponDraft => ({
   firstOrderOnly: c.firstOrderOnly,
   listed: c.listed,
   businessIds: c.businesses.map((b) => b.id),
+  modules: WORKS_ON.filter((m) => c.modules.includes(m.key)).map((m) => m.key),
 });
 
-export type DraftErrors = Partial<Record<'code' | 'value' | 'cap' | 'minOrder' | 'ends' | 'limit' | 'perCustomer' | 'shops', string>>;
+export type DraftErrors = Partial<Record<'code' | 'value' | 'cap' | 'minOrder' | 'ends' | 'limit' | 'perCustomer' | 'shops' | 'modules', string>>;
 
-/** What's wrong with the draft, field by field. `creating` checks the code and discount, which can't change later. */
-export function draftErrors(d: CouponDraft, { creating, needsShops, today }: { creating: boolean; needsShops: boolean; today: string }): DraftErrors {
+/**
+ * What's wrong with the draft, field by field. `creating` checks the code and discount, which can't change later;
+ * `needsModules` checks what a new Ruxstar coupon works on.
+ */
+export function draftErrors(
+  d: CouponDraft,
+  { creating, needsShops, needsModules = false, today }: { creating: boolean; needsShops: boolean; needsModules?: boolean; today: string },
+): DraftErrors {
   const errors: DraftErrors = {};
+  if (creating && needsModules && !d.modules.length) errors.modules = 'Pick at least one';
   if (creating) {
     if (!/^[A-Z0-9]{4,16}$/.test(d.code)) errors.code = '4 to 16 letters and digits';
     const value = Number(d.value);
@@ -119,7 +164,7 @@ const terms = (d: CouponDraft) => ({
   listed: d.listed,
 });
 
-export function newCouponOf(d: CouponDraft, withShops: boolean): NewCoupon {
+export function newCouponOf(d: CouponDraft, withShops: boolean, withModules = false): NewCoupon {
   return {
     code: d.code,
     kind: d.kind,
@@ -127,6 +172,7 @@ export function newCouponOf(d: CouponDraft, withShops: boolean): NewCoupon {
     ...(d.kind === 'percent' ? { cap: d.cap ? paiseOf(d.cap) : null } : {}),
     ...terms(d),
     ...(withShops ? { businessIds: d.businessIds } : {}),
+    ...(withModules ? { modules: d.modules } : {}),
   };
 }
 

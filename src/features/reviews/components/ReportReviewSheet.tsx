@@ -9,11 +9,19 @@ import { Brand, Typography } from '@/constants/theme';
 import { REPORT_REASONS } from '@/features/reviews/lib/review';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { Feedback } from '@/lib/haptics';
-import { ReviewService } from '@/services/review-service';
+import { reviewsOf, type ReviewRoutes } from '@/services/review-service';
 import type { ReviewReportReason } from '@/types/review';
 
-/** Report a review to Ruxstar: why, and a note if you like. The writer isn't told. */
-export function ReportReviewSheet({ reviewId, onClose }: { reviewId: string | null; onClose: (reported: boolean) => void }) {
+/** Report a review to Ruxstar: why, and a note if you like. The writer isn't told. `module` is the kind of business it's about. */
+export function ReportReviewSheet({
+  reviewId,
+  module = 'pod',
+  onClose,
+}: {
+  reviewId: string | null;
+  module?: ReviewRoutes;
+  onClose: (reported: boolean) => void;
+}) {
   const token = useAuthToken();
   const [reason, setReason] = useState<ReviewReportReason>('spam');
   const [note, setNote] = useState('');
@@ -25,7 +33,7 @@ export function ReportReviewSheet({ reviewId, onClose }: { reviewId: string | nu
     setSending(true);
     setError(null);
     try {
-      await ReviewService.report(token, reviewId, { reason, ...(note.trim() ? { note: note.trim() } : {}) });
+      await reviewsOf(module).report(token, reviewId, { reason, ...(note.trim() ? { note: note.trim() } : {}) });
       Feedback.success();
       setNote('');
       onClose(true);

@@ -1,5 +1,4 @@
 import { apiDelete, apiGet, apiGetPage, apiPatch, apiPost, apiPostBytes, apiPut, type WriteOptions } from '@/lib/api-client';
-import type { MyReview, Review } from '@/types/review';
 import type {
   AddOnInput,
   Board,
@@ -33,7 +32,6 @@ export const TurfService = {
   sports: (token: string) => apiGetPage<Sport>('/v1/turf/sports', token).then((p) => p.items),
   list: (token: string, filters: GroundFilters, cursor?: string) => apiGetPage<GroundCard>('/v1/turf', token, { ...filters, cursor }),
   get: (token: string, groundId: string) => apiGet<GroundDetail>(`/v1/turf/${id(groundId)}`, token),
-  reviews: (token: string, groundId: string, cursor?: string) => apiGetPage<Review>(`/v1/turf/${id(groundId)}/reviews`, token, { cursor }),
   /** Slots that have started aren't listed. */
   slots: (token: string, courtId: string, date: string) => apiGet<DaySlots>(`/v1/turf/courts/${id(courtId)}/slots`, token, { date }),
   /** Coupons for the picked slots, add-ons and weeks; with `code`, that code is checked too. */
@@ -89,12 +87,4 @@ export const TurfDeskService = {
   unblock: (token: string, courtId: string, startAts: string[], options: WriteOptions) =>
     apiPost<{ done: number }>('/v1/turf/desk/slots/unblock', { courtId, startAts }, token, options),
   prices: (token: string, courtId: string, body: { prices?: Prices; addOns?: AddOnInput[] }) => apiPut<VendorGround>(`/v1/turf/desk/courts/${id(courtId)}/prices`, token, { ...body }),
-};
-
-/** `/v1/turf/orders/{id}/review`: the customer's review of a booking. */
-export const TurfReviewService = {
-  /** Null until the customer reviews the booking. */
-  mine: (token: string, bookingId: string) => apiGet<MyReview | null>(`/v1/turf/orders/${id(bookingId)}/review`, token),
-  write: (token: string, bookingId: string, body: { rating: number; text?: string | null }) => apiPut<MyReview>(`/v1/turf/orders/${id(bookingId)}/review`, token, { ...body }),
-  remove: (token: string, bookingId: string) => apiDelete<{ done: true }>(`/v1/turf/orders/${id(bookingId)}/review`, token),
 };

@@ -11,6 +11,7 @@ import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { dayText, timeText, whenLine } from '@/features/events/lib/events';
 import { ShopCover } from '@/features/pod/components/ShopCover';
+import { ListingReviews } from '@/features/reviews/components/ListingReviews';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -133,6 +134,8 @@ function CourseView({ course }: { course: CourseDetail }) {
       ) : null}
 
       <RefundLine text={course.refundRule} refundable />
+
+      <ListingReviews module="coaching" listing={{ type: 'course', id: course.id }} business={course.business.name} rating={course.rating} />
 
       {course.description ? (
         <>

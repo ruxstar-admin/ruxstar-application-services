@@ -1,5 +1,7 @@
 /** `/v1/events`, `/v1/vendor/events` and the gate (`/v1/events/desk`). Amounts are paise. */
+import type { AppliedCoupon } from './coupon';
 import type { InvoiceRef } from './invoice';
+import type { Rating } from './review';
 
 export type EventKind = 'show' | 'sports' | 'meetup';
 export type RefundPolicy = 'standard' | 'none';
@@ -82,6 +84,8 @@ export interface EventDetail extends EventCard {
   myOrders: { id: string; orderNo: number; status: string; tickets: number }[];
   myWaits: MyWait[];
   maxPerOrder: number;
+  /** The organiser's rating across all its reviews. */
+  rating?: Rating;
 }
 
 export interface EventRules {
@@ -108,6 +112,8 @@ export interface BookTicketsBody {
   tickets: HolderInput[];
   team?: { tierId: string; name: string };
   waitlistId?: string;
+  /** Free tickets ignore it. */
+  coupon?: string;
   returnTo: string;
 }
 
@@ -148,7 +154,8 @@ export interface TicketOrder {
   business: { id: string; name: string };
   lines: { tierId: string; name: string; quantity: number; unitPrice: number }[];
   team: string | null;
-  price: { items: number; platformFee: number; total: number };
+  price: { items: number; platformFee: number; total: number; discount?: number };
+  coupon?: AppliedCoupon | null;
   refund: { amount: number; status: 'pending' | 'done'; reason: string | null } | null;
   reason: string | null;
   canCancel: boolean;
@@ -158,6 +165,10 @@ export interface TicketOrder {
   tickets: TicketView[];
   /** GST invoices and credit notes, oldest first. Missing on orders paid before invoicing started. */
   invoices?: InvoiceRef[];
+  /** Open for a review now: write or change it. */
+  canReview?: boolean;
+  /** The last moment to write or change the review; null when it can't be reviewed now. */
+  reviewUntil?: string | null;
   createdAt: string;
 }
 

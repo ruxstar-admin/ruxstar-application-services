@@ -1,13 +1,15 @@
 import { useRef, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useRouter, type Href } from 'expo-router';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Spacing } from '@/constants/theme';
 import { Stars } from '@/features/reviews/components/Stars';
-import { REPORT_REASONS, starsLabel } from '@/features/reviews/lib/review';
+import { REPORT_REASONS, listingWord, orderWord, replyFrom, starsLabel } from '@/features/reviews/lib/review';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { newIdempotencyKey } from '@/lib/api-client';
@@ -15,7 +17,7 @@ import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
 import { ReviewReportService } from '@/services/review-service';
 import type { ReportStatus } from '@/types/admin';
-import type { ReviewCase } from '@/types/review';
+import type { ReviewCase, ReviewListing } from '@/types/review';
 import { useCan } from '../access';
 import { Card, Fact, Facts, ListFooter, Note, ReasonSheet, Row, consoleStyles, errorText } from './parts';
 import { shortDate } from '../labels';
@@ -25,7 +27,15 @@ const reasonText = (c: ReviewCase) =>
     .map((r) => `${r.label} ${c.reasons[r.key]}`)
     .join(', ');
 
+/** The console's own page for what a review is about. */
+const CONSOLE_LISTING: Partial<Record<ReviewListing['type'], (id: string) => Href>> = {
+  event: (id) => ({ pathname: '/(admin)/event/[id]', params: { id } }),
+  course: (id) => ({ pathname: '/(admin)/course/[id]', params: { id } }),
+  ground: (id) => ({ pathname: '/(admin)/ground/[id]', params: { id } }),
+};
+
 function ReviewDetail({ c, onDone }: { c: ReviewCase; onDone: (done: ReviewCase, message: string) => void }) {
+  const router = useRouter();
   const token = useAuthToken();
   const canAct = useCan('reports.act');
   const [removing, setRemoving] = useState(false);
@@ -33,6 +43,8 @@ function ReviewDetail({ c, onDone }: { c: ReviewCase; onDone: (done: ReviewCase,
   const [error, setError] = useState<string | null>(null);
   const keys = useRef({ keep: newIdempotencyKey(), remove: newIdempotencyKey() });
   const review = c.review;
+  const open = review?.listing ? CONSOLE_LISTING[review.listing.type] : undefined;
+  const listing = review?.listing && open ? { type: review.listing.type, href: open(review.listing.id) } : null;
 
   const act = async (kind: 'keep' | 'remove', reason = '') => {
     setBusy(kind);
@@ -56,14 +68,16 @@ function ReviewDetail({ c, onDone }: { c: ReviewCase; onDone: (done: ReviewCase,
       <Facts>
         <Fact label="Reports" value={String(c.reports)} />
         <Fact label="Last reported" value={shortDate(c.lastAt)} />
-        {review ? <Fact label="Shop" value={review.shop.name} /> : null}
-        {review ? <Fact label="Order" value={`#${review.orderNo}`} /> : null}
+        {review ? <Fact label={(review.module ?? 'pod') === 'pod' ? 'Shop' : 'Business'} value={review.shop.name} /> : null}
+        {review?.listing ? <Fact label={listingWord(review.listing.type)} value={review.product} /> : null}
+        {review ? <Fact label={orderWord(review.module)} value={`#${review.orderNo}`} /> : null}
       </Facts>
       {review ? (
         <>
           <Stars value={review.rating} />
           {review.text ? <Text style={consoleStyles.body}>{review.text}</Text> : <Note>Stars only, no text.</Note>}
-          {review.reply ? <Text style={consoleStyles.body}>{`Shop's reply: ${review.reply.text}`}</Text> : null}
+          {review.reply ? <Text style={consoleStyles.body}>{`${replyFrom(review.module)}: ${review.reply.text}`}</Text> : null}
+          {listing ? <TextLink label={`Open the ${listingWord(listing.type).toLowerCase()}`} onPress={() => router.push(listing.href)} /> : null}
           {review.status === 'removed' && review.removal ? (
             <Note tone="danger">
               Removed {timeAgo(review.removal.at)}: {review.removal.reason}
@@ -90,7 +104,7 @@ function ReviewDetail({ c, onDone }: { c: ReviewCase; onDone: (done: ReviewCase,
       <ReasonSheet
         visible={removing}
         title="Remove review"
-        prompt="Why is it coming down? The customer will see this. The shop sees it in its activity."
+        prompt="Why is it coming down? The customer will see this. The business sees it in its activity."
         placeholder="For example: reviews can't advertise other services."
         confirmLabel="Remove review"
         loading={busy === 'remove'}
@@ -101,7 +115,7 @@ function ReviewDetail({ c, onDone }: { c: ReviewCase; onDone: (done: ReviewCase,
   );
 }
 
-/** Reported shop reviews, one row per review. */
+/** Reported reviews of print shops, events, courses and grounds, one row per review. */
 export function ReviewReportsQueue({ status }: { status: ReportStatus }) {
   const token = useAuthToken();
   const list = usePaginated((cursor) => ReviewReportService.list(token, status, cursor));
@@ -131,7 +145,7 @@ export function ReviewReportsQueue({ status }: { status: ReportStatus }) {
       onEndReachedThreshold={0.5}
       ListHeaderComponent={done ? <Note>{done}</Note> : null}
       ListEmptyComponent={
-        <EmptyState icon="star-outline" title={status === 'open' ? 'No reported reviews' : 'Nothing closed yet'} message={status === 'open' ? 'Shop reviews people report show up here.' : undefined} />
+        <EmptyState icon="star-outline" title={status === 'open' ? 'No reported reviews' : 'Nothing closed yet'} message={status === 'open' ? 'Reviews people report show up here.' : undefined} />
       }
       ListFooterComponent={<ListFooter list={list} />}
       renderItem={({ item: c }) => {
@@ -143,7 +157,7 @@ export function ReviewReportsQueue({ status }: { status: ReportStatus }) {
             <Row
               name={review?.author?.name ?? '?'}
               avatarUrl={review?.author?.avatarUrl ?? undefined}
-              title={review ? `${starsLabel(review.rating)} for ${review.shop.name}` : 'Deleted review'}
+              title={review ? `${starsLabel(review.rating)} for ${review.listing ? review.product : review.shop.name}` : 'Deleted review'}
               subtitle={`${review?.text ? `${review.text.slice(0, 60)} · ` : ''}${reasonText(c) || `${c.reports} reports`} · ${timeAgo(when)}`}
               right={
                 c.outcome ? (

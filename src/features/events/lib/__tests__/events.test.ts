@@ -42,9 +42,15 @@ describe('prices', () => {
       { id: 'a', price: 50_000 },
       { id: 'b', price: 0 },
     ];
-    expect(orderPrice({ a: 2, b: 1 }, tiers, 500)).toEqual({ items: 100_000, fee: 500, total: 100_500 });
-    expect(orderPrice({ b: 3 }, tiers, 500)).toEqual({ items: 0, fee: 0, total: 0 });
-    expect(orderPrice({ a: 11 }, tiers, 500, true)).toEqual({ items: 50_000, fee: 500, total: 50_500 });
+    expect(orderPrice({ a: 2, b: 1 }, tiers, 500)).toEqual({ items: 100_000, discount: 0, fee: 500, total: 100_500 });
+    expect(orderPrice({ b: 3 }, tiers, 500)).toEqual({ items: 0, discount: 0, fee: 0, total: 0 });
+    expect(orderPrice({ a: 11 }, tiers, 500, true)).toEqual({ items: 50_000, discount: 0, fee: 500, total: 50_500 });
+  });
+
+  it('takes a coupon off the tickets, never below nothing, and keeps the platform fee', () => {
+    const tiers = [{ id: 'a', price: 50_000 }];
+    expect(orderPrice({ a: 2 }, tiers, 500, false, 10_000)).toEqual({ items: 100_000, discount: 10_000, fee: 500, total: 90_500 });
+    expect(orderPrice({ a: 1 }, tiers, 500, false, 80_000)).toEqual({ items: 50_000, discount: 50_000, fee: 500, total: 500 });
   });
 
   it('reads rupees typed in', () => {

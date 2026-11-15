@@ -1,5 +1,5 @@
 /** `/v1/turf`, `/v1/turf/desk`, the owner's `/v1/vendor` ground routes and the console's. Amounts are paise; days are India's `YYYY-MM-DD`, clocks India's `HH:MM`. */
-import type { AppliedCoupon, CouponOffer } from './coupon';
+import type { AppliedCoupon, CouponCheck } from './coupon';
 import type { InvoiceRef } from './invoice';
 import type { Rating } from './review';
 import type { TeamPermission } from './team';
@@ -188,10 +188,7 @@ export interface OffersBody {
   code?: string;
 }
 
-export interface TurfOffers {
-  offers: CouponOffer[];
-  checked: { code: string; discount: number; problem: string | null } | null;
-}
+export type TurfOffers = CouponCheck;
 
 interface Money {
   percent: number;

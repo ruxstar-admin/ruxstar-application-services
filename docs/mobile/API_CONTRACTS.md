@@ -110,7 +110,7 @@ Types: `src/types/chat.ts`. Service: `src/services/chat-service.ts`.
 |---|---|---|---|
 | `POST /pod/quote` · `POST /pod/orders` | adds `couponCode?` | `Quote` adds `discount`, `coupon{ code, fundedBy, label } \| null`, `couponProblem`, `offers[{ code, fundedBy, label, terms, discount, problem }]` | The discount comes off the items only. Placing with a code that no longer works answers `COUPON_INVALID` |
 | `GET /vendor/coupons` · `POST /vendor/coupons` · `PATCH /vendor/coupons/{id}` | `?cursor` · `NewCoupon` with `businessIds[]` (1 to 20) · `CouponPatch` | `Page<ManagedCoupon>` · `ManagedCoupon` | `Idempotency-Key` on create. `CONFLICT` when the code is taken; `FORBIDDEN` switching on a coupon Ruxstar switched off |
-| `GET /ruxstar/coupons` · `POST /ruxstar/coupons` · `PATCH /ruxstar/coupons/{id}` | `?funder=ruxstar\|vendor&code&cursor` · `NewCoupon` · `CouponPatch` | `Page<ManagedCoupon>` · `ManagedCoupon` | `coupons.view` · `coupons.manage`, `Idempotency-Key` on create. On a vendor's coupon only `active` can change |
+| `GET /ruxstar/coupons` · `POST /ruxstar/coupons` · `PATCH /ruxstar/coupons/{id}` | `?funder=ruxstar\|vendor&code&cursor` · `NewCoupon` with `modules[]` (pod, events, coaching, turf; print when left out) · `CouponPatch` | `Page<ManagedCoupon>` · `ManagedCoupon` | `coupons.view` · `coupons.manage`, `Idempotency-Key` on create. Modules can't change later. On a vendor's coupon only `active` can change |
 
 Types: `src/types/coupon.ts`. Services: `src/services/coupon-service.ts` (vendor), `AdminService.coupons`, `createCoupon`, `updateCoupon`.
 
@@ -131,17 +131,19 @@ Order clocks (`acceptBy` 6 h, `readyBy`, release 48 h after delivery, delivered 
 
 Every team call checks the place, the permission, approved identity KYC and the business hold. A member's business post is the usual `POST /social/posts` with the shop's `businessId` (`posts.create`) and goes out under the owner's name. Types: `src/types/team.ts`. Services: `src/services/team-service.ts` (`TeamService`, `WorkService`, `TeamShopService`, `TeamCouponService`), `TeamOrderService` in `order-service.ts`, `AdminService.businessTeam` and `removeFromTeam`.
 
-## Print shop reviews (real API — `/v1`, decision 43)
+## Reviews: print shops, events, coaching, turf (real API — `/v1`, decision 43)
+`{module}` is `pod`, `events`, `coaching` or `turf` (`stays` exists on the API; the app has no stays flows yet).
+
 | Path | Request | Response | Notes |
 |---|---|---|---|
-| `GET\|PUT\|DELETE /pod/orders/{id}/review` | – · `{ rating (1 to 5), text? (500, null clears) }` · – | `MyReview` or null · `MyReview` · `{ done }` | The order's customer, while `reviewUntil` (on every order) is set. 30 writes an hour. A removed review can't change (`CONFLICT`) |
-| `GET /pod/shops/{id}/reviews` | `?cursor` | `Page<Review>` | Live reviews of a live shop, newest first |
-| `POST /pod/reviews/{id}/report` | `{ reason (spam, fake, abuse, other), note? (300) }` | `{ done }` | Not your own. One open report per person and review |
+| `GET\|PUT\|DELETE /{module}/orders/{id}/review` | – · `{ rating (1 to 5), text? (500, null clears) }` · – | `MyReview` or null · `MyReview` · `{ done }` | The order's customer, while `canReview` / `reviewUntil` are set on the order (30 days after delivery, the event, the last class or the game). 30 writes an hour. A removed review can't change (`CONFLICT`) |
+| `GET /pod/shops/{id}/reviews` · `GET /{module}/{listingId}/reviews` | `?cursor&limit` | `Page<Review>` | Live reviews, newest first. For events, courses and grounds the list is the whole business's, so `EventDetail.rating` / `CourseDetail.rating` / `GroundDetail.rating` are the business's |
+| `POST /{module}/reviews/{id}/report` | `{ reason (spam, fake, abuse, other), note? (300) }` | `{ done }` | Not your own. One open report per person and review |
 | `GET /vendor/businesses/{id}/reviews` · `PUT\|DELETE .../reviews/{reviewId}/reply` | `?cursor` · `{ text }` (2 to 500) · – | `Page<ShopReview>` · `ShopReview` | Owner. Listing works on hold; replying doesn't. The customer is told about the first reply |
 | `GET /employment/{id}/reviews` · `PUT\|DELETE .../reviews/{reviewId}/reply` | the same | the same | `reviews.reply` |
 | `GET /ruxstar/reports/reviews` · `POST .../reports/reviews/{reviewId}/keep\|remove` | `?status&cursor` · – or `{ reason }` (5 to 300) | `Page<ReviewCase>` · `ReviewCase` | `reports.view` · `reports.act`, `Idempotency-Key`. Remove tells the customer the reason |
 
-`rating { average, count }` is on `ShopCard`, `Shop` and `Business`: `average` is to one decimal and null until 3 live reviews. `overview.reports.reviews` counts reviews with open reports. Types: `src/types/review.ts`. Services: `src/services/review-service.ts`.
+`rating { average, count }` is on `ShopCard`, `Shop` and `Business`: `average` is to one decimal and null until 3 live reviews. `overview.reports.reviews` counts reviews with open reports. Every review carries `module` and `listing{ type: event\|course\|ground\|property, id } \| null`; `product` is the event's, course's or ground's name. Vendor, team (`reviews.reply`) and console lists mix every module. Types: `src/types/review.ts`. Services: `src/services/review-service.ts` (`reviewsOf(module)`, `ReviewService` for print).
 
 ## Help tickets (real API — `/v1`, decision 48)
 | Path | Request | Response | Notes |
@@ -180,7 +182,8 @@ Every "create" below (order, ticket, enrolment, booking) takes `paymentRef` and 
 |---|---|---|---|
 | `GET /events/rules` | – | `EventRules` | Refund hours, waitlist hours, limits, commission and platform fee, all set in the console |
 | `GET /events` · `GET /events/{id}` | `?city&kind&q&cursor` · – | `Page<EventCard>` · `EventDetail` | |
-| `POST /events/{id}/tickets` | `BookTicketsBody` | `{ order, checkoutUrl }` | `Idempotency-Key`, kept when a try times out. Free orders come back confirmed with no link. Unpaid seats are held 20 minutes |
+| `GET /events/{id}/offers` | `?items (paise)&code?` | `{ offers: CouponOffer[], checked: { code, discount, problem } \| null }` | On the BookTickets review step. A code is applied only when `checked.problem` is null; free tickets get none |
+| `POST /events/{id}/tickets` | `BookTicketsBody` with `coupon?` | `{ order, checkoutUrl }` | `Idempotency-Key`, kept when a try times out. Free orders come back confirmed with no link. Unpaid seats are held 20 minutes. `COUPON_INVALID` drops the coupon; `TicketOrder` has `price.discount` and `coupon` |
 | `POST /events/{id}/waitlist` · `DELETE /events/waitlist/{id}` | `{ tierId, quantity }` · – | `MyWait` | |
 | `GET /events/orders` · `GET /events/orders/{id}` · `POST .../pay` · `POST .../cancel` | `?view=upcoming\|past&cursor` · – · `{ returnTo }` · – | `Page<TicketOrder>` · `TicketOrder` · `{ checkoutUrl }` · `TicketOrder` | `Idempotency-Key` on cancel. Reading an unpaid order asks Cashfree |
 | `GET\|POST /vendor/businesses/{id}/events` · `GET\|PATCH\|DELETE /vendor/events/{id}` · `POST .../photo\|publish\|cancel` · `GET .../bookings` | `EventInput` · JPEG bytes · `{ reason }` · `?status&cursor` | `VendorEvent` · `Page<Booking>` | The list is up to 100, soonest first, not paged |
