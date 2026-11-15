@@ -146,4 +146,10 @@ export interface AppNotification {
   turfOrderId?: string;
   /** A ground you own or work at: tapping opens its board. */
   deskGroundId?: string;
+  /** A PG or hostel's page. */
+  stayPropertyId?: string;
+  /** Your PG or hostel reservation changed: tapping opens it. */
+  stayOrderId?: string;
+  /** A property you own or work at: tapping opens its bed map. */
+  deskPropertyId?: string;
 }

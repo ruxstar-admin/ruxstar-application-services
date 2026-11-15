@@ -41,7 +41,12 @@ describe('reviewLink', () => {
   it('opens a ground booking on the desk for the owner and the team', () => {
     const turf = { ...at, module: 'turf' as const, listing: { type: 'ground' as const, id: 'g1' } };
     expect(reviewLink(turf, true)?.href).toEqual({ pathname: '/(customer)/ground-desk/booking/[id]', params: { id: 'o1' } });
-    expect(reviewLink({ ...at, module: 'stays' }, false)).toBeNull();
+  });
+
+  it('opens a stay on the property desk for the owner and wardens', () => {
+    const stays = { ...at, module: 'stays' as const, listing: { type: 'property' as const, id: 'p1' } };
+    expect(reviewLink(stays, false)).toEqual({ label: 'Open reservation', href: { pathname: '/(customer)/stays-desk/order/[id]', params: { id: 'o1' } } });
+    expect(reviewLink(stays, true)?.href).toEqual({ pathname: '/(customer)/stays-desk/order/[id]', params: { id: 'o1' } });
   });
 });
 

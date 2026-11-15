@@ -45,6 +45,9 @@ const SECTIONS: { title: string; icon: Icon; tint: Tint; items: Item[] }[] = [
       { label: 'Courses', icon: 'school-outline', href: '/(admin)/coaching', needs: ['businesses.view'] },
       { label: 'Grounds', icon: 'football-outline', href: '/(admin)/grounds', needs: ['businesses.view'] },
       { label: 'Sports list', icon: 'list-outline', href: '/(admin)/sports', needs: ['businesses.view'] },
+      { label: 'PGs & hostels', icon: 'bed-outline', href: '/(admin)/properties', needs: ['businesses.view'] },
+      { label: 'Facilities', icon: 'list-outline', href: '/(admin)/facilities', needs: ['businesses.view'] },
+      { label: 'Objections', icon: 'shield-outline', href: '/(admin)/objections', needs: ['orders.view'] },
     ],
   },
   {

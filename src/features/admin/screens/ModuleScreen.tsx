@@ -48,11 +48,12 @@ function Settings({ module }: { module: ModuleName }) {
                 </Card>
               </>
             ) : null}
-            {m.eventRules || m.coachingRules || m.turfRules ? (
+            {m.eventRules || m.coachingRules || m.turfRules || m.staysRules ? (
               <Card>
                 {m.eventRules ? <RulesForm m={m} kind="eventRules" onSaved={setData} /> : null}
                 {m.coachingRules ? <RulesForm m={m} kind="coachingRules" onSaved={setData} /> : null}
                 {m.turfRules ? <RulesForm m={m} kind="turfRules" onSaved={setData} /> : null}
+                {m.staysRules ? <RulesForm m={m} kind="staysRules" onSaved={setData} /> : null}
               </Card>
             ) : null}
             {isGstModule(module) ? (

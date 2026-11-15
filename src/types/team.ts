@@ -25,7 +25,12 @@ export type TeamPermission =
   | 'turf.block'
   | 'turf.cancel'
   | 'turf.arrivals'
-  | 'turf.prices';
+  | 'turf.prices'
+  | 'stays.reservations'
+  | 'stays.movein'
+  | 'stays.beds'
+  | 'stays.cancel'
+  | 'stays.listing';
 
 /** One permission as the API describes it. `needs` is given along with it. */
 export interface PermissionInfo {

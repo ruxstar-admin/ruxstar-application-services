@@ -47,8 +47,8 @@ export interface CouponTerms {
   listed?: boolean;
 }
 
-/** What a Ruxstar coupon can work on. The API also takes `stays`. */
-export type CouponModule = 'pod' | 'events' | 'coaching' | 'turf';
+/** What a Ruxstar coupon can work on. */
+export type CouponModule = 'pod' | 'events' | 'coaching' | 'turf' | 'stays';
 
 export interface NewCoupon extends CouponTerms {
   code: string;

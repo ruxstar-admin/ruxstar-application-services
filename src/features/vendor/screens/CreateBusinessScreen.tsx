@@ -174,7 +174,9 @@ export function CreateBusinessScreen() {
                   ? 'You add a photo next and publish the business, then make courses with batches and take enrolments.'
                   : module === 'turf'
                     ? 'You add a photo next and publish the business, then set up your grounds and courts and take slot bookings.'
-                    : `You add photos${module === 'pod' ? ', products and prices' : ''} next, then publish it.`}
+                    : module === 'stays'
+                      ? 'You add a photo next and publish the business, then set up your PG or hostel with its rooms and beds and take reservations.'
+                      : `You add photos${module === 'pod' ? ', products and prices' : ''} next, then publish it.`}
             </Text>
             {needsTerms ? (
               <View style={styles.terms}>

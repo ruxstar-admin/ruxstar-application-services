@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-15 — PG / Hostels: search, reserve with KYC, stay timeline with objection, owner bed map, console
+Prompt:    "Build PG / Hostels in the app (module stays), replacing the old fake-data stays screens: tenant discover with filters, property page, reserve with KYC and Cashfree, stay timeline with objection and notice, your stays; owner setup, rooms, bed map, reservations, tenants, prices, listing edit; console properties, facilities, objections and rules"
+Decision:  Every stays screen uses the real API at backend commit 0927688. Reserving checks identity KYC first; availability and offers are keyed by what they were asked for. The bed map is seven one-day boards merged on the phone and shown on `VendorBoard`. Desk actions follow the `stays.*` team permissions. The old mocks and screens are deleted. Leftovers: turf's coupon box says "Ground offer"; coaching enrolment offers are keyed so coupons don't flicker.
+Done:      `types/stays.ts`, `services/stays-service.ts`, `features/stays/{lib,components,screens}`, routes `(customer)/stays/*`, `(customer)/stays-desk/*`, `(vendor)/businesses/[id]/properties/*`, `(vendor)/properties/[id]/*`, `(admin)/{properties,property/[id],facilities,objections}.tsx`; `admin/screens/{PropertiesScreen,PropertyCaseScreen,FacilitiesScreen,ObjectionsScreen}.tsx`, `RulesForm`, `ModuleScreen`, `MoreScreen`, `DiscoverScreen`, `BusinessScreen`, `WorkPlaceScreen`, `TeamScreen`, `CreateBusinessScreen`, notification links, invoice routes, review links, coupons, audit labels, `BookGroundScreen`, `BookCourseScreen` (+ tests). Notes: `Architecture/build-log/stays-app.md`.
+Blocked:   stays counts on the console dashboard (no stays metrics route).
+Mocks:     removed `stays.mocks.ts`; API_CONTRACTS PG / hostel section now lists the real routes.
+Verified by user: no
+Next:      Run the Expo Go checklist in the build log.
+
+---
+
 ## 2026-11-15 — Reviews for events, courses and grounds; event coupons; console coupons per module
 Prompt:    "Reviews for events/coaching/turf (rate, list, report, reply, console) and event coupons; console coupon form picks the modules it works on"
 Decision:  One module-aware review service (`reviewsOf(module)`) replaces the turf-only one; event, course and ground pages share `ListingReviews` (the business's rating and reviews, paged, with Report). TicketOrder, the coaching order and the turf booking reuse `RateOrderCard` with a module-specific heading. Event coupons use the shared `CheckoutCoupons` box; offer results are tagged with their key so an old answer never shows for new tickets. `couponState` moved to the coupons lib with the funder's word (Organiser, Institute, Shop). Ruxstar coupons pick "Works on" when created.

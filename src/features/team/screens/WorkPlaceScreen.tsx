@@ -83,6 +83,13 @@ const WORK_AREAS: {
     href: () => '/(customer)/ground-desk',
   },
   {
+    title: 'Properties',
+    subtitle: 'The bed map, reservations, moving tenants in and out, and prices',
+    icon: 'bed-outline',
+    allowed: has('stays.reservations', 'stays.listing'),
+    href: () => '/(customer)/stays-desk',
+  },
+  {
     title: 'Post as the business',
     subtitle: 'It goes out under the owner’s name',
     icon: 'create-outline',

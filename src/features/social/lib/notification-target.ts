@@ -27,6 +27,9 @@ type Target = Pick<
   | 'groundId'
   | 'turfOrderId'
   | 'deskGroundId'
+  | 'stayPropertyId'
+  | 'stayOrderId'
+  | 'deskPropertyId'
 >;
 
 /** The screen a notification opens, from the notifications screen or a phone notification; undefined when it opens none. */
@@ -55,6 +58,9 @@ export function notificationHref(n: Target): Href | undefined {
   if (n.groundId) return { pathname: '/(customer)/turf/[id]', params: { id: n.groundId } };
   if (n.turfOrderId) return { pathname: '/(customer)/turf/booking/[id]', params: { id: n.turfOrderId } };
   if (n.deskGroundId) return { pathname: '/(customer)/ground-desk/[id]', params: { id: n.deskGroundId } };
+  if (n.stayPropertyId) return { pathname: '/(customer)/stays/[id]', params: { id: n.stayPropertyId } };
+  if (n.stayOrderId) return { pathname: '/(customer)/stays/order/[id]', params: { id: n.stayOrderId } };
+  if (n.deskPropertyId) return { pathname: '/(customer)/stays-desk/[id]', params: { id: n.deskPropertyId } };
   return undefined;
 }
 
@@ -84,6 +90,9 @@ const LINKS = {
   turf_ground: (id) => ({ groundId: id }),
   turf_order: (id) => ({ turfOrderId: id }),
   vendor_ground: (id) => ({ deskGroundId: id }),
+  stay_property: (id) => ({ stayPropertyId: id }),
+  stay_order: (id) => ({ stayOrderId: id }),
+  vendor_property: (id) => ({ deskPropertyId: id }),
 } satisfies Record<string, (id: string) => Target>;
 
 /** The API's `link.screen` values. */

@@ -86,7 +86,7 @@ function VendorForm() {
         <EmptyState
           icon="pricetag-outline"
           title="No business for coupons yet"
-          message="Coupons work on print orders, event tickets, classes and ground bookings. Add a print shop, events, coaching or sports business first."
+          message="Coupons work on print orders, event tickets, classes, ground bookings and PG or hostel stays. Add a print shop, events, coaching, sports or stays business first."
           actionLabel="Go back"
           onAction={() => router.back()}
         />

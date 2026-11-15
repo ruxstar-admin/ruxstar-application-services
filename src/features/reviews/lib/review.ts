@@ -46,8 +46,8 @@ export const listingWord = (type: ReviewListing['type']) => LISTING[type].one;
 export const acrossLine = (business: string, type: ReviewListing['type']) => `Across ${business}’s ${LISTING[type].many}`;
 
 /**
- * Where a business's review leads: the print order, the event's bookings, the course's students or the ground booking.
- * People on the team (`team`) open print orders from Work and ground bookings from the desk; event and course lists are the owner's.
+ * Where a business's review leads: the print order, the event's bookings, the course's students, the ground booking or the stay.
+ * People on the team (`team`) open print orders from Work and ground bookings and stays from the desk; event and course lists are the owner's.
  */
 export function reviewLink(review: Pick<ShopReview, 'module' | 'listing' | 'orderId'>, team: boolean): { label: string; href: Href } | null {
   switch (review.module ?? 'pod') {
@@ -62,6 +62,8 @@ export function reviewLink(review: Pick<ShopReview, 'module' | 'listing' | 'orde
       return !team && review.listing ? { label: 'See students', href: { pathname: '/(vendor)/courses/[id]/students', params: { id: review.listing.id } } } : null;
     case 'turf':
       return { label: 'Open booking', href: { pathname: '/(customer)/ground-desk/booking/[id]', params: { id: review.orderId } } };
+    case 'stays':
+      return { label: 'Open reservation', href: { pathname: '/(customer)/stays-desk/order/[id]', params: { id: review.orderId } } };
     default:
       return null;
   }

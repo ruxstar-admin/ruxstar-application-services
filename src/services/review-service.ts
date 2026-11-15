@@ -5,11 +5,11 @@ const id = (value: string) => encodeURIComponent(value);
 type Done = { done: true };
 
 /** Modules whose customer review routes the app calls. */
-export type ReviewRoutes = Exclude<ReviewModule, 'stays'>;
+export type ReviewRoutes = ReviewModule;
 
 /**
- * `/v1/{module}`: the customer's review of one of their orders, bookings or enrolments, a listing's reviews (an event,
- * course or ground) and reporting a review. Each module opens its orders for review at its own time; `reviewUntil` on the order says until when.
+ * `/v1/{module}`: the customer's review of one of their orders, bookings, enrolments or stays, a listing's reviews (an event,
+ * course, ground or property) and reporting a review. Each module opens its orders for review at its own time; `reviewUntil` on the order says until when.
  */
 export const reviewsOf = (module: ReviewRoutes) => {
   const base = `/v1/${module}`;

@@ -68,7 +68,9 @@ export function TeamScreen() {
                       ? 'Invite coaches to take attendance, message students and share notes for their batches.'
                       : data.permissions.some((p) => p.key === 'turf.bookings')
                         ? 'Invite ground staff to see the board, mark players arrived and block slots.'
-                        : 'Invite someone to help with orders, the shop or posts.'
+                        : data.permissions.some((p) => p.key === 'stays.reservations')
+                          ? 'Invite wardens to run the bed map, move tenants in and out and mark beds full.'
+                          : 'Invite someone to help with orders, the shop or posts.'
                 }
               />
             )}

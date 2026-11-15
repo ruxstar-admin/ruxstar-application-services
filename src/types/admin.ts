@@ -2,6 +2,7 @@
 
 import type { Business, BusinessModule, PayoutMethod } from './business';
 import type { CourseCategory, CourseStatus } from './coaching';
+import type { StaysRuleSettings } from './stays';
 import type { TurfRuleSettings } from './turf';
 
 export type Permission =
@@ -231,6 +232,8 @@ export interface ModuleSettings {
   coachingRules: CoachingRuleSettings | null;
   /** The turf module only. */
   turfRules: TurfRuleSettings | null;
+  /** The stays module only. */
+  staysRules: StaysRuleSettings | null;
   updatedAt: string;
 }
 
@@ -282,6 +285,8 @@ export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 
     coachingRules?: Partial<CoachingRuleSettings>;
     /** Turf only. Send only what changes. */
     turfRules?: Partial<TurfRuleSettings>;
+    /** Stays only. Send only what changes. */
+    staysRules?: Partial<StaysRuleSettings>;
   };
 
 /** Console events list: `q` matches the title or the organiser's name. */

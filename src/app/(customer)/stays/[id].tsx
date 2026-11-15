@@ -1,3 +1,3 @@
-import { PropertyDetailScreen } from '@/features/stays/screens/PropertyDetailScreen';
+import { PropertyScreen } from '@/features/stays/screens/PropertyScreen';
 
-export default PropertyDetailScreen;
+export default PropertyScreen;

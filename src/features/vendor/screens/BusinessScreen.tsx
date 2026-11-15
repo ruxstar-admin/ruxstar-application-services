@@ -215,6 +215,8 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
   const events = data?.module === 'events';
   const coaching = data?.module === 'coaching';
   const turf = data?.module === 'turf';
+  const stays = data?.module === 'stays';
+  const runs = !!data?.pod || events || coaching || turf || stays;
   return (
     <ScreenContainer title={team ? 'Shop' : 'Business'}>
       <AsyncBoundary loading={loading || place.loading} error={error ?? place.error} hasData={!!data} onRetry={reload} skeletonRows={5}>
@@ -341,9 +343,21 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                     <Tile title="Board" subtitle="Today’s slots by court: bookings, arrivals and blocks" icon="grid-outline" onPress={() => router.push('/(customer)/ground-desk')} />
                   </>
                 ) : null}
-                {!team && (data.pod || events || coaching || turf) && !data.suspension ? (
+                {!team && stays ? (
+                  <>
+                    <Tile
+                      title="Properties & rooms"
+                      subtitle={data.status === 'live' ? 'Photos, rooms, beds, prices and house rules' : 'Set up your PG or hostel now; publish the business to take reservations'}
+                      icon="bed-outline"
+                      disabled={!!data.suspension}
+                      onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/properties', params: { id } })}
+                    />
+                    <Tile title="Bed map" subtitle="Every bed for the week: who’s in, who’s coming, what’s free" icon="grid-outline" onPress={() => router.push('/(customer)/stays-desk')} />
+                  </>
+                ) : null}
+                {!team && runs && !data.suspension ? (
                   <Tile
-                    title={events ? 'Team & gate keepers' : coaching ? 'Team & coaches' : turf ? 'Team & ground staff' : 'Team'}
+                    title={events ? 'Team & gate keepers' : coaching ? 'Team & coaches' : turf ? 'Team & ground staff' : stays ? 'Team & wardens' : 'Team'}
                     subtitle={
                       events
                         ? 'Invite people to scan tickets or help run events'
@@ -351,13 +365,15 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                           ? 'Invite coaches to take attendance, share materials and message batches'
                           : turf
                             ? 'Invite staff to run the board, mark arrivals and block slots'
-                            : 'Invite people to help with orders, the shop and posts'
+                            : stays
+                              ? 'Invite wardens to run the bed map and move tenants in and out'
+                              : 'Invite people to help with orders, the shop and posts'
                     }
                     icon="people-outline"
                     onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/team', params: { id } })}
                   />
                 ) : null}
-                {!team && (data.pod || events || coaching || turf) && data.status === 'live' ? (
+                {!team && runs && data.status === 'live' ? (
                   <Tile
                     title="Reviews"
                     subtitle={ratingLine(data.rating)}
@@ -373,7 +389,7 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                     onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/terms', params: { id } })}
                   />
                 ) : null}
-                {!team && (data.pod || events || coaching || turf) ? (
+                {!team && runs ? (
                   <Tile
                     title="GST invoices"
                     subtitle="Invoices and credit notes for its sales, and a CSV for your return"

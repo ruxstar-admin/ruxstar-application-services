@@ -47,8 +47,28 @@ describe('notificationHref', () => {
     expect(notificationHref({ deskGroundId: 'g2' })).toEqual({ pathname: '/(customer)/ground-desk/[id]', params: { id: 'g2' } });
   });
 
-  it('opens a screen for every events, coaching and turf link the API sends', () => {
-    const screens = ['event', 'event_order', 'vendor_event', 'coaching_course', 'coaching_order', 'vendor_course', 'coaching_batch', 'turf_ground', 'turf_order', 'vendor_ground'];
+  it('opens the PG or hostel, the reservation, or the property’s bed map for its owner and wardens', () => {
+    expect(notificationHref(notificationLink('stay_property', 'p1'))).toEqual({ pathname: '/(customer)/stays/[id]', params: { id: 'p1' } });
+    expect(notificationHref(notificationLink('stay_order', 'r1'))).toEqual({ pathname: '/(customer)/stays/order/[id]', params: { id: 'r1' } });
+    expect(notificationHref(notificationLink('vendor_property', 'p2'))).toEqual({ pathname: '/(customer)/stays-desk/[id]', params: { id: 'p2' } });
+  });
+
+  it('opens a screen for every events, coaching, turf and stays link the API sends', () => {
+    const screens = [
+      'event',
+      'event_order',
+      'vendor_event',
+      'coaching_course',
+      'coaching_order',
+      'vendor_course',
+      'coaching_batch',
+      'turf_ground',
+      'turf_order',
+      'vendor_ground',
+      'stay_property',
+      'stay_order',
+      'vendor_property',
+    ];
     for (const screen of screens) {
       expect(notificationHref(notificationLink(screen, 'x1'))).toMatchObject({ params: { id: 'x1' } });
     }
@@ -81,6 +101,9 @@ describe('notificationHref', () => {
       'turf_ground',
       'turf_order',
       'vendor_ground',
+      'stay_property',
+      'stay_order',
+      'vendor_property',
     ];
     for (const screen of screens) expect(notificationHref(notificationLink(screen, 'x1'))).toBeDefined();
   });

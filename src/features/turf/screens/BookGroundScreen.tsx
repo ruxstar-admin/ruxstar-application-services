@@ -83,7 +83,7 @@ function Booking({ ground, rules, firstCourt }: { ground: GroundDetail; rules: T
     offersKey,
   );
   const offersNow = offers.data?.key === offersKey ? offers.data.result : undefined;
-  const coupon = couponState(offersNow, code);
+  const coupon = couponState(offersNow, code, 'Ground');
   const checkingCoupon = !!code && canPrice && offers.data?.key !== offersKey && !offers.error;
   const couponProblem = coupon.problem ?? (code && offers.error && offers.data?.key !== offersKey ? errorText(offers.error) : null);
   const price = turfPrice({ slotPrices: pickedSlots.map((s) => s.price), addOns: court?.addOns ?? [], counts, weeks: n, platformFee: ground.platformFee, discount: coupon.discount });
@@ -235,6 +235,7 @@ function Booking({ ground, rules, firstCourt }: { ground: GroundDetail; rules: T
             problem={couponProblem}
             onApply={applyCode}
             onRemove={() => setCode(null)}
+            owner="Ground"
           />
           <Card>
             <PriceLine label={`Slots${n > 1 ? ` × ${n} weeks` : ''}`} amount={price.slots * n} />

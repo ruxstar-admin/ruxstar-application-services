@@ -62,7 +62,7 @@ function Coupons({ funder, code }: { funder: CouponFunder; code: string | undefi
         <EmptyState
           icon="pricetag-outline"
           title={code ? `No coupon ${code}` : funder === 'ruxstar' ? 'No Ruxstar coupons yet' : 'No vendor coupons yet'}
-          message={!code && funder === 'ruxstar' ? 'Ruxstar pays for these, on print orders, event tickets, coaching fees or ground bookings.' : undefined}
+          message={!code && funder === 'ruxstar' ? 'Ruxstar pays for these, on print orders, event tickets, coaching fees, ground bookings or PG and hostel stays.' : undefined}
         />
       }
       ListFooterComponent={<ListFooter list={list} />}

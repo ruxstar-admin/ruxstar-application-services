@@ -11,11 +11,12 @@ import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { AdminService } from '@/services/admin-service';
 import type { CoachingRuleSettings, EventRuleSettings, ModuleSettings } from '@/types/admin';
+import type { StaysRuleSettings } from '@/types/stays';
 import type { SlotMinutes, TurfRuleSettings } from '@/types/turf';
 import { useCan } from '../access';
 import { Fact, Facts, consoleStyles, errorText } from './parts';
 
-type RulesKey = 'eventRules' | 'coachingRules' | 'turfRules';
+type RulesKey = 'eventRules' | 'coachingRules' | 'turfRules' | 'staysRules';
 type Rules = Record<string, number>;
 
 const SLOT_LENGTHS: SlotMinutes[] = [30, 60, 90];
@@ -153,6 +154,37 @@ const SETS: Record<RulesKey, { title: string; intro: string; save: string; field
       { key: 'maxAddOns', min: 0, max: 30, label: 'Add-ons per court', show: plain, hint: 'Like a ball or bibs. 0 turns add-ons off for new and edited courts.' },
     ],
   },
+  staysRules: {
+    title: 'PG and hostel rules',
+    intro: 'Every property’s rooms and reservations follow these. Reservations already made keep their refund rule.',
+    save: 'Save stay rules',
+    fields: [
+      {
+        key: 'refundDays',
+        min: 0,
+        max: 60,
+        label: 'Full refund up to this many days before move-in',
+        show: count('day', 'days'),
+        hint: 'What every property gives at least. Owners can only be stricter, up to the most below.',
+      },
+      { key: 'maxRefundDays', min: 0, max: 60, label: 'Owners’ refund days: at most', show: count('day', 'days'), hint: 'The strictest rule an owner can pick. At least the days above.' },
+      {
+        key: 'objectionHours',
+        min: 1,
+        max: 168,
+        label: 'Hours a tenant can object after moving in',
+        show: count('hour', 'hours'),
+        hint: 'The owner is paid once this passes with no objection.',
+      },
+      { key: 'maxMonths', min: 1, max: 12, label: 'Months paid with a reservation', show: count('month', 'months'), hint: 'PG and co-living, the first month included.' },
+      { key: 'maxNights', min: 1, max: 90, label: 'Nights in one reservation', show: count('night', 'nights'), hint: 'Hostels.' },
+      { key: 'holdMinutes', min: 5, max: 60, label: 'Minutes beds are held while paying', show: count('minute', 'minutes'), hint: 'Unpaid beds go back after this.' },
+      { key: 'bookAheadDays', min: 1, max: 180, label: 'Days ahead move-in can be', show: count('day', 'days'), hint: 'From today.' },
+      { key: 'maxProperties', min: 1, max: 100, label: 'Properties per business', show: plain, hint: 'Checked when an owner adds a property.' },
+      { key: 'maxRooms', min: 1, max: 500, label: 'Rooms per property', show: plain, hint: 'Checked when an owner adds a room.' },
+      { key: 'maxBeds', min: 1, max: 24, label: 'Beds per room', show: plain, hint: 'Checked when an owner saves a room.' },
+    ],
+  },
 };
 
 const wholeOf = (text: string) => (/^\d+$/.test(text.trim()) ? Number(text) : NaN);
@@ -188,7 +220,9 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
           ? { eventRules: changes as Partial<EventRuleSettings> }
           : kind === 'coachingRules'
             ? { coachingRules: changes as Partial<CoachingRuleSettings> }
-            : { turfRules: { ...changes, ...(lengthsChanged ? { slotLengths: [...lengths].sort((a, b) => a - b) as SlotMinutes[] } : {}) } as Partial<TurfRuleSettings> };
+            : kind === 'staysRules'
+              ? { staysRules: changes as Partial<StaysRuleSettings> }
+              : { turfRules: { ...changes, ...(lengthsChanged ? { slotLengths: [...lengths].sort((a, b) => a - b) as SlotMinutes[] } : {}) } as Partial<TurfRuleSettings> };
       const done = await AdminService.updateModule(token, m.module, patch, key.current);
       key.current = newIdempotencyKey();
       Feedback.success();

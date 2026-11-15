@@ -22,6 +22,7 @@ import { Feedback } from '@/lib/haptics';
 import { CoachingService } from '@/services/coaching-service';
 import { useAuthStore } from '@/stores/auth-store';
 import type { Child, CourseDetail, OrderKind } from '@/types/coaching';
+import type { CouponCheck } from '@/types/coupon';
 import { ChildForm } from '../components/ChildForm';
 import { Card, Divider, PickCard, PriceLine } from '../components/Parts';
 import { coachingReturn } from '../lib/checkout';
@@ -51,13 +52,15 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
   const fee = kind === 'batch' ? (batch?.fee ?? 0) : (course.demo?.fee ?? 0);
   const takesCoupons = kind === 'batch' && fee > 0;
   const onPayStep = step === 2 && takesCoupons;
-  const offers = useAsyncResource(
-    () => (onPayStep ? CoachingService.offers(token, picked, code ?? undefined) : Promise.resolve(null)),
-    onPayStep ? `${picked}|${code ?? ''}` : 'none',
+  const offersKey = onPayStep ? `${picked}|${code ?? ''}` : 'none';
+  const offers = useAsyncResource<{ key: string; result: CouponCheck | null }>(
+    () => (onPayStep ? CoachingService.offers(token, picked, code ?? undefined) : Promise.resolve(null)).then((result) => ({ key: offersKey, result })),
+    offersKey,
   );
-  const coupon = couponState(offers.data, code, 'Institute');
-  const checking = !!code && offers.loading;
-  const couponProblem = coupon.problem ?? (code && !offers.loading && offers.error ? errorText(offers.error) : null);
+  const offersNow = offers.data?.key === offersKey ? offers.data.result : undefined;
+  const coupon = couponState(offersNow, code, 'Institute');
+  const checking = !!code && onPayStep && offers.data?.key !== offersKey && !offers.error;
+  const couponProblem = coupon.problem ?? (code && offers.error && offers.data?.key !== offersKey ? errorText(offers.error) : null);
   const price = orderPrice(fee, course.platformFee, coupon.discount);
   const free = price.total === 0;
 
@@ -184,7 +187,7 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
         <>
           {takesCoupons ? (
             <CheckoutCoupons
-              offers={offers.data?.offers ?? null}
+              offers={offersNow?.offers ?? null}
               applied={coupon.applied}
               discount={coupon.discount}
               problem={couponProblem}

@@ -69,7 +69,7 @@ All are POST with a JSON body (the mock registry keys on method + path; the real
 | `/posts/comments` · `/posts/comment` | `{ id, cursor? }` · `{ id, text }` | `Page<Comment>` · `Comment` | Comments load page by page (scope review #9) |
 | `PATCH /v1/social/comments/:id` (real API) | `{ text }` | `Comment` (with `editedAt`) | Only the author; people newly @mentioned are told, as when a post's text is edited |
 | `/posts/report` | `{ id, reason }` | `{ message }` | Same reasons as user reports; goes to the moderation queue |
-| `/search` | `{ q, scope: people | businesses | events | courses | stays }` | `SearchResult[]` | Min 2 chars; business/event/course/stay indexes by location + facilities per scope review #5 |
+| `/search` | `{ q, scope: people | businesses | events | courses | stays }` | `SearchResult[]` | Min 2 chars; business/event/course/stay indexes by location + facilities per scope review #5. Discover's PG / hostel category uses the real `GET /v1/stays` instead (see PG / hostel below) |
 | `/notifications/list` · `/unread-count` · `/read` · `/respond` | `{ cursor? }` · – · `{ id? }` · `{ id, accept }` | `Page<AppNotification>` · `{ count }` · `{ message }` | `respond` is for employment offers (Phase 7 owns the employment lifecycle) |
 
 Types: `src/types/social.ts`. Service: `src/services/social-service.ts`.
@@ -132,7 +132,7 @@ Order clocks (`acceptBy` 6 h, `readyBy`, release 48 h after delivery, delivered 
 Every team call checks the place, the permission, approved identity KYC and the business hold. A member's business post is the usual `POST /social/posts` with the shop's `businessId` (`posts.create`) and goes out under the owner's name. Types: `src/types/team.ts`. Services: `src/services/team-service.ts` (`TeamService`, `WorkService`, `TeamShopService`, `TeamCouponService`), `TeamOrderService` in `order-service.ts`, `AdminService.businessTeam` and `removeFromTeam`.
 
 ## Reviews: print shops, events, coaching, turf (real API — `/v1`, decision 43)
-`{module}` is `pod`, `events`, `coaching` or `turf` (`stays` exists on the API; the app has no stays flows yet).
+`{module}` is `pod`, `events`, `coaching`, `turf` or `stays`.
 
 | Path | Request | Response | Notes |
 |---|---|---|---|
@@ -237,13 +237,29 @@ Every "create" below (order, ticket, enrolment, booking) takes `paymentRef` and 
 | `GET\|POST /ruxstar/turf/sports` · `PATCH .../sports/{key}` | `{ key, name, order? }` · `{ name?, active?, order? }` | `ConsoleSport` | `businesses.view` to read; `modules.manage` to change. Add takes `Idempotency-Key` |
 | `PATCH /ruxstar/modules/turf` | `{ turfRules: { refundFullHours?, refundHalfHours?, halfPercent?, minFullHours?, maxFullHours?, maxRepeatWeeks?, holdMinutes?, slotLengths?, maxSlots?, bookAheadDays?, maxGrounds?, maxCourts?, maxAddOns? } }` | `ModuleSettings` with `turfRules` | `modules.manage`. Send only what changes |
 
-## PG / hostel (`stays.mocks.ts`)
+## PG / hostel (real API — `/v1`, backend commit 0927688)
+The old `stays.mocks.ts` and its screens are gone.
+
 | Path | Request | Response | Notes |
 |---|---|---|---|
-| `/stays/search` | `{ q, facilities[], from, to }` | `StayResult[]` | Indexed by location text and facilities (scope review #5); only properties with a free bed for **every** night are returned; 400 for an invalid range |
-| `/stays/get` | `{ id, from?, to? }` | `PropertyDetail` (rooms with `free` beds for the range) | |
-| `/stays/book` · `/stays/booking` | `{ roomId, from, to, beds, paymentRef }` · `{ id }` | `Booking` | Nights are `[from, to)`; the check-out day is free for the next guest; 409 if beds are no longer free |
-| `/stays/vendor/properties` · `/create` · `/room/save` · `/facilities` | – · `NewProperty` · `{ propertyId, room }` · `{ propertyId, facilities[] }` | `Property[]` · `Property` · `Room` · `Property` | Availability is the room's total beds minus bookings |
+| `GET /stays/rules` · `GET /stays/facilities` | – | `StaysRules` · `Page<Facility>` | Refund days and limits, objection hours, max months / nights, hold minutes, book-ahead days, limits, commission and platform fee |
+| `GET /stays` · `GET /stays/{id}` · `GET /stays/{id}/reviews` | `?city&area&q&kind&for&occupant&stay&budget&room&food&meals&facilities&allows&noticeMax&near&cursor` · – · `?cursor` | `Page<PropertyCard>` · `PropertyDetail` · `Page<Review>` | Budget is paise for the `stay` unit; csv fields must all match; `for` / `occupant` also match places open to anyone. `canReserve` / `whyNot`, `kycRequired: true` |
+| `GET /stays/{id}/availability` | `?moveIn&stay=month\|night&months\|nights` | `Availability` | Months only with `stay=month`, nights only with `stay=night`. Each room's beds are `free`, `taken` or `closed`, with `bedTotal` / `roomTotal` for the stay |
+| `POST /stays/rooms/{id}/offers` · `POST /stays/rooms/{id}/reserve` | `{ moveIn, stay, months?\|nights?, bedId?\|whole?, code? }` · the same with `coupon?, returnTo` | `{ offers, checked }` · `{ reservation, checkoutUrl }` | Reserve takes `Idempotency-Key`, kept when a try times out. Needs approved identity KYC (`KYC_REQUIRED`). A taken bed is a 409; the app reloads availability. Beds are held 15 minutes (`holdMinutes`). `COUPON_INVALID` drops the coupon. The deposit is paid to the owner, not through Ruxstar |
+| `GET /stays/orders` · `GET /stays/orders/{id}` · `POST .../pay` · `POST .../cancel` | `?view=current\|past&cursor` · – · `{ returnTo }` · `{ reason? }` | `Page<StayReservation>` · `StayReservation` · `{ checkoutUrl }` · `StayReservation` | Cancel takes `Idempotency-Key`; `refundIfCancelled` follows the property's refund days |
+| `POST\|DELETE /stays/orders/{id}/objection` · `POST /stays/orders/{id}/notice` | `{ reason }` (5 to 500) · – · `{ on? }` | `StayReservation` | `Idempotency-Key`. An objection is allowed until `objectionUntil` (24 h after "Moved in" by default) and holds the owner's money. Notice defaults to the earliest day (`noticeFrom`) |
+| `GET\|PUT\|DELETE /stays/orders/{id}/review` | `{ rating, text? }` | `MyReview` | When `canReview` |
+| `GET\|POST /vendor/businesses/{id}/properties` · `GET\|PATCH\|DELETE /vendor/properties/{id}` · `POST .../photos` · `DELETE .../photos/{photoId}` · `POST .../publish` | `PropertyInput` · JPEG bytes | `VendorProperty` | Owner only. Create and publish take `Idempotency-Key`; publish lists every missing item. Up to 10 photos. Only drafts with no reservations can be deleted |
+| `POST /vendor/properties/{id}/rooms` · `PATCH\|DELETE /vendor/rooms/{id}` | `RoomInput` (`wholeRoom` for shared rooms only) | `VendorProperty` | Add takes `Idempotency-Key`. A room with reservations to come can't be deleted |
+| `GET /stays/desk/properties` · `GET .../properties/{id}/board` · `GET .../properties/{id}/reservations` · `GET .../properties/{id}/tenants` · `GET .../orders/{id}` | – · `?date` · `?view=upcoming\|staying\|past\|all&cursor` · `?cursor` · – | `Page<DeskProperty>` · `BedBoard` · `Page<DeskReservation>` · `DeskReservation` | Owner, or team members with `stays.*` permissions (`permissions` on each property). The board is one day; the app asks for 7 days at once for the bed map |
+| `POST /stays/desk/orders/{id}/moved-in\|move-out\|cancel` · `POST /stays/desk/beds/{id}/status` · `POST /stays/desk/rooms/{id}/status` | – · `{ on?, reason? }` · `{ reason }` · `{ status: open\|closed }` · `{ status: live\|paused }` | `DeskReservation` · bed · `VendorProperty` | All take `Idempotency-Key`. `stays.movein` for moved-in and move-out (shorten only), `stays.cancel` for cancel (always a full refund, not once released), `stays.beds` for beds and rooms |
+| `PATCH /stays/desk/properties/{id}` · `PUT /stays/desk/rooms/{id}/prices` | `Partial<PropertyInput>` · `{ prices: { month, night } }` | `VendorProperty` | `stays.listing`. Reservations already made keep their price |
+| `GET /ruxstar/stays/properties` · `GET .../{id}` · `POST .../{id}/take-down` | `?status&city&cursor` · – · `{ reason }` (5 to 300) | `Page<ConsoleProperty>` · `{ property, reservations }` · `{ property, refunded }` | `businesses.view` · `businesses.manage`, `Idempotency-Key`. Take-down refunds reservations not moved in yet |
+| `GET /ruxstar/stays/objections` · `POST /ruxstar/stays/reservations/{id}/objection` | `?status=open\|withdrawn\|released\|refunded&cursor` · `{ decision: release\|refund, note (5 to 500) }` | `Page<ConsoleReservation>` · `ConsoleReservation` | `orders.view` · `orders.manage`, `Idempotency-Key`. `release` pays the owner; `refund` returns everything and ends the stay |
+| `GET\|POST /ruxstar/stays/facilities` · `PATCH .../facilities/{key}` | `{ key, name, order? }` · `{ name?, active?, order? }` | `ConsoleFacility` | `businesses.view` to read; `modules.manage` to change. Add takes `Idempotency-Key` |
+| `PATCH /ruxstar/modules/stays` | `{ staysRules: { refundDays?, maxRefundDays?, objectionHours?, maxMonths?, maxNights?, holdMinutes?, bookAheadDays?, maxProperties?, maxRooms?, maxBeds? } }` | `ModuleSettings` with `staysRules` | `modules.manage`. Send only what changes |
+
+Notifications `stays.reserved` and `stays.updated` link to `stay_property`, `stay_order` or `vendor_property`. GST documents for a stay have `order.type: stay_reservation`. Coupons: vendor coupons cover stays businesses and Ruxstar coupons can work on `stays`. Types: `src/types/stays.ts`. Services: `src/services/stays-service.ts` (`StaysService`, `VendorStaysService`, `StaysDeskService`, `ConsoleStaysService`).
 
 ## Money: ledger, payouts, coupons, cancellation (`money.mocks.ts`, state in `commerce-state.ts`)
 `/payments/start` now takes `{ amount, itemTotal, purpose, module?, couponCode? }` and returns `{ sessionId, amount, discount }` — **the server validates the coupon and is authoritative**; `amount` = lines incl. delivery, `itemTotal` = the part a coupon may discount (never the delivery fee). A confirmed payment's `reference` links the purchase to the ledger.

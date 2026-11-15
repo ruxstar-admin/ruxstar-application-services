@@ -48,7 +48,7 @@ describe('worksAtLine', () => {
 });
 
 describe('couponShops', () => {
-  it('offers print shops, events, coaching and sports grounds, not stays', () => {
+  it('offers print shops, events, coaching, sports grounds and stays', () => {
     const list = [
       { id: 'p', name: 'Prints', module: 'pod' },
       { id: 'e', name: 'Gigs', module: 'events' },
@@ -56,7 +56,7 @@ describe('couponShops', () => {
       { id: 's', name: 'PG', module: 'stays' },
       { id: 't', name: 'Arena', module: 'turf' },
     ] as const;
-    expect(couponShops(list).map((b) => b.id)).toEqual(['p', 'e', 'c', 't']);
+    expect(couponShops(list).map((b) => b.id)).toEqual(['p', 'e', 'c', 's', 't']);
   });
 });
 

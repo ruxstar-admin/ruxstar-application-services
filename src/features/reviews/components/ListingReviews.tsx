@@ -16,14 +16,14 @@ import type { Rating, ReviewListing } from '@/types/review';
 const PAGE = 10;
 
 interface ListingReviewsProps {
-  module: 'events' | 'coaching' | 'turf';
+  module: 'events' | 'coaching' | 'turf' | 'stays';
   listing: ReviewListing;
   /** The business, whose rating covers all its reviews. */
   business: string;
   rating: Rating | undefined;
 }
 
-/** On an event, course or ground page: the business's rating, and this listing's reviews 10 at a time, each with Report. Hidden with neither. */
+/** On an event, course, ground or property page: the business's rating, and this listing's reviews 10 at a time, each with Report. Hidden with neither. */
 export function ListingReviews({ module, listing, business, rating }: ListingReviewsProps) {
   const token = useAuthToken();
   const me = useAuthStore((s) => s.userId);

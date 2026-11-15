@@ -12,6 +12,7 @@ const CUSTOMER_ORDER_PATH = {
   event_order: '/(customer)/events/ticket/[id]',
   coaching_order: '/(customer)/coaching/enrolment/[id]',
   turf_booking: '/(customer)/turf/booking/[id]',
+  stay_reservation: '/(customer)/stays/order/[id]',
 } as const satisfies Record<Invoice['order']['type'], string>;
 
 /** Where "View order" goes from a document, when the viewer has an order screen for it. */
