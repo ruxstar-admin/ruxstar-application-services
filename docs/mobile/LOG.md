@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-15 — Coaching coupons, end-date batches, event and coaching notification links
+Prompt:    "Close small gaps: coupons at coaching enrolment, batches by end date, notification links for events and coaching, check the business flow once more"
+Decision:  The enrol Pay step reuses `CheckoutCoupons`; the API checks each code (`/offers?code`) and the app only sends a code it found fine. Batches ask "Number of classes / End date"; edits start by number because the vendor batch view has no end date. The notification `screen → link` table moved from `social-service.ts` to `features/social/lib/notification-target.ts` so it can be tested. Vendor coupons now cover print, events and coaching businesses, as the API does.
+Done:      `BookCourseScreen`, `BatchFormScreen`, `coaching/lib/{coaching,forms,schedule}.ts`, `notification-target.ts`, `NotificationRow`, `social-service.ts`, `push-notifications.ts`, coupons screens and `couponShops`, vendor dashboard Coupons row; tests. Notes: `Architecture/build-log/coaching-app.md`.
+Blocked:   nothing.
+Mocks:     none; API_CONTRACTS lists `GET /coaching/batches/{id}/offers`.
+Verified by user: no
+Next:      Run the new test steps in the coaching build log in Expo Go.
+
+---
+
 ## 2026-11-15 — Coaching: courses, demos, enrolment, classes, coach tools, console
 Prompt:    "Build the Coaching business in the app… replace the old fake-data Coaching screens"
 Decision:  Built on the real `/v1/coaching` API (backend commit ad8dde4). The batch builder offers a number of classes, not an end date. Coupons aren't offered at enrolment yet. `StepBar`, `KeyedSelectField` and `ReasonSheet` moved to `components/ui`; the console event rules form became one `RulesForm` for event and coaching rules.

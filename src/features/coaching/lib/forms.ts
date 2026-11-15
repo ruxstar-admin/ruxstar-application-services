@@ -1,6 +1,7 @@
 import { paiseOf } from '@/features/events/lib/events';
+import { istDayKey } from '@/lib/booking/days';
 import type { BatchInput, CoachingRules, CourseCategory, CourseInput, CourseMode, Slot, VendorBatch, VendorCourse } from '@/types/coaching';
-import { slotClash, sortSlots } from './schedule';
+import { addDay, planClasses, slotClash, sortSlots } from './schedule';
 
 const whole = (text: string) => (/^\d+$/.test(text.trim()) ? Number(text.trim()) : null);
 const rupees = (paise: number) => String(paise / 100);
@@ -96,10 +97,19 @@ export interface BatchDraft {
   /** Length for new classes on the grid. */
   minutes: number;
   startDate: string;
+  /** How the batch ends: after a number of classes, or on a last day. */
+  planBy: PlanBy;
   classes: string;
+  endDate: string;
   onlineLink: string;
   coachIds: string[];
 }
+
+export type PlanBy = 'count' | 'date';
+/** A new batch's last day starts 12 weeks on from its first. */
+const DEFAULT_WEEKS = 12;
+/** A batch runs for up to a year from its first day. */
+const MAX_RUN_DAYS = 365;
 
 export const emptyBatch = (startDate: string): BatchDraft => ({
   name: '',
@@ -109,10 +119,18 @@ export const emptyBatch = (startDate: string): BatchDraft => ({
   slots: [],
   minutes: 60,
   startDate,
+  planBy: 'count',
   classes: '24',
+  endDate: addDay(startDate, DEFAULT_WEEKS * 7 - 1),
   onlineLink: 'https://',
   coachIds: [],
 });
+
+/** The classes the draft's timetable gives. By a last day, up to one past `max` so the screen can say it's too many. */
+export const draftPlan = (draft: Pick<BatchDraft, 'slots' | 'startDate' | 'planBy' | 'classes' | 'endDate'>, max: number) =>
+  draft.planBy === 'count'
+    ? planClasses(draft.slots, draft.startDate, Math.min(whole(draft.classes) ?? 0, max))
+    : planClasses(draft.slots, draft.startDate, max + 1, draft.endDate || draft.startDate);
 
 export const batchDraftOf = (batch: VendorBatch): BatchDraft => ({
   name: batch.name,
@@ -122,7 +140,9 @@ export const batchDraftOf = (batch: VendorBatch): BatchDraft => ({
   slots: sortSlots(batch.slots),
   minutes: batch.slots[0]?.minutes ?? 60,
   startDate: batch.startDate,
+  planBy: 'count',
   classes: String(batch.classes),
+  endDate: istDayKey(Date.parse(batch.lastEndsAt)),
   onlineLink: batch.onlineLink ?? 'https://',
   coachIds: batch.coachIds,
 });
@@ -159,9 +179,18 @@ export function batchErrors(
     else if (slotClash(draft.slots)) errors.slots = 'Two class times on the same day overlap';
     if (!draft.startDate) errors.startDate = 'Pick the start date';
     else if (draft.startDate < today) errors.startDate = 'Pick a date from today on';
-    const classes = whole(draft.classes);
-    if (!classes || classes < 1) errors.classes = 'How many classes in all';
-    else if (classes > rules.maxClasses) errors.classes = `Up to ${rules.maxClasses} classes`;
+    if (draft.planBy === 'count') {
+      const classes = whole(draft.classes);
+      if (!classes || classes < 1) errors.classes = 'How many classes in all';
+      else if (classes > rules.maxClasses) errors.classes = `Up to ${rules.maxClasses} classes`;
+    } else if (!draft.endDate) errors.endDate = 'Pick the last day';
+    else if (draft.startDate && draft.endDate < draft.startDate) errors.endDate = 'Can’t be before the first day';
+    else if (draft.startDate && draft.endDate > addDay(draft.startDate, MAX_RUN_DAYS)) errors.endDate = 'A batch runs for up to a year';
+    else if (draft.slots.length && !errors.slots) {
+      const planned = draftPlan(draft, rules.maxClasses).length;
+      if (!planned) errors.endDate = 'No class falls between the first and last day';
+      else if (planned > rules.maxClasses) errors.endDate = `That gives more than ${rules.maxClasses} classes. Pick an earlier day.`;
+    }
   }
   if (mode === 'online' && !/^https:\/\/\S+\.\S+/.test(draft.onlineLink.trim())) errors.onlineLink = 'The meeting link, starting https://';
   return errors;
@@ -174,8 +203,8 @@ export const toBatchInput = (draft: BatchDraft, mode: CourseMode): BatchInput =>
   minStudents: draft.minimum.trim() ? Number(draft.minimum) : null,
   slots: sortSlots(draft.slots),
   startDate: draft.startDate,
-  classes: Number(draft.classes),
-  endDate: null,
+  classes: draft.planBy === 'count' ? Number(draft.classes) : null,
+  endDate: draft.planBy === 'date' ? draft.endDate : null,
   onlineLink: mode === 'online' ? draft.onlineLink.trim() : null,
   coachIds: draft.coachIds,
 });
@@ -202,6 +231,6 @@ export function batchChanges(draft: BatchDraft, batch: VendorBatch, mode: Course
   for (const k of ['name', 'fee', 'capacity', 'minStudents', 'onlineLink', 'coachIds'] as const) {
     if (!same(k)) Object.assign(changes, { [k]: next[k] });
   }
-  if (SCHEDULE.some((k) => !same(k))) Object.assign(changes, { slots: next.slots, startDate: next.startDate, classes: next.classes, endDate: null });
+  if (SCHEDULE.some((k) => !same(k))) Object.assign(changes, { slots: next.slots, startDate: next.startDate, classes: next.classes, endDate: next.endDate });
   return changes;
 }

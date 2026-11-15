@@ -3,11 +3,11 @@ import { Linking, Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useRouter } from 'expo-router';
 import type { NotificationClickEvent, NotificationWillDisplayEvent } from 'react-native-onesignal';
-import { notificationHref } from '@/features/social/lib/notification-target';
+import { notificationHref, notificationLink } from '@/features/social/lib/notification-target';
 import { createLogger } from '@/lib/logger';
 import { openChat } from '@/lib/open-chat';
 import { ProfileService } from '@/services/profile-service';
-import { notificationLink, SocialService } from '@/services/social-service';
+import { SocialService } from '@/services/social-service';
 import { useAuthStore } from '@/stores/auth-store';
 
 type OneSignalModule = typeof import('react-native-onesignal');

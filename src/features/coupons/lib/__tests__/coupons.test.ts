@@ -1,5 +1,17 @@
 import type { ManagedCoupon } from '@/types/coupon';
-import { dayKeyOf, draftErrors, draftOf, emptyDraft, newCouponOf, patchOf } from '../coupons';
+import { couponShops, dayKeyOf, draftErrors, draftOf, emptyDraft, newCouponOf, patchOf } from '../coupons';
+
+describe('couponShops', () => {
+  it('offers print shops, events and coaching businesses, not stays', () => {
+    const list = [
+      { id: 'p', name: 'Prints', module: 'pod' },
+      { id: 'e', name: 'Gigs', module: 'events' },
+      { id: 'c', name: 'Tuition', module: 'coaching' },
+      { id: 's', name: 'PG', module: 'stays' },
+    ] as const;
+    expect(couponShops(list).map((b) => b.id)).toEqual(['p', 'e', 'c']);
+  });
+});
 
 const today = '2026-11-13';
 const coupon = (over: Partial<ManagedCoupon> = {}): ManagedCoupon => ({

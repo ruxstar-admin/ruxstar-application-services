@@ -1,4 +1,5 @@
 /** `/v1/coaching`, `/v1/coaching/desk` and the owner's `/v1/vendor` course routes. Amounts are paise; days are India's `YYYY-MM-DD`. */
+import type { AppliedCoupon, CouponOffer } from './coupon';
 import type { InvoiceRef } from './invoice';
 
 export type CourseCategory = 'tuition' | 'exam_prep' | 'music' | 'dance' | 'sports' | 'fitness' | 'art' | 'languages' | 'tech' | 'other';
@@ -131,6 +132,12 @@ export interface EnrolBody {
   returnTo: string;
 }
 
+/** Coupons that work on a batch's fee, best first. `checked` is the code asked about, if any. Demo classes take none. */
+export interface BatchOffers {
+  offers: CouponOffer[];
+  checked: { code: string; discount: number; problem: string | null } | null;
+}
+
 export interface DemoBody {
   sessionId: string;
   student: { childId: string | null };
@@ -182,7 +189,7 @@ export interface CoachingOrder {
   batch: { id: string; name: string; schedule: string; firstAt: string; lastEndsAt: string; cancelled: boolean; cancelReason: string | null };
   business: { id: string; name: string };
   price: { items: number; discount: number; platformFee: number; total: number };
-  coupon: { code: string } | null;
+  coupon: AppliedCoupon | null;
   refund: { amount: number; status: 'pending' | 'done'; reason: string | null } | null;
   reason: string | null;
   canCancel: boolean;

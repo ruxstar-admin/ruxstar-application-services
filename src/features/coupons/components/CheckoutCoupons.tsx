@@ -12,7 +12,8 @@ import { cleanCode } from '../lib/coupons';
 interface CheckoutCouponsProps {
   /** Null until the order is priced. */
   offers: CouponOffer[] | null;
-  applied: AppliedCoupon | null;
+  /** `label` is null when who funds it isn't known, such as a code typed in that isn't among the offers. */
+  applied: (Pick<AppliedCoupon, 'code'> & { label: string | null }) | null;
   discount: number;
   /** Why the code the customer tried can't be used. */
   problem: string | null;
@@ -32,7 +33,7 @@ export function CheckoutCoupons({ offers, applied, discount, problem, onApply, o
           <Ionicons name="pricetag" size={18} color={Brand.success} />
           <View style={styles.flex}>
             <Text style={styles.strong}>{`${applied.code} applied`}</Text>
-            <Text style={styles.muted}>{`You save ${money(discount)} · ${applied.label}`}</Text>
+            <Text style={styles.muted}>{[`You save ${money(discount)}`, applied.label].filter(Boolean).join(' · ')}</Text>
           </View>
           <TextLink
             label="Remove"

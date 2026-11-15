@@ -1,5 +1,5 @@
 import type { VendorBatch } from '@/types/coaching';
-import { batchChanges, batchDraftOf, batchErrors, emptyBatch, scheduleLocked, toBatchInput, type BatchDraft } from '../forms';
+import { batchChanges, batchDraftOf, batchErrors, draftPlan, emptyBatch, scheduleLocked, toBatchInput, type BatchDraft } from '../forms';
 
 const RULES = { maxBatchSize: 100, maxClasses: 200 };
 const TODAY = '2026-11-15';
@@ -65,9 +65,46 @@ describe('batchErrors', () => {
   });
 });
 
+describe('batchErrors by end date', () => {
+  const byDate = (endDate: string) => draft({ planBy: 'date', classes: '', endDate });
+
+  it('passes a last day that gives some classes, whatever the number box says', () => {
+    expect(batchErrors(byDate('2027-02-07'), RULES, 'offline', TODAY)).toEqual({});
+  });
+
+  it('needs a last day on or after the first, within a year', () => {
+    expect(batchErrors(byDate(''), RULES, 'offline', TODAY).endDate).toBe('Pick the last day');
+    expect(batchErrors(byDate('2026-11-15'), RULES, 'offline', TODAY).endDate).toBe('Can’t be before the first day');
+    expect(batchErrors(byDate('2027-11-17'), RULES, 'offline', TODAY).endDate).toBe('A batch runs for up to a year');
+  });
+
+  it('refuses days with no class, or more classes than allowed', () => {
+    expect(batchErrors(draft({ planBy: 'date', startDate: '2026-11-17', endDate: '2026-11-22' }), RULES, 'offline', TODAY).endDate).toBe(
+      'No class falls between the first and last day',
+    );
+    expect(batchErrors(byDate('2027-02-07'), { ...RULES, maxClasses: 5 }, 'offline', TODAY).endDate).toBe('That gives more than 5 classes. Pick an earlier day.');
+  });
+});
+
+describe('draftPlan', () => {
+  it('plans a number of classes, or every class up to the last day', () => {
+    expect(draftPlan(draft({ classes: '3' }), 200)).toHaveLength(3);
+    const plan = draftPlan(draft({ planBy: 'date', endDate: '2026-11-30' }), 200);
+    expect(plan.map((c) => c.day)).toEqual(['2026-11-16', '2026-11-23', '2026-11-30']);
+  });
+
+  it('stops one past the most, so the screen can say it is too many', () => {
+    expect(draftPlan(draft({ planBy: 'date', endDate: '2027-11-15' }), 5)).toHaveLength(6);
+  });
+});
+
 describe('toBatchInput', () => {
   it('sends paise, a number of classes and no end date', () => {
     expect(toBatchInput(draft({ minimum: '' }), 'offline')).toMatchObject({ fee: 200000, capacity: 20, minStudents: null, classes: 24, endDate: null, onlineLink: null });
+  });
+
+  it('sends the last day and no number when planned by end date', () => {
+    expect(toBatchInput(draft({ planBy: 'date', endDate: '2027-02-07' }), 'offline')).toMatchObject({ classes: null, endDate: '2027-02-07' });
   });
 });
 
@@ -84,6 +121,19 @@ describe('batchChanges', () => {
       classes: 30,
       endDate: null,
     });
+  });
+
+  it('switching to an end date sends the schedule with the last day instead of a number', () => {
+    expect(batchChanges({ ...batchDraftOf(batch), planBy: 'date', endDate: '2027-03-01' }, batch, 'offline')).toEqual({
+      slots: batch.slots,
+      startDate: '2026-11-16',
+      classes: null,
+      endDate: '2027-03-01',
+    });
+  });
+
+  it('starts an edit by number of classes, with the last day the batch has now', () => {
+    expect(batchDraftOf(batch)).toMatchObject({ planBy: 'count', classes: '24', endDate: '2027-04-26' });
   });
 });
 

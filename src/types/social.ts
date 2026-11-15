@@ -126,6 +126,12 @@ export interface AppNotification {
   workReviewsId?: string;
   /** Ruxstar replied to or resolved your help ticket: tapping opens it. */
   supportTicketId?: string;
+  /** An event's page, such as a waitlist place opening up. */
+  eventId?: string;
+  /** Your tickets for an event: tapping opens them. */
+  eventOrderId?: string;
+  /** One of your events in the vendor portal. */
+  vendorEventId?: string;
   /** A course's page. */
   courseId?: string;
   /** Your enrolment or demo class changed, or the coach sent a message: tapping opens it. */

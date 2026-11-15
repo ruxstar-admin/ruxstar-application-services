@@ -34,7 +34,7 @@ interface CouponCardProps {
   canEdit: boolean;
   /** Switch it off or on. */
   canSwitch: boolean;
-  /** The vendor's print shops, when they choose where it works. */
+  /** The vendor's businesses, when they choose where it works. */
   shops?: { id: string; name: string }[];
   /** The Ruxstar team sees whose coupon it is. */
   showVendor?: boolean;

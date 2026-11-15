@@ -36,6 +36,8 @@ const TYPE_ICONS: Partial<Record<string, keyof typeof Ionicons.glyphMap>> = {
   'support.replied': 'help-buoy-outline',
   'support.resolved': 'checkmark-circle-outline',
   'kyc.reopened': 'shield-outline',
+  'event.ticket': 'ticket-outline',
+  'event.updated': 'calendar-outline',
   'coaching.enrolled': 'school-outline',
   'coaching.updated': 'school-outline',
 };

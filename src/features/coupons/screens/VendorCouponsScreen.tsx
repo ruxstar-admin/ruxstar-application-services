@@ -14,9 +14,10 @@ import { ApiError } from '@/lib/api-error';
 import { CouponService } from '@/services/coupon-service';
 import { TeamCouponService } from '@/services/team-service';
 import { CouponCard } from '../components/CouponCard';
+import { couponShops } from '../lib/coupons';
 
 /**
- * A vendor's coupons for their print shops: what each takes off, how often it's used, and changing them.
+ * A vendor's coupons for their print shops, events and coaching businesses: what each takes off, how often it's used, and changing them.
  * With `placeId` it is one shop's coupons for someone on its team, who changes only the ones for that shop alone.
  */
 export function VendorCouponsScreen({ placeId }: { placeId?: string }) {
@@ -25,7 +26,7 @@ export function VendorCouponsScreen({ placeId }: { placeId?: string }) {
   const list = usePaginated((cursor) => (placeId ? TeamCouponService.list(token, placeId, cursor) : CouponService.list(token, cursor)));
   useRefetchOnFocus(list.refresh);
   const businesses = useVendorBusinesses({ skip: !!placeId });
-  const shops = placeId ? [] : (businesses.data ?? []).filter((b) => b.module === 'pod').map((b) => ({ id: b.id, name: b.name }));
+  const shops = placeId ? [] : couponShops(businesses.data ?? []);
   const refused = list.error instanceof ApiError && list.error.status > 0 && list.error.kind !== 'server' ? list.error.message : null;
 
   return (
@@ -70,7 +71,7 @@ export function VendorCouponsScreen({ placeId }: { placeId?: string }) {
             </View>
           }
           ListEmptyComponent={
-            <EmptyState icon="pricetag-outline" title="No coupons yet" message={placeId ? 'Make one to bring customers to this shop.' : 'Make one to bring customers to your print shops.'} />
+            <EmptyState icon="pricetag-outline" title="No coupons yet" message={placeId ? 'Make one to bring customers to this shop.' : 'Make one to bring customers to your businesses.'} />
           }
           ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={styles.footer} /> : null}
           renderItem={({ item }) => (

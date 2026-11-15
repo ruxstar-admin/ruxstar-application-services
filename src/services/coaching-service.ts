@@ -3,6 +3,7 @@ import { apiDelete, apiGet, apiGetPage, apiPatch, apiPost, apiPostBytes, apiPut,
 import type {
   BatchInput,
   BatchMessage,
+  BatchOffers,
   Certificate,
   Child,
   ChildInput,
@@ -39,6 +40,9 @@ export const CoachingService = {
   list: (token: string, filters: CourseFilters, cursor?: string) =>
     apiGetPage<CourseCard>('/v1/coaching', token, { ...filters, online: filters.online === undefined ? undefined : String(filters.online), cursor }),
   get: (token: string, courseId: string) => apiGet<CourseDetail>(`/v1/coaching/${id(courseId)}`, token),
+  /** Coupons for the batch's fee; with `code`, that code is checked too. */
+  offers: (token: string, batchId: string, code?: string) =>
+    apiGet<BatchOffers>(`/v1/coaching/batches/${id(batchId)}/offers`, token, code ? { code } : undefined),
   /** A free batch comes back confirmed with no checkout link. */
   enrol: (token: string, batchId: string, body: EnrolBody, options: WriteOptions) =>
     apiPost<PlacedOrder>(`/v1/coaching/batches/${id(batchId)}/enrol`, { ...body, student: { ...body.student } }, token, options),

@@ -7,6 +7,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { VendorTabScreen } from '@/features/vendor/components/VendorTabScreen';
 import { useVendorBusinesses } from '@/features/vendor/hooks/use-vendor-businesses';
+import { couponShops } from '@/features/coupons/lib/coupons';
 import { MISSING_LABEL, listOf } from '@/features/vendor/lib/business-modules';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -93,8 +94,8 @@ export function VendorDashboardScreen() {
       ) : null}
 
       <View style={styles.listCard}>
-        {list.some((b) => b.module === 'pod') ? (
-          <ListRow icon="pricetag-outline" title="Coupons" subtitle="Discounts for your print shops" onPress={() => router.push('/(vendor)/coupons')} />
+        {couponShops(list).length ? (
+          <ListRow icon="pricetag-outline" title="Coupons" subtitle="Discounts on print orders, tickets and classes" onPress={() => router.push('/(vendor)/coupons')} />
         ) : null}
         <ListRow icon="card-outline" title="Ruxstar Card" subtitle="Your verified member card" onPress={() => router.push('/(vendor)/card')} />
       </View>

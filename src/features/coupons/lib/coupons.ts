@@ -1,4 +1,12 @@
+import type { Business, BusinessModule } from '@/types/business';
 import type { CouponKind, CouponPatch, CouponState, ManagedCoupon, NewCoupon } from '@/types/coupon';
+
+/** Businesses whose orders take coupons; the API refuses a vendor coupon for any other. */
+const COUPON_MODULES: readonly BusinessModule[] = ['pod', 'events', 'coaching'];
+
+/** The vendor's businesses a coupon can work at. */
+export const couponShops = (businesses: readonly Pick<Business, 'id' | 'name' | 'module'>[]) =>
+  businesses.filter((b) => COUPON_MODULES.includes(b.module)).map((b) => ({ id: b.id, name: b.name }));
 
 export const STATE: Record<CouponState, { label: string; tone: 'neutral' | 'success' | 'warning' }> = {
   active: { label: 'Active', tone: 'success' },

@@ -1,4 +1,4 @@
-import { notificationHref } from '../notification-target';
+import { notificationHref, notificationLink } from '../notification-target';
 
 describe('notificationHref', () => {
   it('opens the post, profile, order or verification it is about', () => {
@@ -35,7 +35,20 @@ describe('notificationHref', () => {
     expect(notificationHref({ batchId: 'b3' })).toEqual({ pathname: '/(customer)/teach/batch/[id]', params: { id: 'b3' } });
   });
 
+  it('opens the event, the tickets, or the event in the vendor portal', () => {
+    expect(notificationHref({ eventId: 'e3' })).toEqual({ pathname: '/(customer)/events/[id]', params: { id: 'e3' } });
+    expect(notificationHref({ eventOrderId: 'o4' })).toEqual({ pathname: '/(customer)/events/ticket/[id]', params: { id: 'o4' } });
+    expect(notificationHref({ vendorEventId: 'e4' })).toEqual({ pathname: '/(vendor)/events/[id]', params: { id: 'e4' } });
+  });
+
+  it('opens a screen for every events and coaching link the API sends', () => {
+    for (const screen of ['event', 'event_order', 'vendor_event', 'coaching_course', 'coaching_order', 'vendor_course', 'coaching_batch']) {
+      expect(notificationHref(notificationLink(screen, 'x1'))).toMatchObject({ params: { id: 'x1' } });
+    }
+  });
+
   it('opens nothing when it points nowhere', () => {
     expect(notificationHref({})).toBeUndefined();
+    expect(notificationHref(notificationLink('gate', 'x1'))).toBeUndefined();
   });
 });

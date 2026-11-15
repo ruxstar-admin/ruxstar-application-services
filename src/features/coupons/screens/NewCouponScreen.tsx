@@ -17,7 +17,7 @@ import { AdminService } from '@/services/admin-service';
 import { CouponService } from '@/services/coupon-service';
 import { TeamCouponService } from '@/services/team-service';
 import { CouponFields } from '../components/CouponFields';
-import { draftErrors, emptyDraft, newCouponOf } from '../lib/coupons';
+import { couponShops, draftErrors, emptyDraft, newCouponOf } from '../lib/coupons';
 
 const errorText = (err: unknown) =>
   err instanceof ApiError && err.status > 0 && err.kind !== 'server' ? err.message : 'Could not reach Ruxstar. Check your connection and try again.';
@@ -79,11 +79,17 @@ function Form({ who, shops, placeId }: { who: 'ruxstar' | 'vendor' | 'team'; sho
 function VendorForm() {
   const router = useRouter();
   const businesses = useVendorBusinesses();
-  const shops = (businesses.data ?? []).filter((b) => b.module === 'pod').map((b) => ({ id: b.id, name: b.name }));
+  const shops = couponShops(businesses.data ?? []);
   if (businesses.data && !shops.length) {
     return (
       <ScreenContainer title="New coupon">
-        <EmptyState icon="pricetag-outline" title="No print shop yet" message="Coupons work on print orders. Add a print shop first." actionLabel="Go back" onAction={() => router.back()} />
+        <EmptyState
+          icon="pricetag-outline"
+          title="No business for coupons yet"
+          message="Coupons work on print orders, event tickets and classes. Add a print shop, events or coaching business first."
+          actionLabel="Go back"
+          onAction={() => router.back()}
+        />
       </ScreenContainer>
     );
   }
@@ -97,7 +103,7 @@ function VendorForm() {
   );
 }
 
-/** Making a coupon: Ruxstar's from the console, a vendor's for their own print shops, or one shop's from Work (`placeId`). */
+/** Making a coupon: Ruxstar's from the console, a vendor's for their own businesses, or one shop's from Work (`placeId`). */
 export function NewCouponScreen({ who, placeId }: { who: 'ruxstar' | 'vendor' | 'team'; placeId?: string }) {
   return who === 'vendor' ? <VendorForm /> : who === 'team' ? <Form who="team" placeId={placeId} /> : <Form who="ruxstar" />;
 }

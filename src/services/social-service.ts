@@ -1,3 +1,4 @@
+import { notificationLink, type NotificationScreen } from '@/features/social/lib/notification-target';
 import { apiDelete, apiGet, apiGetPage, apiPatch, apiPost, apiPostBytes, apiPut } from '@/lib/api-client';
 import type {
   AppNotification,
@@ -54,29 +55,7 @@ interface ApiNotification {
   type: string;
   title: string;
   body: string;
-  link: {
-    screen:
-      | 'post'
-      | 'verification'
-      | 'business'
-      | 'order'
-      | 'shop_order'
-      | 'profile'
-      | 'payments'
-      | 'work'
-      | 'team'
-      | 'work_order'
-      | 'reviews'
-      | 'work_reviews'
-      | 'delivery_job'
-      | 'delivery_earnings'
-      | 'support'
-      | 'coaching_course'
-      | 'coaching_order'
-      | 'vendor_course'
-      | 'coaching_batch';
-    id: string;
-  };
+  link: { screen: NotificationScreen; id: string };
   read: boolean;
   createdAt: string;
 }
@@ -112,32 +91,6 @@ const toNotification = (n: ApiNotification): AppNotification => ({
   read: n.read,
   ...notificationLink(n.link.screen, n.link.id),
 });
-
-const LINKS: Record<ApiNotification['link']['screen'], (id: string) => Partial<AppNotification>> = {
-  post: (id) => ({ postId: id }),
-  business: (id) => ({ businessId: id }),
-  verification: (id) => (id === 'delivery' ? { deliveryVerification: true } : { verification: true }),
-  order: (id) => ({ orderId: id }),
-  shop_order: (id) => ({ shopOrderId: id }),
-  profile: (id) => ({ profileId: id }),
-  payments: () => ({ payments: true }),
-  work: (id) => ({ workId: id }),
-  team: (id) => ({ teamBusinessId: id }),
-  work_order: (id) => ({ workOrderId: id }),
-  reviews: (id) => ({ reviewsBusinessId: id }),
-  work_reviews: (id) => ({ workReviewsId: id }),
-  delivery_job: () => ({ deliveryVerification: true }),
-  delivery_earnings: () => ({ deliveryVerification: true }),
-  support: (id) => ({ supportTicketId: id }),
-  coaching_course: (id) => ({ courseId: id }),
-  coaching_order: (id) => ({ coachingOrderId: id }),
-  vendor_course: (id) => ({ vendorCourseId: id }),
-  coaching_batch: (id) => ({ batchId: id }),
-};
-
-/** What a phone notification's `screen` and `id` point at, in the notifications screen's terms. Unknown screens point nowhere. */
-export const notificationLink = (screen: string, id: string): Partial<AppNotification> =>
-  Object.hasOwn(LINKS, screen) ? LINKS[screen as ApiNotification['link']['screen']](id) : {};
 
 interface ApiPerson extends ApiAuthor {
   followedByMe: boolean;

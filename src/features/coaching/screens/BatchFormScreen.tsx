@@ -27,10 +27,14 @@ import { TeamService } from '@/services/team-service';
 import type { CoachingRules, VendorBatch, VendorCourse } from '@/types/coaching';
 import type { TeamMember } from '@/types/team';
 import { Section } from '../components/Parts';
-import { batchChanges, batchDraftOf, batchErrors, emptyBatch, scheduleLocked, toBatchInput, type BatchDraft } from '../lib/forms';
-import { GRID_ROWS, LENGTHS, gridCells, gridColumns, hoursOf, lengthLabel, planClasses, planLine, scheduleText, toggleSlot } from '../lib/schedule';
+import { batchChanges, batchDraftOf, batchErrors, draftPlan, emptyBatch, scheduleLocked, toBatchInput, type BatchDraft, type PlanBy } from '../lib/forms';
+import { GRID_ROWS, LENGTHS, gridCells, gridColumns, hoursOf, lengthLabel, planLine, scheduleText, startDays, toggleSlot } from '../lib/schedule';
 
 const LENGTH_CHIPS = LENGTHS.map((m) => ({ key: String(m), label: lengthLabel(m) }));
+const PLAN_CHIPS: { key: PlanBy; label: string }[] = [
+  { key: 'count', label: 'Number of classes' },
+  { key: 'date', label: 'End date' },
+];
 /** Start dates offered, from today. */
 const START_DAYS = 366;
 
@@ -57,8 +61,9 @@ function Form({ rules, course, batch, coaches }: { rules: CoachingRules; course:
 
   const columns = useMemo(() => gridColumns(draft.slots), [draft.slots]);
   const cells = useMemo(() => gridCells(draft.slots, columns), [draft.slots, columns]);
-  const count = Number(draft.classes) || 0;
-  const plan = useMemo(() => planClasses(draft.slots, draft.startDate, Math.min(count, rules.maxClasses)), [draft.slots, draft.startDate, count, rules.maxClasses]);
+  const plan = useMemo(() => draftPlan(draft, rules.maxClasses), [draft, rules.maxClasses]);
+  const tooMany = plan.length > rules.maxClasses;
+  const endDays = useMemo(() => startDays(draft.startDate || today).map((key) => ({ key, label: dayLabel(key) })), [draft.startDate, today]);
   const coachChips = coaches.map((m) => ({ key: m.person.id, label: m.person.name }));
 
   const tap = (row: BoardRow, column: BoardColumn) => {
@@ -174,17 +179,29 @@ function Form({ rules, course, batch, coaches }: { rules: CoachingRules; course:
           {draft.slots.length ? <Text style={styles.strong} accessibilityLiveRegion="polite">{scheduleText(draft.slots)}</Text> : null}
           {err('slots') ? <Text style={styles.error}>{err('slots')}</Text> : null}
 
+          <Text style={styles.label}>When does it end?</Text>
+          <View style={styles.bleed}>
+            <ChoiceChips options={PLAN_CHIPS} value={draft.planBy} onChange={(v) => set('planBy', v)} />
+          </View>
           <View style={styles.pair}>
             <View style={styles.half}>
               <KeyedSelectField label="First day" value={draft.startDate} options={days} onChange={(v) => set('startDate', v)} fallback={dayLabel} error={err('startDate')} />
             </View>
             <View style={styles.half}>
-              <InputField label="Number of classes" value={draft.classes} onChangeText={(v) => set('classes', v)} keyboardType="number-pad" maxLength={3} error={err('classes')} />
+              {draft.planBy === 'count' ? (
+                <InputField label="Number of classes" value={draft.classes} onChangeText={(v) => set('classes', v)} keyboardType="number-pad" maxLength={3} error={err('classes')} />
+              ) : (
+                <KeyedSelectField label="Last day" value={draft.endDate} options={endDays} onChange={(v) => set('endDate', v)} fallback={dayLabel} error={err('endDate')} />
+              )}
             </View>
           </View>
           <View style={styles.plan}>
-            <Text style={styles.strong}>{planLine(plan, dayLabel)}</Text>
-            {plan.length ? <Text style={styles.hint}>{`${hoursOf(plan)} hours of teaching. Times are India time.`}</Text> : null}
+            {tooMany ? (
+              <Text style={styles.error}>{`More than ${rules.maxClasses} classes by then. Pick an earlier last day.`}</Text>
+            ) : (
+              <Text style={styles.strong}>{planLine(plan, dayLabel)}</Text>
+            )}
+            {plan.length && !tooMany ? <Text style={styles.hint}>{`${hoursOf(plan)} hours of teaching. Times are India time.`}</Text> : null}
           </View>
         </>
       )}

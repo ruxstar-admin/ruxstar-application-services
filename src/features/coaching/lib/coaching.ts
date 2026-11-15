@@ -2,6 +2,7 @@ import type { Ionicons } from '@expo/vector-icons';
 import { dayLabel, dayText } from '@/features/events/lib/events';
 import { money } from '@/features/vendor/lib/pod';
 import type {
+  BatchOffers,
   BatchStatus,
   BatchView,
   Child,
@@ -89,10 +90,20 @@ export function seatsLine(batch: Pick<BatchView, 'seatsLeft' | 'status'>): strin
 export const classesLine = (batch: Pick<BatchView, 'classes' | 'firstAt'>) =>
   `${batch.classes} ${batch.classes === 1 ? 'class' : 'classes'} · starts ${dayText(batch.firstAt)}`;
 
-/** What the parent pays: the fee, and the platform fee when there's a fee. */
-export function orderPrice(fee: number, platformFee: number) {
+/** What the parent pays: the fee less any coupon, and the platform fee when there's a fee. The API prices it the same way. */
+export function orderPrice(fee: number, platformFee: number, discount = 0) {
   const charge = fee > 0 ? platformFee : 0;
-  return { items: fee, fee: charge, total: fee + charge };
+  const off = Math.min(Math.max(discount, 0), fee);
+  return { items: fee, discount: off, fee: charge, total: fee - off + charge };
+}
+
+/** The coupon to show and send for `code`: applied when the API's check of that same code found no problem. */
+export function couponState(result: BatchOffers | null | undefined, code: string | null) {
+  const checked = code && result?.checked?.code === code ? result.checked : null;
+  if (!checked || checked.problem !== null) return { applied: null, discount: 0, problem: checked?.problem ?? null };
+  const offer = result?.offers.find((o) => o.code === checked.code);
+  const label = offer ? (offer.fundedBy === 'ruxstar' ? 'Ruxstar offer' : 'Shop offer') : null;
+  return { applied: { code: checked.code, label }, discount: checked.discount, problem: null };
 }
 
 /** Batches a parent can still enrol in, soonest first. */

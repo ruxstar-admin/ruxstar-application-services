@@ -9,12 +9,14 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { StepBar } from '@/components/ui/StepBar';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Spacing, Typography } from '@/constants/theme';
+import { CheckoutCoupons } from '@/features/coupons/components/CheckoutCoupons';
 import { errorText, isOffline } from '@/features/events/lib/messages';
 import { whenLine } from '@/features/events/lib/events';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { CoachingService } from '@/services/coaching-service';
 import { useAuthStore } from '@/stores/auth-store';
@@ -23,7 +25,7 @@ import { ChildForm } from '../components/ChildForm';
 import { Card, Divider, PickCard, PriceLine } from '../components/Parts';
 import { coachingReturn } from '../lib/checkout';
 import { MAX_CHILDREN } from '../lib/children';
-import { ME, childIdOf, classesLine, feeText, openBatches, orderPrice, seatsLine, studentOptions } from '../lib/coaching';
+import { ME, childIdOf, classesLine, couponState, feeText, openBatches, orderPrice, seatsLine, studentOptions } from '../lib/coaching';
 
 const STEPS = { batch: ['Batch', 'Student', 'Pay'], demo: ['Demo class', 'Student', 'Pay'] } as const;
 
@@ -40,13 +42,25 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [code, setCode] = useState<string | null>(null);
   const attempt = useRef(newIdempotencyKey());
 
   const batch = kind === 'batch' ? batches.find((b) => b.id === picked) : undefined;
   const demo = kind === 'demo' ? demos.find((d) => d.sessionId === picked) : undefined;
   const fee = kind === 'batch' ? (batch?.fee ?? 0) : (course.demo?.fee ?? 0);
-  const price = orderPrice(fee, course.platformFee);
+  const takesCoupons = kind === 'batch' && fee > 0;
+  const onPayStep = step === 2 && takesCoupons;
+  const offers = useAsyncResource(
+    () => (onPayStep ? CoachingService.offers(token, picked, code ?? undefined) : Promise.resolve(null)),
+    onPayStep ? `${picked}|${code ?? ''}` : 'none',
+  );
+  const coupon = couponState(offers.data, code);
+  const checking = !!code && offers.loading;
+  const couponProblem = coupon.problem ?? (code && !offers.loading && offers.error ? errorText(offers.error) : null);
+  const price = orderPrice(fee, course.platformFee, coupon.discount);
   const free = price.total === 0;
+
+  const applyCode = (next: string) => (next === code ? offers.reload() : setCode(next));
   const options = studentOptions(myName, kids, course, kind === 'demo' ? { kind: 'demo' } : { kind: 'batch', batchId: picked });
   const chosen = options.find((o) => o.key === student && !o.taken);
   const studentName = chosen ? (chosen.key === ME ? (myName ?? 'You') : chosen.label) : '';
@@ -65,13 +79,23 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
     try {
       const { order, checkoutUrl } =
         kind === 'batch'
-          ? await CoachingService.enrol(token, picked, { student: who, returnTo: coachingReturn() }, { idempotencyKey: attempt.current })
+          ? await CoachingService.enrol(
+              token,
+              picked,
+              { student: who, ...(coupon.applied ? { coupon: coupon.applied.code } : {}), returnTo: coachingReturn() },
+              { idempotencyKey: attempt.current },
+            )
           : await CoachingService.bookDemo(token, course.id, { sessionId: picked, student: who, returnTo: coachingReturn() }, { idempotencyKey: attempt.current });
       Feedback.success();
       router.replace({ pathname: '/(customer)/coaching/enrolment/[id]', params: { id: order.id, ...(checkoutUrl ? { pay: '1' } : { fresh: '1' }) } });
     } catch (err) {
       Feedback.error();
-      setFailure(errorText(err));
+      if (err instanceof ApiError && err.code === 'COUPON_INVALID') {
+        setCode(null);
+        setFailure(`${err.message} We took the coupon off, so the total is ${money(orderPrice(fee, course.platformFee).total)} now.`);
+      } else {
+        setFailure(errorText(err));
+      }
       // A place that timed out may have been taken; trying again with the same key returns it instead of holding two seats.
       if (!isOffline(err)) attempt.current = newIdempotencyKey();
     } finally {
@@ -85,7 +109,12 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
     ) : step === 1 ? (
       <PrimaryButton label={chosen ? `Continue for ${studentName}` : 'Choose who it’s for'} disabled={!chosen} onPress={() => setStep(2)} />
     ) : (
-      <PrimaryButton label={free ? (kind === 'demo' ? 'Book the free demo' : 'Enrol for free') : `Pay ${money(price.total)}`} loading={busy} onPress={place} />
+      <PrimaryButton
+        label={free ? (kind === 'demo' ? 'Book the free demo' : 'Enrol for free') : `Pay ${money(price.total)}`}
+        loading={busy}
+        disabled={checking}
+        onPress={place}
+      />
     );
 
   return (
@@ -152,6 +181,16 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
 
       {step === 2 ? (
         <>
+          {takesCoupons ? (
+            <CheckoutCoupons
+              offers={offers.data?.offers ?? null}
+              applied={coupon.applied}
+              discount={coupon.discount}
+              problem={couponProblem}
+              onApply={applyCode}
+              onRemove={() => setCode(null)}
+            />
+          ) : null}
           <Card>
             <Text style={styles.strong}>{course.title}</Text>
             {batch ? <Text style={styles.small}>{`${batch.name} · ${batch.schedule}`}</Text> : null}
@@ -160,6 +199,7 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
             <Text style={styles.small}>{`For ${studentName}`}</Text>
             <Divider />
             <PriceLine label={kind === 'demo' ? 'Demo class' : 'Course fee'} amount={price.items} />
+            {price.discount && coupon.applied ? <PriceLine label={`Coupon ${coupon.applied.code}`} amount={price.discount} minus /> : null}
             {price.fee ? <PriceLine label="Platform fee" amount={price.fee} /> : null}
             <Divider />
             <PriceLine label="Total" amount={price.total} strong />

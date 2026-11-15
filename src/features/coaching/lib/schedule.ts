@@ -135,12 +135,13 @@ export interface PlannedClass {
   minutes: number;
 }
 
-/** Each class from the start date on, by the weekly times, until there are `count`. Mirrors how the API makes them. */
-export function planClasses(slots: readonly Slot[], startDate: string, count: number): PlannedClass[] {
+/** Each class from the start date on, by the weekly times, until there are `count` or the day after `endDate`. Mirrors how the API makes them. */
+export function planClasses(slots: readonly Slot[], startDate: string, count: number, endDate: string | null = null): PlannedClass[] {
   const sorted = [...slots].sort((a, b) => a.start.localeCompare(b.start));
   const out: PlannedClass[] = [];
   if (!sorted.length || count < 1) return out;
   for (let i = 0, day = startDate; i <= 366 * 2 && out.length < count; i++, day = addDay(day, 1)) {
+    if (endDate && day > endDate) break;
     for (const slot of sorted) {
       if (slot.day !== weekdayOf(day) || out.length >= count) continue;
       out.push({ day, start: slot.start, minutes: slot.minutes });
