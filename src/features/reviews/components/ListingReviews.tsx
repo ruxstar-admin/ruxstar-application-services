@@ -10,24 +10,28 @@ import { acrossLine, ratingLine } from '@/features/reviews/lib/review';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { reviewsOf } from '@/services/review-service';
+import { StoreService } from '@/services/store-service';
 import { useAuthStore } from '@/stores/auth-store';
 import type { Rating, ReviewListing } from '@/types/review';
 
 const PAGE = 10;
 
 interface ListingReviewsProps {
-  module: 'events' | 'coaching' | 'turf' | 'stays';
+  module: 'events' | 'coaching' | 'turf' | 'stays' | 'shop';
   listing: ReviewListing;
-  /** The business, whose rating covers all its reviews. */
+  /** The business, whose rating covers all its reviews; a product's rating is its own. */
   business: string;
   rating: Rating | undefined;
 }
 
-/** On an event, course, ground or property page: the business's rating, and this listing's reviews 10 at a time, each with Report. Hidden with neither. */
+/** On an event, course, ground, property or product page: the rating, and this listing's reviews 10 at a time, each with Report. Hidden with neither. */
 export function ListingReviews({ module, listing, business, rating }: ListingReviewsProps) {
   const token = useAuthToken();
   const me = useAuthStore((s) => s.userId);
-  const list = usePaginated((cursor) => reviewsOf(module).forListing(token, listing.id, cursor, PAGE));
+  const product = listing.type === 'product';
+  const list = usePaginated((cursor) =>
+    product ? StoreService.productReviews(token, listing.id, cursor, PAGE) : reviewsOf(module).forListing(token, listing.id, cursor, PAGE),
+  );
   const [reporting, setReporting] = useState<string | null>(null);
   const [reported, setReported] = useState<string[]>([]);
 
@@ -42,7 +46,7 @@ export function ListingReviews({ module, listing, business, rating }: ListingRev
             {rating.average !== null ? <Stars value={Math.round(rating.average)} size={18} /> : null}
             <Text style={styles.text}>{ratingLine(rating)}</Text>
           </View>
-          <Text style={styles.faint}>{acrossLine(business, listing.type)}</Text>
+          {product ? null : <Text style={styles.faint}>{acrossLine(business, listing.type)}</Text>}
         </View>
       ) : null}
       {list.items.map((review) => (

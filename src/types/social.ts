@@ -152,4 +152,12 @@ export interface AppNotification {
   stayOrderId?: string;
   /** A property you own or work at: tapping opens its bed map. */
   deskPropertyId?: string;
+  /** A local shop's page. */
+  storeId?: string;
+  /** A local shop's product, such as back in stock or taken down. */
+  storeProductId?: string;
+  /** Your local shop order changed: tapping opens it. */
+  storeOrderId?: string;
+  /** An order at a local shop you own or work at: tapping opens it on the shop desk. */
+  deskStoreOrderId?: string;
 }

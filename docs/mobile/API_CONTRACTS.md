@@ -261,6 +261,32 @@ The old `stays.mocks.ts` and its screens are gone.
 
 Notifications `stays.reserved` and `stays.updated` link to `stay_property`, `stay_order` or `vendor_property`. GST documents for a stay have `order.type: stay_reservation`. Coupons: vendor coupons cover stays businesses and Ruxstar coupons can work on `stays`. Types: `src/types/stays.ts`. Services: `src/services/stays-service.ts` (`StaysService`, `VendorStaysService`, `StaysDeskService`, `ConsoleStaysService`).
 
+## Local shops (real API — `/v1`, backend module `shop`, commit 98d44b7)
+The app calls it "store" in code so it never mixes with print-on-demand's shop; people read "shop". A store's id is its business id.
+
+| Path | Request | Response | Notes |
+|---|---|---|---|
+| `GET /shop/rules` | – | `StoreRules` | Return days, max options (2), release hours, hold and accept times, product / variant / value / line / quantity limits, commission and platform fee |
+| `GET /shop` · `GET /shop/{id}` | `?city&type&q&cursor` · – | `Page<StoreCard>` · `StoreDetail` | `canOrder` / `whyNot`; `setup` has delivery, pickup, radius (null is the whole city), fee, min order and returns |
+| `GET /shop/products` · `GET /shop/products/{id}` · `GET .../{id}/reviews` | `?city&shop&q&inStock&cursor` · – · `?cursor` | `Page<ProductCard>` · `ProductDetail` · `Page<Review>` | A combination missing from `variants` isn't sold; `stock: 0` is sold out |
+| `POST /shop/{id}/quote` | `{ lines: [{ productId, variantId, quantity }], method: delivery\|pickup, address?, code? }` | `StoreQuote` (`lines` with `stock`, `delivery`, `deliveryKm`, `discount`, `total`, `returnRule`, coupon `offers` / `checked`) | Throws rather than returns problems: `CONFLICT` for stock, `ORDER_INVALID` (path `body/lines/i`) for min order, radius or city. One shop per order |
+| `POST /shop/{id}/orders` · `POST /shop/orders/{id}/pay` | the quote body with `address`, `coupon?`, `note?`, `returnTo` · `{ returnTo }` | `{ order, checkoutUrl }` · `{ checkoutUrl }` | `Idempotency-Key`, kept when a try times out. `returnTo` gets `?order=id`. Stock is only taken when it's paid; the checkout is open `holdMinutes` |
+| `GET /shop/orders` · `GET /shop/orders/{id}` · `POST .../cancel` · `POST .../return` | `?view=current\|past\|all&cursor` · – · `{ reason? }` · `{ reason, note?, lines? }` | `Page<StoreOrder>` · `StoreOrder` | Cancel is a full refund until packed. A return is open `returnDays` after delivery when the shop takes returns; `wrong_item` and `damaged` make the shop pay the trip back, otherwise one delivery fee comes off |
+| `GET\|PUT\|DELETE /shop/orders/{id}/products/{productId}/review` | `{ rating, text? }` | `MyReview` | One review per product of a delivered order (`reviewable`) |
+| `GET\|PUT /vendor/businesses/{id}/shop` | `Partial<StoreSetup>` | `StoreSetupOne` | Owner only. Radius 1–50 km, fees capped by the delivery module's `shopFeeMax` |
+| `GET\|POST /vendor/businesses/{id}/products` · `GET\|PATCH\|DELETE /vendor/products/{id}` · `PUT\|DELETE .../photo` | `?status&q&lowStock&cursor` · `ProductBody` · JPEG bytes | `VendorProduct` | Owner only. Create takes `Idempotency-Key`. Sending `variants` replaces the table, stock included; with `options`, send `variants` too. A banned word is refused. One photo |
+| `GET /shop/desk/stores` · `GET .../stores/{id}/orders` · `GET /shop/desk/orders/{id}` | – · `?view=open\|returns\|done\|all&cursor` · – | `Page<DeskStore>` · `Page<DeskStoreOrder>` · `DeskStoreOrder` | Owner, or team with `store.orders`. `permissions` on each store |
+| `POST /shop/desk/orders/{id}/move\|cancel` · `GET\|POST\|DELETE .../delivery` | `{ status }` · `{ reason }` · `{ carrier }` | `DeskStoreOrder` · `DeliveryOptions` | `Idempotency-Key`. `store.move` (and delivery, packed orders only), `store.cancel` (always a full refund) |
+| `POST /shop/desk/orders/{id}/return/decide\|received` | `{ decision: approve\|reject, note? }` · `{ note? }` | `DeskStoreOrder` | `store.returns`, `Idempotency-Key`. A note is required to reject. Received refunds the customer |
+| `GET /shop/desk/stores/{id}/products` · `PATCH /shop/desk/products/{id}` · `PUT .../stock` | `VendorProductsQuery` · `ProductPatch` · `{ variants: [{ variantId, stock }] }` | `Page<VendorProduct>` · `VendorProduct` | `store.stock` to list and set stock, `store.products` to edit. No team route reads one product; the app edits the copy from the list |
+| `GET /ruxstar/shop/stores` · `GET .../stores/{id}` | `?city&q&cursor` · – | `Page<ConsoleStore>` · `ConsoleStoreOne` | `businesses.view` |
+| `GET /ruxstar/shop/products` · `GET .../{id}` · `POST .../{id}/take-down` | `?status&shop&city&q&cursor` · – · `{ reason }` (5 to 300) | `ConsoleProduct` | `businesses.view` · `businesses.manage`, `Idempotency-Key`. Orders already placed carry on |
+| `GET /ruxstar/shop/orders` · `GET .../{id}` · `POST .../{id}/cancel` · `POST .../{id}/return` | `?shop&status&returns=open\|rejected&cursor` · – · `{ reason }` · `{ decision: approve\|reject\|refund, note }` (5 to 500) | `ConsoleStoreOrder` | `orders.view` · `orders.manage`, `Idempotency-Key` |
+| `GET\|POST /ruxstar/shop/banned` · `PATCH .../banned/{key}` | `{ key, name, words }` · `{ name?, words?, active? }` | `BannedCategory` | `businesses.view` to read; `modules.manage` to change. Up to 100 words of 2–40 characters, matched as whole words |
+| `PATCH /ruxstar/modules/shop` | `{ shopRules: { returnDays?, maxOptions?, releaseHours?, holdMinutes?, acceptHours?, maxProducts?, maxVariants?, maxValues?, maxLines?, maxQuantity? } }` | `ModuleSettings` with `shopRules` | `modules.manage`. Orders already placed keep their return days |
+
+The shop's money is released `releaseHours` after delivery or when the return window ends, whichever is later. Payments and statement lines with `module: shop` open the shop order. Coupons: vendor coupons cover shop businesses and Ruxstar coupons can work on `shop`. Types: `src/types/store.ts`. Services: `src/services/store-service.ts` (`StoreService`, `VendorStoreService`, `StoreDeskService`, `ConsoleStoreService`).
+
 ## Money: ledger, payouts, coupons, cancellation (`money.mocks.ts`, state in `commerce-state.ts`)
 `/payments/start` now takes `{ amount, itemTotal, purpose, module?, couponCode? }` and returns `{ sessionId, amount, discount }` — **the server validates the coupon and is authoritative**; `amount` = lines incl. delivery, `itemTotal` = the part a coupon may discount (never the delivery fee). A confirmed payment's `reference` links the purchase to the ledger.
 

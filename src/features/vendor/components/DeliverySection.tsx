@@ -14,27 +14,31 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey, type WriteOptions } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
-import type { AssignChoice, DeliveryOptions, ShopOrder, TeamOrder } from '@/types/order';
+import type { AssignChoice, DeliveryOptions, ShopDelivery } from '@/types/order';
 
-/** The delivery calls of the owner's `ShopOrderService` or the team's `TeamOrderService`. */
-export interface DeliveryDesk<T extends ShopOrder | TeamOrder> {
+type Deliverable = { id: string; status: string; delivery: ShopDelivery | null };
+
+/** The delivery calls of the owner's `ShopOrderService`, the team's `TeamOrderService` or the shop desk's. */
+export interface DeliveryDesk<T extends Deliverable> {
   deliveryOptions: (token: string, orderId: string) => Promise<DeliveryOptions>;
   assign: (token: string, orderId: string, choice: AssignChoice, options: WriteOptions) => Promise<T>;
   cancelDelivery: (token: string, orderId: string) => Promise<T>;
 }
 
-interface DeliverySectionProps<T extends ShopOrder | TeamOrder> {
+interface DeliverySectionProps<T extends Deliverable> {
   order: T;
   desk: DeliveryDesk<T>;
   /** "Accept and move orders": picking who delivers and cancelling it. */
   canManage: boolean;
   onChanged: (order: T) => void;
+  /** Whether a rider can be sent now; a print order once it's ready. */
+  ready?: boolean;
 }
 
 const errorText = (err: unknown, fallback: string) => (err instanceof Error ? err.message : fallback);
 
 /** Who takes a ready order to the customer: the shop itself, someone on the team, or a Ruxstar partner. */
-export function DeliverySection<T extends ShopOrder | TeamOrder>({ order, desk, canManage, onChanged }: DeliverySectionProps<T>) {
+export function DeliverySection<T extends Deliverable>({ order, desk, canManage, onChanged, ready = order.status === 'ready' }: DeliverySectionProps<T>) {
   const token = useAuthToken();
   const [picking, setPicking] = useState(false);
   const [options, setOptions] = useState<DeliveryOptions | null>(null);
@@ -91,7 +95,7 @@ export function DeliverySection<T extends ShopOrder | TeamOrder>({ order, desk, 
     }
   };
 
-  if (!live && order.status !== 'ready') return null;
+  if (!live && !ready) return null;
 
   const note = !delivery
     ? undefined

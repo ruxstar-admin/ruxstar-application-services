@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-15 — E-commerce: local shops, variants, one-shop cart, delivery or pickup, returns, owner tools, console
+Prompt:    "Build the E-commerce business (local shops, module shop) in the app: discover, shop page, product with variants, one-shop cart, checkout with delivery or pickup and returns, order page with returns and product reviews, owner setup, products and stock, shop desk, console shops, products, orders, banned categories and rules"
+Decision:  Every shop screen uses the real API at backend commit 98d44b7. The code says "store" so it never mixes with print-on-demand's shop. The cart is one shop at a time and kept on the phone; adding from another shop asks before clearing it. The quote throws for stock, radius and min order, so checkout shows those as a banner and keeps the last good quote's stock. The variant picker disables combinations the shop doesn't sell and strikes through sold-out ones. There's no team route to read one product, so a team member's product form edits the copy from the list. `DeliverySection` now takes any order with a `delivery`, so shop orders share it.
+Done:      `types/store.ts`, `services/store-service.ts`, `features/store/{lib,hooks,components,screens}` (+ tests for variants, cart, prices and the return window), routes `(customer)/store/*`, `(customer)/store-desk/*`, `(vendor)/businesses/[id]/store.tsx`, `(admin)/{stores,store/[id],store-products,store-product/[id],store-orders,store-order/[id],banned}.tsx`; `admin/screens/{StoresScreen,StoreCaseScreen,StoreProductsScreen,StoreProductCaseScreen,StoreOrdersScreen,StoreOrderCaseScreen,BannedCategoriesScreen}.tsx`, `RulesForm` (shop rules), `ModuleScreen`, `MoreScreen`, `DiscoverScreen`, `MyOrdersScreen` (Local shops tab), `MyPaymentsScreen`, vendor `PaymentsScreen`, `BusinessScreen`, `DeliverySection`, admin labels and module icons, `BusinessType` (co-living added). Notes: `Architecture/build-log/shop-app.md`.
+Blocked:   "Only N left" on the shop's product tiles (`ProductCard` has only `inStock`; the product page shows it).
+Mocks:     none; API_CONTRACTS has a Local shops section.
+Verified by user: no
+Next:      Run the Expo Go checklist in the build log.
+
+---
+
 ## 2026-11-15 — PG / Hostels: search, reserve with KYC, stay timeline with objection, owner bed map, console
 Prompt:    "Build PG / Hostels in the app (module stays), replacing the old fake-data stays screens: tenant discover with filters, property page, reserve with KYC and Cashfree, stay timeline with objection and notice, your stays; owner setup, rooms, bed map, reservations, tenants, prices, listing edit; console properties, facilities, objections and rules"
 Decision:  Every stays screen uses the real API at backend commit 0927688. Reserving checks identity KYC first; availability and offers are keyed by what they were asked for. The bed map is seven one-day boards merged on the phone and shown on `VendorBoard`. Desk actions follow the `stays.*` team permissions. The old mocks and screens are deleted. Leftovers: turf's coupon box says "Ground offer"; coaching enrolment offers are keyed so coupons don't flicker.

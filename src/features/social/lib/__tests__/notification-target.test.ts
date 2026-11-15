@@ -104,8 +104,19 @@ describe('notificationHref', () => {
       'stay_property',
       'stay_order',
       'vendor_property',
+      'store',
+      'store_product',
+      'store_order',
+      'vendor_store_order',
     ];
     for (const screen of screens) expect(notificationHref(notificationLink(screen, 'x1'))).toBeDefined();
+  });
+
+  it('opens the local shop, its product, your order, or the order on the shop desk', () => {
+    expect(notificationHref(notificationLink('store', 's1'))).toEqual({ pathname: '/(customer)/store/[id]', params: { id: 's1' } });
+    expect(notificationHref(notificationLink('store_product', 'x2'))).toEqual({ pathname: '/(customer)/store/product/[id]', params: { id: 'x2' } });
+    expect(notificationHref(notificationLink('store_order', 'o6'))).toEqual({ pathname: '/(customer)/store/order/[id]', params: { id: 'o6' } });
+    expect(notificationHref(notificationLink('vendor_store_order', 'o7'))).toEqual({ pathname: '/(customer)/store-desk/order/[id]', params: { id: 'o7' } });
   });
 
   it('opens nothing when it points nowhere', () => {

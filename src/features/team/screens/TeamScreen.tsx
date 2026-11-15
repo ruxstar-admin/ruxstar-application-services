@@ -70,7 +70,9 @@ export function TeamScreen() {
                         ? 'Invite ground staff to see the board, mark players arrived and block slots.'
                         : data.permissions.some((p) => p.key === 'stays.reservations')
                           ? 'Invite wardens to run the bed map, move tenants in and out and mark beds full.'
-                          : 'Invite someone to help with orders, the shop or posts.'
+                          : data.permissions.some((p) => p.key === 'store.orders')
+                            ? 'Invite shop staff to accept and pack orders, deliver them, handle returns and keep stock up to date.'
+                            : 'Invite someone to help with orders, the shop or posts.'
                 }
               />
             )}

@@ -12,11 +12,11 @@ export interface ReviewAuthor {
 }
 
 /** The kind of business a review is about. Missing on old print reviews. */
-export type ReviewModule = 'pod' | 'events' | 'coaching' | 'turf' | 'stays';
+export type ReviewModule = 'pod' | 'events' | 'coaching' | 'turf' | 'stays' | 'shop';
 
-/** The event, course, ground or property reviewed; null for print. */
+/** The event, course, ground, property or local shop product reviewed; null for print. */
 export interface ReviewListing {
-  type: 'event' | 'course' | 'ground' | 'property';
+  type: 'event' | 'course' | 'ground' | 'property' | 'product';
   id: string;
 }
 

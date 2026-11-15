@@ -10,6 +10,7 @@ export const MODULE_ICON: Record<ModuleName, Icon> = {
   coaching: 'school-outline',
   stays: 'bed-outline',
   turf: 'football-outline',
+  shop: 'storefront-outline',
   delivery: 'bicycle-outline',
   ledger: 'wallet-outline',
 };

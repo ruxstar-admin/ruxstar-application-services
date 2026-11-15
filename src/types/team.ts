@@ -30,7 +30,13 @@ export type TeamPermission =
   | 'stays.movein'
   | 'stays.beds'
   | 'stays.cancel'
-  | 'stays.listing';
+  | 'stays.listing'
+  | 'store.orders'
+  | 'store.move'
+  | 'store.cancel'
+  | 'store.returns'
+  | 'store.products'
+  | 'store.stock';
 
 /** One permission as the API describes it. `needs` is given along with it. */
 export interface PermissionInfo {

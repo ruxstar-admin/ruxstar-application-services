@@ -117,6 +117,7 @@ export function MyPaymentsScreen() {
   const toOrder = (payment: Payment) => {
     setOpen(null);
     if (payment.order.id === openId && router.canGoBack()) router.back();
+    else if (payment.module === 'shop') router.push({ pathname: '/(customer)/store/order/[id]', params: { id: payment.order.id } });
     else router.push({ pathname: '/(customer)/pod/order/[id]', params: { id: payment.order.id } });
   };
   const toInvoices = (payment: Payment) => {

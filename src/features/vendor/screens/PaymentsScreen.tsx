@@ -429,8 +429,10 @@ export function PaymentsScreen() {
   const [payout, setPayout] = useState<Payout | null>(null);
 
   const openOrder = (id: string) => {
+    const shop = line?.module === 'shop';
     setLine(null);
-    router.push({ pathname: '/(vendor)/sale/[id]', params: { id } });
+    if (shop) router.push({ pathname: '/(customer)/store-desk/order/[id]', params: { id } });
+    else router.push({ pathname: '/(vendor)/sale/[id]', params: { id } });
   };
   const openInvoice = (id: string) => {
     setLine(null);

@@ -216,7 +216,8 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
   const coaching = data?.module === 'coaching';
   const turf = data?.module === 'turf';
   const stays = data?.module === 'stays';
-  const runs = !!data?.pod || events || coaching || turf || stays;
+  const shop = data?.module === 'shop';
+  const runs = !!data?.pod || events || coaching || turf || stays || shop;
   return (
     <ScreenContainer title={team ? 'Shop' : 'Business'}>
       <AsyncBoundary loading={loading || place.loading} error={error ?? place.error} hasData={!!data} onRetry={reload} skeletonRows={5}>
@@ -355,9 +356,28 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                     <Tile title="Bed map" subtitle="Every bed for the week: who’s in, who’s coming, what’s free" icon="grid-outline" onPress={() => router.push('/(customer)/stays-desk')} />
                   </>
                 ) : null}
+                {!team && shop ? (
+                  <>
+                    <Tile
+                      title="Products & stock"
+                      subtitle={data.status === 'live' ? 'Add products with sizes and colours, prices and stock' : 'Add products now; publish the business to sell'}
+                      icon="pricetags-outline"
+                      disabled={!!data.suspension}
+                      onPress={() => router.push({ pathname: '/(customer)/store-desk/[id]/products', params: { id } })}
+                    />
+                    <Tile
+                      title="Delivery & returns"
+                      subtitle="Delivery or pickup, how far, the charge, minimum order and returns"
+                      icon="bicycle-outline"
+                      disabled={!!data.suspension}
+                      onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/store', params: { id } })}
+                    />
+                    <Tile title="Orders" subtitle="Accept, pack, send with a rider or hand over, and returns" icon="bag-handle-outline" onPress={() => router.push({ pathname: '/(customer)/store-desk/[id]', params: { id } })} />
+                  </>
+                ) : null}
                 {!team && runs && !data.suspension ? (
                   <Tile
-                    title={events ? 'Team & gate keepers' : coaching ? 'Team & coaches' : turf ? 'Team & ground staff' : stays ? 'Team & wardens' : 'Team'}
+                    title={events ? 'Team & gate keepers' : coaching ? 'Team & coaches' : turf ? 'Team & ground staff' : stays ? 'Team & wardens' : shop ? 'Team & shop staff' : 'Team'}
                     subtitle={
                       events
                         ? 'Invite people to scan tickets or help run events'
@@ -367,7 +387,9 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                             ? 'Invite staff to run the board, mark arrivals and block slots'
                             : stays
                               ? 'Invite wardens to run the bed map and move tenants in and out'
-                              : 'Invite people to help with orders, the shop and posts'
+                              : shop
+                                ? 'Invite staff to pack orders, update stock and deliver'
+                                : 'Invite people to help with orders, the shop and posts'
                     }
                     icon="people-outline"
                     onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/team', params: { id } })}

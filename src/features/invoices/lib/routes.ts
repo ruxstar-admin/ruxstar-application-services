@@ -13,6 +13,7 @@ const CUSTOMER_ORDER_PATH = {
   coaching_order: '/(customer)/coaching/enrolment/[id]',
   turf_booking: '/(customer)/turf/booking/[id]',
   stay_reservation: '/(customer)/stays/order/[id]',
+  shop_order: '/(customer)/store/order/[id]',
 } as const satisfies Record<Invoice['order']['type'], string>;
 
 /** Where "View order" goes from a document, when the viewer has an order screen for it. */
@@ -23,6 +24,7 @@ export function orderHref(invoice: Pick<Invoice, 'order'>, audience: InvoiceAudi
     return { pathname, params: { id } } as const;
   }
   if (audience === 'vendor' && type === 'pod_order') return { pathname: '/(vendor)/sale/[id]', params: { id } } as const;
+  if (audience === 'vendor' && type === 'shop_order') return { pathname: '/(customer)/store-desk/order/[id]', params: { id } } as const;
   return null;
 }
 

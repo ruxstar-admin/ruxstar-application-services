@@ -15,6 +15,7 @@ const base: ModuleSettings = {
   coachingRules: null,
   turfRules: null,
   staysRules: null,
+  shopRules: null,
   updatedAt: '2026-11-15T00:00:00.000Z',
 };
 

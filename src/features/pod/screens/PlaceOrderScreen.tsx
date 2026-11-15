@@ -12,7 +12,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { CheckoutCoupons } from '@/features/coupons/components/CheckoutCoupons';
-import { DropLocation } from '@/features/pod/components/DropLocation';
+import { AddressFields, addressErrors, cleanAddress, usePrefilledAddress } from '@/features/pod/components/AddressFields';
 import { OrderPriceList } from '@/features/pod/components/OrderPriceList';
 import { PaymentTerms } from '@/features/pod/components/PaymentTerms';
 import { checkoutReturn, fileSize, requiredOption } from '@/features/pod/lib/order';
@@ -25,9 +25,8 @@ import { newIdempotencyKey } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { OrderService } from '@/services/order-service';
-import { ProfileService } from '@/services/profile-service';
 import { ShopService } from '@/services/shop-service';
-import type { OrderAddress, PrintFile, Quote } from '@/types/order';
+import type { PrintFile, Quote } from '@/types/order';
 import type { Shop, ShopProduct } from '@/types/shop';
 
 const FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
@@ -108,7 +107,7 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
   const [quantity, setQuantity] = useState(() => String(perPage ? 1 : product.minQuantity));
   const [files, setFiles] = useState<PrintFile[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [address, setAddress] = useState<OrderAddress>({ name: '', phone: '', line: '', city: shop.city, pincode: '' });
+  const [address, setAddress] = usePrefilledAddress(token, shop.city);
   const [note, setNote] = useState('');
   const [couponCode, setCouponCode] = useState<string | null>(null);
   const [priced, setPriced] = useState<{ key: string; quote: Quote | null; error: string | null } | null>(null);
@@ -123,23 +122,6 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
   const fileIds = files.map((f) => f.id);
   const needs = requiredOption(product);
   const missing = product.options.some((o) => o.option === needs) && !options[needs];
-
-  // The last order's address, or the account's name, phone and city.
-  useEffect(() => {
-    let live = true;
-    Promise.all([OrderService.list(token).catch(() => null), ProfileService.account(token).catch(() => null)]).then(([orders, me]) => {
-      if (!live) return;
-      const last = orders?.items[0]?.address;
-      setAddress((now) =>
-        now.name || now.phone || now.line
-          ? now
-          : last ?? { name: me?.name ?? '', phone: (me?.phone ?? '').replace(/\D/g, '').slice(-10), line: '', city: me?.city || shop.city, pincode: '' },
-      );
-    });
-    return () => {
-      live = false;
-    };
-  }, [token, shop.city]);
 
   // Only a per-km fee depends on where it goes; then the address counts once it can be found on the map.
   const byDistance = shop.deliveryFee.perKm > 0;
@@ -199,16 +181,8 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
     }
   };
 
-  const set = (field: keyof OrderAddress) => (text: string) =>
-    setAddress((now) => ({ ...now, [field]: field === 'phone' ? digits(text, 10) : field === 'pincode' ? digits(text, 6) : text }));
   const cityOk = deliversTo(shop, address.city);
-  const fieldErrors: Partial<Record<keyof OrderAddress, string>> = {
-    ...(address.name.trim().length < 2 ? { name: 'Enter the name to deliver to' } : {}),
-    ...(!/^[6-9]\d{9}$/.test(address.phone) ? { phone: 'Enter a 10-digit mobile number' } : {}),
-    ...(address.line.trim().length < 5 ? { line: 'Enter the house, street and area' } : {}),
-    ...(address.city.trim().length < 2 ? { city: 'Enter the city' } : {}),
-    ...(!/^[1-9]\d{5}$/.test(address.pincode) ? { pincode: 'Enter the 6-digit pincode' } : {}),
-  };
+  const fieldErrors = addressErrors(address);
   const addressOk = Object.keys(fieldErrors).length === 0 && cityOk;
   const filled = files.length > 0 && !missing && qty >= 1 && !(perPage && !colour) && addressOk;
   const ready = !!quote && filled && shop.open && !uploading;
@@ -236,7 +210,7 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
           colour,
           quantity: qty,
           fileIds,
-          address: { ...address, name: address.name.trim(), line: address.line.trim(), city: address.city.trim() },
+          address: cleanAddress(address),
           note: note.trim() || undefined,
           couponCode: quote?.coupon?.code,
           returnTo: checkoutReturn(),
@@ -376,36 +350,12 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
       ) : null}
 
       <Text style={styles.overline}>Deliver to</Text>
-      <InputField label="Name" value={address.name} onChangeText={set('name')} maxLength={80} autoComplete="name" error={show(fieldErrors.name)} />
-      <InputField label="Phone" value={address.phone} onChangeText={set('phone')} keyboardType="phone-pad" maxLength={10} autoComplete="tel" error={show(fieldErrors.phone)} />
-      <InputField label="House, street and area" value={address.line} onChangeText={set('line')} maxLength={300} multiline error={show(fieldErrors.line)} />
-      <DropLocation
-        point={address.point ?? null}
-        onLocated={(point, found) =>
-          setAddress((now) => ({
-            ...now,
-            point,
-            line: now.line.trim() ? now.line : (found.line ?? now.line),
-            city: found.city && !now.city.trim() ? found.city : now.city,
-            pincode: now.pincode || found.pincode || '',
-          }))
-        }
-        onClear={() => setAddress((now) => ({ ...now, point: null }))}
+      <AddressFields
+        address={address}
+        onChange={setAddress}
+        errors={checked ? fieldErrors : {}}
+        cityError={cityOk ? undefined : `${shop.name} delivers to ${shop.cities.map(titleCase).join(', ') || shop.city} only`}
       />
-      <View style={styles.pair}>
-        <View style={styles.flex}>
-          <InputField
-            label="City"
-            value={address.city}
-            onChangeText={set('city')}
-            maxLength={60}
-            error={cityOk ? show(fieldErrors.city) : `${shop.name} delivers to ${shop.cities.map(titleCase).join(', ') || shop.city} only`}
-          />
-        </View>
-        <View style={styles.pin}>
-          <InputField label="Pincode" value={address.pincode} onChangeText={set('pincode')} keyboardType="number-pad" maxLength={6} error={show(fieldErrors.pincode)} />
-        </View>
-      </View>
       <InputField label="Note for the shop" value={note} onChangeText={setNote} maxLength={500} multiline showCount placeholder="Optional: colours, placement, deadline…" />
 
       {priceable ? (
@@ -491,8 +441,6 @@ const styles = StyleSheet.create({
     borderColor: Brand.primary,
   },
   addFileInvalid: { borderColor: Brand.error },
-  pair: { flexDirection: 'row', gap: Spacing.two },
-  pin: { width: 130 },
   card: { padding: Spacing.three, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
   bar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   total: { ...Typography.title, color: Brand.text },

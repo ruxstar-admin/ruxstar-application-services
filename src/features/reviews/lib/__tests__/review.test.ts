@@ -48,6 +48,13 @@ describe('reviewLink', () => {
     expect(reviewLink(stays, false)).toEqual({ label: 'Open reservation', href: { pathname: '/(customer)/stays-desk/order/[id]', params: { id: 'o1' } } });
     expect(reviewLink(stays, true)?.href).toEqual({ pathname: '/(customer)/stays-desk/order/[id]', params: { id: 'o1' } });
   });
+
+  it('opens a local shop order on the shop desk, replying as the shop', () => {
+    const shop = { ...at, module: 'shop' as const, listing: { type: 'product' as const, id: 'x1' } };
+    expect(reviewLink(shop, true)).toEqual({ label: 'Open order', href: { pathname: '/(customer)/store-desk/order/[id]', params: { id: 'o1' } } });
+    expect(replyFrom('shop')).toBe('From the shop');
+    expect(listingWord('product')).toBe('Product');
+  });
 });
 
 describe('rating labels', () => {

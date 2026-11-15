@@ -48,7 +48,7 @@ export interface CouponTerms {
 }
 
 /** What a Ruxstar coupon can work on. */
-export type CouponModule = 'pod' | 'events' | 'coaching' | 'turf' | 'stays';
+export type CouponModule = 'pod' | 'events' | 'coaching' | 'turf' | 'stays' | 'shop';
 
 export interface NewCoupon extends CouponTerms {
   code: string;

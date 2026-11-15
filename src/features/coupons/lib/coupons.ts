@@ -3,7 +3,7 @@ import type { Business, BusinessModule } from '@/types/business';
 import type { AppliedCoupon, CouponCheck, CouponFunder, CouponKind, CouponModule, CouponPatch, CouponState, ManagedCoupon, NewCoupon } from '@/types/coupon';
 
 /** Businesses whose orders take coupons; the API refuses a vendor coupon for any other. */
-const COUPON_MODULES: readonly BusinessModule[] = ['pod', 'events', 'coaching', 'turf', 'stays'];
+const COUPON_MODULES: readonly BusinessModule[] = ['pod', 'events', 'coaching', 'turf', 'stays', 'shop'];
 
 /** The vendor's businesses a coupon can work at. */
 export const couponShops = (businesses: readonly Pick<Business, 'id' | 'name' | 'module'>[]) =>
@@ -16,6 +16,7 @@ export const WORKS_ON: { key: CouponModule; label: string; what: string }[] = [
   { key: 'coaching', label: 'Coaching fees', what: 'coaching fees' },
   { key: 'turf', label: 'Ground bookings', what: 'ground bookings' },
   { key: 'stays', label: 'PG and hostel stays', what: 'PG and hostel stays' },
+  { key: 'shop', label: 'Local shop orders', what: 'local shop orders' },
 ];
 
 const andList = (words: string[]) => (words.length < 2 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`);

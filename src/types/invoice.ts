@@ -57,7 +57,7 @@ export interface Invoice {
   issuer: InvoiceIssuer;
   role: InvoiceRole;
   module: GstModule;
-  order: { type: 'pod_order' | 'event_order' | 'coaching_order' | 'turf_booking' | 'stay_reservation'; id: string; orderNo: number };
+  order: { type: 'pod_order' | 'event_order' | 'coaching_order' | 'turf_booking' | 'stay_reservation' | 'shop_order'; id: string; orderNo: number };
   business: { id: string; name: string };
   seller: InvoiceParty;
   buyer: InvoiceParty;

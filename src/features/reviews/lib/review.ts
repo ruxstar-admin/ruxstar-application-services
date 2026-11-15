@@ -27,10 +27,10 @@ export const REPORT_REASONS: { key: ReviewReportReason; label: string }[] = [
 export const STAR_WORDS: Record<number, string> = { 1: 'Poor', 2: 'Not great', 3: 'Okay', 4: 'Good', 5: 'Excellent' };
 
 /** Who answers reviews at each kind of business. Old print reviews have no `module`. */
-const OWNER: Record<ReviewModule, string> = { pod: 'shop', events: 'organiser', coaching: 'institute', turf: 'ground', stays: 'owner' };
+const OWNER: Record<ReviewModule, string> = { pod: 'shop', events: 'organiser', coaching: 'institute', turf: 'ground', stays: 'owner', shop: 'shop' };
 export const replyFrom = (module: ReviewModule = 'pod') => `From the ${OWNER[module]}`;
 
-const ORDER_WORD: Record<ReviewModule, string> = { pod: 'Order', events: 'Booking', coaching: 'Enrolment', turf: 'Booking', stays: 'Reservation' };
+const ORDER_WORD: Record<ReviewModule, string> = { pod: 'Order', events: 'Booking', coaching: 'Enrolment', turf: 'Booking', stays: 'Reservation', shop: 'Order' };
 export const orderWord = (module: ReviewModule = 'pod') => ORDER_WORD[module];
 /** "Booking #12", "Enrolment #12", "Order #12". */
 export const orderLabel = (review: Pick<ShopReview, 'module' | 'orderNo'>) => `${orderWord(review.module)} #${review.orderNo}`;
@@ -40,6 +40,7 @@ const LISTING: Record<ReviewListing['type'], { one: string; many: string }> = {
   course: { one: 'Course', many: 'courses' },
   ground: { one: 'Ground', many: 'grounds' },
   property: { one: 'Property', many: 'properties' },
+  product: { one: 'Product', many: 'products' },
 };
 export const listingWord = (type: ReviewListing['type']) => LISTING[type].one;
 /** Under a listing's rating, which covers the whole business: "Across Asha Events’s events". */
@@ -64,6 +65,8 @@ export function reviewLink(review: Pick<ShopReview, 'module' | 'listing' | 'orde
       return { label: 'Open booking', href: { pathname: '/(customer)/ground-desk/booking/[id]', params: { id: review.orderId } } };
     case 'stays':
       return { label: 'Open reservation', href: { pathname: '/(customer)/stays-desk/order/[id]', params: { id: review.orderId } } };
+    case 'shop':
+      return { label: 'Open order', href: { pathname: '/(customer)/store-desk/order/[id]', params: { id: review.orderId } } };
     default:
       return null;
   }

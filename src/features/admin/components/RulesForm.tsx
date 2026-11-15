@@ -12,11 +12,12 @@ import { Feedback } from '@/lib/haptics';
 import { AdminService } from '@/services/admin-service';
 import type { CoachingRuleSettings, EventRuleSettings, ModuleSettings } from '@/types/admin';
 import type { StaysRuleSettings } from '@/types/stays';
+import type { ShopRuleSettings } from '@/types/store';
 import type { SlotMinutes, TurfRuleSettings } from '@/types/turf';
 import { useCan } from '../access';
 import { Fact, Facts, consoleStyles, errorText } from './parts';
 
-type RulesKey = 'eventRules' | 'coachingRules' | 'turfRules' | 'staysRules';
+type RulesKey = 'eventRules' | 'coachingRules' | 'turfRules' | 'staysRules' | 'shopRules';
 type Rules = Record<string, number>;
 
 const SLOT_LENGTHS: SlotMinutes[] = [30, 60, 90];
@@ -185,6 +186,44 @@ const SETS: Record<RulesKey, { title: string; intro: string; save: string; field
       { key: 'maxBeds', min: 1, max: 24, label: 'Beds per room', show: plain, hint: 'Checked when an owner saves a room.' },
     ],
   },
+  shopRules: {
+    title: 'Local shop rules',
+    intro: 'Every shop’s products and orders follow these. Orders already placed keep their return days.',
+    save: 'Save shop rules',
+    fields: [
+      {
+        key: 'returnDays',
+        min: 1,
+        max: 30,
+        label: 'Days after delivery to ask for a return',
+        show: count('day', 'days'),
+        hint: 'For shops that take returns. Shops can also choose no returns.',
+      },
+      {
+        key: 'releaseHours',
+        min: 1,
+        max: 720,
+        label: 'Hours after delivery the shop is paid',
+        show: count('hour', 'hours'),
+        hint: 'Or when the return window ends, whichever is later.',
+      },
+      {
+        key: 'acceptHours',
+        min: 1,
+        max: 72,
+        label: 'Hours a shop has to accept a paid order',
+        show: count('hour', 'hours'),
+        hint: 'Not accepted by then: cancelled and refunded in full.',
+      },
+      { key: 'holdMinutes', min: 5, max: 60, label: 'Minutes the checkout stays open', show: count('minute', 'minutes'), hint: 'Stock is only taken once it’s paid.' },
+      { key: 'maxOptions', min: 1, max: 2, label: 'Options per product', show: plain, hint: 'Like size and colour.' },
+      { key: 'maxValues', min: 1, max: 30, label: 'Values of one option', show: plain, hint: 'Like S, M, L and XL.' },
+      { key: 'maxVariants', min: 1, max: 100, label: 'Combinations on one product', show: plain, hint: 'Checked when a shop saves a product.' },
+      { key: 'maxProducts', min: 1, max: 5000, label: 'Products per shop', show: plain, hint: 'Checked when a shop adds a product.' },
+      { key: 'maxLines', min: 1, max: 50, label: 'Different items in one order', show: plain, hint: 'Lines in the cart.' },
+      { key: 'maxQuantity', min: 1, max: 100, label: 'Of one item in one order', show: plain, hint: 'The most of one size or colour.' },
+    ],
+  },
 };
 
 const wholeOf = (text: string) => (/^\d+$/.test(text.trim()) ? Number(text) : NaN);
@@ -222,7 +261,9 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
             ? { coachingRules: changes as Partial<CoachingRuleSettings> }
             : kind === 'staysRules'
               ? { staysRules: changes as Partial<StaysRuleSettings> }
-              : { turfRules: { ...changes, ...(lengthsChanged ? { slotLengths: [...lengths].sort((a, b) => a - b) as SlotMinutes[] } : {}) } as Partial<TurfRuleSettings> };
+              : kind === 'shopRules'
+                ? { shopRules: changes as Partial<ShopRuleSettings> }
+                : { turfRules: { ...changes, ...(lengthsChanged ? { slotLengths: [...lengths].sort((a, b) => a - b) as SlotMinutes[] } : {}) } as Partial<TurfRuleSettings> };
       const done = await AdminService.updateModule(token, m.module, patch, key.current);
       key.current = newIdempotencyKey();
       Feedback.success();

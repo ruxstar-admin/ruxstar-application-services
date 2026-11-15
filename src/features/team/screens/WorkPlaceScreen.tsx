@@ -90,6 +90,13 @@ const WORK_AREAS: {
     href: () => '/(customer)/stays-desk',
   },
   {
+    title: 'Shop desk',
+    subtitle: 'Orders to accept, pack and deliver, returns, products and stock',
+    icon: 'bag-handle-outline',
+    allowed: has('store.orders', 'store.move', 'store.cancel', 'store.returns', 'store.products', 'store.stock'),
+    href: () => '/(customer)/store-desk',
+  },
+  {
     title: 'Post as the business',
     subtitle: 'It goes out under the owner’s name',
     icon: 'create-outline',

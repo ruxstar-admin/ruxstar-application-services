@@ -48,6 +48,10 @@ const SECTIONS: { title: string; icon: Icon; tint: Tint; items: Item[] }[] = [
       { label: 'PGs & hostels', icon: 'bed-outline', href: '/(admin)/properties', needs: ['businesses.view'] },
       { label: 'Facilities', icon: 'list-outline', href: '/(admin)/facilities', needs: ['businesses.view'] },
       { label: 'Objections', icon: 'shield-outline', href: '/(admin)/objections', needs: ['orders.view'] },
+      { label: 'Local shops', icon: 'storefront-outline', href: '/(admin)/stores', needs: ['businesses.view'] },
+      { label: 'Shop products', icon: 'pricetags-outline', href: '/(admin)/store-products', needs: ['businesses.view'] },
+      { label: 'Shop orders', icon: 'bag-handle-outline', href: '/(admin)/store-orders', needs: ['orders.view'] },
+      { label: 'Banned categories', icon: 'ban-outline', href: '/(admin)/banned', needs: ['businesses.view'] },
     ],
   },
   {

@@ -30,6 +30,10 @@ type Target = Pick<
   | 'stayPropertyId'
   | 'stayOrderId'
   | 'deskPropertyId'
+  | 'storeId'
+  | 'storeProductId'
+  | 'storeOrderId'
+  | 'deskStoreOrderId'
 >;
 
 /** The screen a notification opens, from the notifications screen or a phone notification; undefined when it opens none. */
@@ -61,6 +65,10 @@ export function notificationHref(n: Target): Href | undefined {
   if (n.stayPropertyId) return { pathname: '/(customer)/stays/[id]', params: { id: n.stayPropertyId } };
   if (n.stayOrderId) return { pathname: '/(customer)/stays/order/[id]', params: { id: n.stayOrderId } };
   if (n.deskPropertyId) return { pathname: '/(customer)/stays-desk/[id]', params: { id: n.deskPropertyId } };
+  if (n.storeId) return { pathname: '/(customer)/store/[id]', params: { id: n.storeId } };
+  if (n.storeProductId) return { pathname: '/(customer)/store/product/[id]', params: { id: n.storeProductId } };
+  if (n.storeOrderId) return { pathname: '/(customer)/store/order/[id]', params: { id: n.storeOrderId } };
+  if (n.deskStoreOrderId) return { pathname: '/(customer)/store-desk/order/[id]', params: { id: n.deskStoreOrderId } };
   return undefined;
 }
 
@@ -93,6 +101,10 @@ const LINKS = {
   stay_property: (id) => ({ stayPropertyId: id }),
   stay_order: (id) => ({ stayOrderId: id }),
   vendor_property: (id) => ({ deskPropertyId: id }),
+  store: (id) => ({ storeId: id }),
+  store_product: (id) => ({ storeProductId: id }),
+  store_order: (id) => ({ storeOrderId: id }),
+  vendor_store_order: (id) => ({ deskStoreOrderId: id }),
 } satisfies Record<string, (id: string) => Target>;
 
 /** The API's `link.screen` values. */

@@ -44,19 +44,21 @@ describe('worksAtLine', () => {
     expect(worksAtLine({ businesses: [], modules: [] })).toBe('Every print shop');
     expect(worksAtLine({ businesses: [], modules: ['events', 'coaching'] })).toBe('Every business, on event tickets and coaching fees');
     expect(worksAtLine({ businesses: [], modules: ['coaching', 'pod', 'turf'] })).toBe('Every business, on print orders, coaching fees and ground bookings');
+    expect(worksAtLine({ businesses: [], modules: ['shop', 'pod'] })).toBe('Every business, on print orders and local shop orders');
   });
 });
 
 describe('couponShops', () => {
-  it('offers print shops, events, coaching, sports grounds and stays', () => {
+  it('offers print shops, events, coaching, sports grounds, stays and local shops', () => {
     const list = [
       { id: 'p', name: 'Prints', module: 'pod' },
       { id: 'e', name: 'Gigs', module: 'events' },
       { id: 'c', name: 'Tuition', module: 'coaching' },
       { id: 's', name: 'PG', module: 'stays' },
       { id: 't', name: 'Arena', module: 'turf' },
+      { id: 'l', name: 'Corner store', module: 'shop' },
     ] as const;
-    expect(couponShops(list).map((b) => b.id)).toEqual(['p', 'e', 'c', 's', 't']);
+    expect(couponShops(list).map((b) => b.id)).toEqual(['p', 'e', 'c', 's', 't', 'l']);
   });
 });
 

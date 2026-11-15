@@ -3,6 +3,7 @@
 import type { Business, BusinessModule, PayoutMethod } from './business';
 import type { CourseCategory, CourseStatus } from './coaching';
 import type { StaysRuleSettings } from './stays';
+import type { ShopRuleSettings } from './store';
 import type { TurfRuleSettings } from './turf';
 
 export type Permission =
@@ -209,7 +210,7 @@ export interface BusinessFilter {
 
 // Modules.
 
-export type ModuleName = 'pod' | 'events' | 'coaching' | 'stays' | 'turf' | 'delivery' | 'ledger';
+export type ModuleName = 'pod' | 'events' | 'coaching' | 'stays' | 'turf' | 'shop' | 'delivery' | 'ledger';
 
 export interface ModuleSettings {
   module: ModuleName;
@@ -234,6 +235,8 @@ export interface ModuleSettings {
   turfRules: TurfRuleSettings | null;
   /** The stays module only. */
   staysRules: StaysRuleSettings | null;
+  /** The shop module only. */
+  shopRules: ShopRuleSettings | null;
   updatedAt: string;
 }
 
@@ -287,6 +290,8 @@ export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 
     turfRules?: Partial<TurfRuleSettings>;
     /** Stays only. Send only what changes. */
     staysRules?: Partial<StaysRuleSettings>;
+    /** Shop only. Send only what changes. */
+    shopRules?: Partial<ShopRuleSettings>;
   };
 
 /** Console events list: `q` matches the title or the organiser's name. */

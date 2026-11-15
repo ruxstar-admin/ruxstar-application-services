@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { ShopCardView } from '@/features/pod/components/ShopCardView';
 import { PropertyResults } from '@/features/stays/components/PropertyResults';
+import { StoreResults } from '@/features/store/components/StoreResults';
 import { GroundResults } from '@/features/turf/components/GroundResults';
 import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
 import { BUSINESS_MODULES } from '@/features/vendor/lib/business-modules';
@@ -25,8 +26,9 @@ import type { ShopFilters } from '@/types/shop';
 /** Waits this long after the last keystroke before searching. */
 const SEARCH_DELAY_MS = 350;
 /** Categories customers can already browse here; the rest show "coming soon". */
-const OPEN_MODULES: BusinessModule[] = ['pod', 'events', 'coaching', 'turf', 'stays'];
+const OPEN_MODULES: BusinessModule[] = ['pod', 'events', 'coaching', 'turf', 'stays', 'shop'];
 const SEARCH_HINT: Partial<Record<Category, { placeholder: string; label: string }>> = {
+  shop: { placeholder: 'Shop name', label: 'Search local shops' },
   events: { placeholder: 'Event, organiser or city', label: 'Search events' },
   coaching: { placeholder: 'Course, subject or institute', label: 'Search courses' },
   turf: { placeholder: 'Ground or area', label: 'Search grounds' },
@@ -189,6 +191,8 @@ export function DiscoverScreen() {
         <GroundResults q={q} />
       ) : category === 'stays' ? (
         <PropertyResults q={q} />
+      ) : category === 'shop' ? (
+        <StoreResults q={q} />
       ) : (
         <Results key={`${q}|${category}|${product}`} filters={filters} />
       )}
