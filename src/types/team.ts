@@ -20,7 +20,12 @@ export type TeamPermission =
   | 'classes.attendance'
   | 'classes.message'
   | 'classes.materials'
-  | 'classes.reschedule';
+  | 'classes.reschedule'
+  | 'turf.bookings'
+  | 'turf.block'
+  | 'turf.cancel'
+  | 'turf.arrivals'
+  | 'turf.prices';
 
 /** One permission as the API describes it. `needs` is given along with it. */
 export interface PermissionInfo {

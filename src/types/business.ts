@@ -2,10 +2,10 @@ import type { InvoiceRef } from './invoice';
 import type { Rating } from './review';
 
 /** The modules a business can be opened in. Each business is in exactly one. */
-export type BusinessModule = 'pod' | 'events' | 'coaching' | 'stays';
+export type BusinessModule = 'pod' | 'events' | 'coaching' | 'stays' | 'turf';
 
 /** Each type belongs to one module; the catalog lists them. */
-export type BusinessType = 'print_shop' | 'concert' | 'sports_event' | 'meetup' | 'coaching' | 'pg' | 'hostel';
+export type BusinessType = 'print_shop' | 'concert' | 'sports_event' | 'meetup' | 'coaching' | 'pg' | 'hostel' | 'turf' | 'sports_complex' | 'court';
 
 export type PodProduct =
   | 'tshirts'
@@ -273,7 +273,7 @@ export interface StatementLine {
   kind: 'paid' | 'available' | 'refund' | 'delivery' | 'withdrawal' | 'returned';
   amount: number;
   at: string;
-  module: 'pod' | 'events' | 'coaching' | 'stays' | 'delivery' | 'ledger';
+  module: 'pod' | 'events' | 'coaching' | 'stays' | 'turf' | 'delivery' | 'ledger';
   /** Set on order lines. `customer` is the name it was delivered to; `total` what they paid. */
   order: {
     id: string;

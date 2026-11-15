@@ -11,6 +11,7 @@ import { InputField } from '@/components/ui/InputField';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { ShopCardView } from '@/features/pod/components/ShopCardView';
+import { GroundResults } from '@/features/turf/components/GroundResults';
 import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
 import { BUSINESS_MODULES } from '@/features/vendor/lib/business-modules';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -23,10 +24,11 @@ import type { ShopFilters } from '@/types/shop';
 /** Waits this long after the last keystroke before searching. */
 const SEARCH_DELAY_MS = 350;
 /** Categories customers can already browse here; the rest show "coming soon". */
-const OPEN_MODULES: BusinessModule[] = ['pod', 'events', 'coaching'];
+const OPEN_MODULES: BusinessModule[] = ['pod', 'events', 'coaching', 'turf'];
 const SEARCH_HINT: Partial<Record<Category, { placeholder: string; label: string }>> = {
   events: { placeholder: 'Event, organiser or city', label: 'Search events' },
   coaching: { placeholder: 'Course, subject or institute', label: 'Search courses' },
+  turf: { placeholder: 'Ground or area', label: 'Search grounds' },
 };
 
 type Filter = 'all' | PodProduct;
@@ -127,6 +129,7 @@ export function DiscoverScreen() {
   const printOpen = categories.some((c) => c.module === 'pod' && c.live) && category !== 'pod';
   const eventsOpen = categories.some((c) => c.module === 'events' && c.live);
   const coachingOpen = categories.some((c) => c.module === 'coaching' && c.live);
+  const turfOpen = categories.some((c) => c.module === 'turf' && c.live);
   const hint = SEARCH_HINT[category] ?? { placeholder: 'Shop, what they print, or a city', label: 'Search businesses' };
   const productChips: { key: Filter; label: string }[] = [
     { key: 'all', label: 'All print' },
@@ -148,6 +151,7 @@ export function DiscoverScreen() {
         </View>
         {eventsOpen ? <HeaderButton icon="ticket-outline" label="Your tickets" onPress={() => router.push('/(customer)/events/tickets')} /> : null}
         {coachingOpen ? <HeaderButton icon="school-outline" label="Your classes" onPress={() => router.push('/(customer)/coaching/classes')} /> : null}
+        {turfOpen ? <HeaderButton icon="football-outline" label="Your ground bookings" onPress={() => router.push('/(customer)/turf/bookings')} /> : null}
         <HeaderButton icon="receipt-outline" label="Your orders" onPress={() => router.push('/(customer)/orders')} />
         <HeaderButton icon="wallet-outline" label="Your payments" onPress={() => router.push('/(customer)/payments')} />
       </View>
@@ -177,6 +181,8 @@ export function DiscoverScreen() {
         <EventResults q={q} />
       ) : category === 'coaching' ? (
         <CourseResults q={q} />
+      ) : category === 'turf' ? (
+        <GroundResults q={q} />
       ) : (
         <Results key={`${q}|${category}|${product}`} filters={filters} />
       )}

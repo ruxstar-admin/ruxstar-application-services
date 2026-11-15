@@ -7,11 +7,18 @@ export const INVOICE_PATH = {
   staff: '/(admin)/invoices/[id]',
 } as const satisfies Record<InvoiceAudience, string>;
 
+const CUSTOMER_ORDER_PATH = {
+  pod_order: '/(customer)/pod/order/[id]',
+  event_order: '/(customer)/events/ticket/[id]',
+  coaching_order: '/(customer)/coaching/enrolment/[id]',
+  turf_booking: '/(customer)/turf/booking/[id]',
+} as const satisfies Record<Invoice['order']['type'], string>;
+
 /** Where "View order" goes from a document, when the viewer has an order screen for it. */
 export function orderHref(invoice: Pick<Invoice, 'order'>, audience: InvoiceAudience) {
   const { type, id } = invoice.order;
   if (audience === 'customer') {
-    const pathname = type === 'pod_order' ? '/(customer)/pod/order/[id]' : type === 'coaching_order' ? '/(customer)/coaching/enrolment/[id]' : '/(customer)/events/ticket/[id]';
+    const pathname = CUSTOMER_ORDER_PATH[type];
     return { pathname, params: { id } } as const;
   }
   if (audience === 'vendor' && type === 'pod_order') return { pathname: '/(vendor)/sale/[id]', params: { id } } as const;

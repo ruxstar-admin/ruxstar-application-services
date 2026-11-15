@@ -32,6 +32,7 @@ import type { CouponFunder, CouponPatch, ManagedCoupon, NewCoupon } from '@/type
 import type { VendorEvent } from '@/types/events';
 import type { StaffOrder } from '@/types/order';
 import type { Team } from '@/types/team';
+import type { ConsoleGround, ConsoleGroundDetail, ConsoleGroundFilter, ConsoleSport, VendorGround } from '@/types/turf';
 
 export type SettleOutcome = 'refund_full' | 'refund_partial' | 'dismiss';
 
@@ -131,6 +132,20 @@ export const AdminService = {
   /** Cancels its live batches and refunds every enrolment not yet paid out to the institute. */
   takeDownCourse: (token: string, id: string, reason: string, key: string) =>
     apiPost<VendorCourse>(`/v1/ruxstar/coaching/courses/${id}/take-down`, { reason }, token, keyed(key)),
+
+  grounds: (token: string, filter: ConsoleGroundFilter, cursor?: string) =>
+    apiGetPage<ConsoleGround>('/v1/ruxstar/turf/grounds', token, { ...filter, q: filter.q?.trim() || undefined, cursor }),
+  getGround: (token: string, id: string) => apiGet<ConsoleGroundDetail>(`/v1/ruxstar/turf/grounds/${id}`, token),
+  /** Cancels every date still to come with a full refund; the owner and each customer see the reason. */
+  takeDownGround: (token: string, id: string, reason: string, key: string) =>
+    apiPost<{ ground: VendorGround; refunded: number }>(`/v1/ruxstar/turf/grounds/${id}/take-down`, { reason }, token, keyed(key)),
+  /** Inactive ones too, in order. */
+  sports: (token: string) => apiGetPage<ConsoleSport>('/v1/ruxstar/turf/sports', token).then((p) => p.items),
+  addSport: (token: string, body: { key: string; name: string; order?: number }, key: string) =>
+    apiPost<ConsoleSport>('/v1/ruxstar/turf/sports', { ...body }, token, keyed(key)),
+  /** An inactive sport stays on the courts that have it but can't be picked. */
+  updateSport: (token: string, sportKey: string, patch: { name?: string; active?: boolean; order?: number }) =>
+    apiPatch<ConsoleSport>(`/v1/ruxstar/turf/sports/${sportKey}`, { ...patch }, token),
 
   audit: (token: string, filter: AuditFilter, cursor?: string) => apiGetPage<AuditEntry>('/v1/ruxstar/audit', token, { ...filter, cursor }),
 };

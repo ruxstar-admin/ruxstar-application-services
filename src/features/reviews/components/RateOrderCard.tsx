@@ -14,8 +14,19 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
 import { ReviewService } from '@/services/review-service';
-import type { Order } from '@/types/order';
 import type { MyReview } from '@/types/review';
+
+type ReviewApi = Pick<typeof ReviewService, 'mine' | 'write' | 'remove'>;
+
+/** What's being reviewed: a print order by default, or a ground booking with its own `api`. */
+interface RateTarget {
+  id: string;
+  name: string;
+  reviewUntil: string | null;
+  api?: ReviewApi;
+  noun?: string;
+  placeholder?: string;
+}
 
 function WriteSheet({
   order,
@@ -26,7 +37,7 @@ function WriteSheet({
   onSaved,
   onDelete,
 }: {
-  order: Order;
+  order: RateTarget & { api: ReviewApi };
   review: MyReview | null;
   start: number;
   visible: boolean;
@@ -44,7 +55,7 @@ function WriteSheet({
     setSaving(true);
     setError(null);
     try {
-      const next = await ReviewService.write(token, order.id, { rating, text: text.trim() || null });
+      const next = await order.api.write(token, order.id, { rating, text: text.trim() || null });
       Feedback.success();
       onSaved(next);
     } catch (err) {
@@ -56,7 +67,7 @@ function WriteSheet({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={review ? 'Change your review' : `Rate ${order.shop.name}`}>
+    <BottomSheet visible={visible} onClose={onClose} title={review ? 'Change your review' : `Rate ${order.name}`}>
       <View style={styles.pick}>
         <StarPicker value={rating} onChange={setRating} disabled={saving} />
         <Text style={styles.muted}>{rating ? STAR_WORDS[rating] : 'Tap a star'}</Text>
@@ -68,7 +79,7 @@ function WriteSheet({
         multiline
         maxLength={REVIEW_TEXT_MAX}
         showCount
-        placeholder="Print quality, on time, how the shop was to deal with"
+        placeholder={order.placeholder ?? 'Print quality, on time, how the shop was to deal with'}
       />
       <Text style={styles.faint}>Your name and photo show with your review.</Text>
       {error ? <ErrorBanner message={error} /> : null}
@@ -78,10 +89,12 @@ function WriteSheet({
   );
 }
 
-/** On a delivered order: "Rate your order" until it's reviewed, then just the stars given, changeable for 30 days after delivery. */
-export function RateOrderCard({ order }: { order: Order }) {
+/** On a delivered order or a played booking: "Rate your order" until it's reviewed, then just the stars given, changeable until reviews close. */
+export function RateOrderCard({ order: target }: { order: RateTarget }) {
   const token = useAuthToken();
-  const { data, setData } = useAsyncResource(() => ReviewService.mine(token, order.id), order.id);
+  const order = { ...target, api: target.api ?? ReviewService };
+  const noun = target.noun ?? 'order';
+  const { data, setData } = useAsyncResource(() => order.api.mine(token, order.id), order.id);
   const [writing, setWriting] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -94,7 +107,7 @@ export function RateOrderCard({ order }: { order: Order }) {
   const remove = async () => {
     setRemoving(true);
     try {
-      await ReviewService.remove(token, order.id);
+      await order.api.remove(token, order.id);
       Feedback.success();
       setData(null);
     } catch (err) {
@@ -129,8 +142,8 @@ export function RateOrderCard({ order }: { order: Order }) {
     if (!open) return null;
     return (
       <View style={styles.ask}>
-        <Text style={styles.strong}>Rate your order</Text>
-        <Text style={styles.muted}>{`How was ${order.shop.name}? It helps other customers choose.`}</Text>
+        <Text style={styles.strong}>{`Rate your ${noun}`}</Text>
+        <Text style={styles.muted}>{`How was ${order.name}? It helps other customers choose.`}</Text>
         <StarPicker value={0} onChange={setWriting} />
         {sheet}
       </View>
@@ -177,7 +190,7 @@ export function RateOrderCard({ order }: { order: Order }) {
       <ConfirmSheet
         visible={deleting}
         title="Delete your review?"
-        message={open ? 'You can write a new one until reviews close for this order.' : 'Reviews are closed for this order.'}
+        message={open ? `You can write a new one until reviews close for this ${noun}.` : `Reviews are closed for this ${noun}.`}
         confirmLabel="Delete review"
         loading={removing}
         onConfirm={remove}

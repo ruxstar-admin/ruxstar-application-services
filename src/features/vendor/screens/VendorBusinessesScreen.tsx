@@ -57,7 +57,7 @@ export function VendorBusinessesScreen() {
           <EmptyState
             icon="storefront-outline"
             title="Open your first business"
-            message="Each business runs in one category: print on demand, events, coaching or stays. You can have several."
+            message="Each business runs in one category: print on demand, events, coaching, stays or sports grounds. You can have several."
             actionLabel="Add business"
             onAction={() => router.push('/(vendor)/businesses/new')}
           />

@@ -68,7 +68,7 @@ export function VendorDashboardScreen() {
         ) : (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Open your first business</Text>
-            <Text style={styles.muted}>Print on demand, events, coaching or stays. You can run up to 10.</Text>
+            <Text style={styles.muted}>Print on demand, events, coaching, stays or sports grounds. You can run up to 10.</Text>
             <PrimaryButton label="Add a business" onPress={() => router.push('/(vendor)/businesses/new')} />
           </View>
         )}

@@ -76,6 +76,13 @@ const WORK_AREAS: {
     href: () => '/(customer)/teach',
   },
   {
+    title: 'Ground desk',
+    subtitle: 'The day’s board, bookings, arrivals and blocks',
+    icon: 'football-outline',
+    allowed: has('turf.bookings', 'turf.prices'),
+    href: () => '/(customer)/ground-desk',
+  },
+  {
     title: 'Post as the business',
     subtitle: 'It goes out under the owner’s name',
     icon: 'create-outline',

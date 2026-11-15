@@ -17,7 +17,7 @@ import { CouponCard } from '../components/CouponCard';
 import { couponShops } from '../lib/coupons';
 
 /**
- * A vendor's coupons for their print shops, events and coaching businesses: what each takes off, how often it's used, and changing them.
+ * A vendor's coupons for their print shops, events, coaching and sports businesses: what each takes off, how often it's used, and changing them.
  * With `placeId` it is one shop's coupons for someone on its team, who changes only the ones for that shop alone.
  */
 export function VendorCouponsScreen({ placeId }: { placeId?: string }) {

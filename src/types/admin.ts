@@ -2,6 +2,7 @@
 
 import type { Business, BusinessModule, PayoutMethod } from './business';
 import type { CourseCategory, CourseStatus } from './coaching';
+import type { TurfRuleSettings } from './turf';
 
 export type Permission =
   | 'kyc.view'
@@ -207,7 +208,7 @@ export interface BusinessFilter {
 
 // Modules.
 
-export type ModuleName = 'pod' | 'events' | 'coaching' | 'stays' | 'delivery' | 'ledger';
+export type ModuleName = 'pod' | 'events' | 'coaching' | 'stays' | 'turf' | 'delivery' | 'ledger';
 
 export interface ModuleSettings {
   module: ModuleName;
@@ -228,6 +229,8 @@ export interface ModuleSettings {
   eventRules: EventRuleSettings | null;
   /** The coaching module only. */
   coachingRules: CoachingRuleSettings | null;
+  /** The turf module only. */
+  turfRules: TurfRuleSettings | null;
   updatedAt: string;
 }
 
@@ -277,6 +280,8 @@ export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 
     eventRules?: Partial<EventRuleSettings>;
     /** Coaching only. Send only what changes. */
     coachingRules?: Partial<CoachingRuleSettings>;
+    /** Turf only. Send only what changes. */
+    turfRules?: Partial<TurfRuleSettings>;
   };
 
 /** Console events list: `q` matches the title or the organiser's name. */

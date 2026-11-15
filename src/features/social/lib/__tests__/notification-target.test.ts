@@ -41,10 +41,48 @@ describe('notificationHref', () => {
     expect(notificationHref({ vendorEventId: 'e4' })).toEqual({ pathname: '/(vendor)/events/[id]', params: { id: 'e4' } });
   });
 
-  it('opens a screen for every events and coaching link the API sends', () => {
-    for (const screen of ['event', 'event_order', 'vendor_event', 'coaching_course', 'coaching_order', 'vendor_course', 'coaching_batch']) {
+  it('opens the ground, the booking, or the ground’s board for its owner and staff', () => {
+    expect(notificationHref({ groundId: 'g1' })).toEqual({ pathname: '/(customer)/turf/[id]', params: { id: 'g1' } });
+    expect(notificationHref({ turfOrderId: 'o5' })).toEqual({ pathname: '/(customer)/turf/booking/[id]', params: { id: 'o5' } });
+    expect(notificationHref({ deskGroundId: 'g2' })).toEqual({ pathname: '/(customer)/ground-desk/[id]', params: { id: 'g2' } });
+  });
+
+  it('opens a screen for every events, coaching and turf link the API sends', () => {
+    const screens = ['event', 'event_order', 'vendor_event', 'coaching_course', 'coaching_order', 'vendor_course', 'coaching_batch', 'turf_ground', 'turf_order', 'vendor_ground'];
+    for (const screen of screens) {
       expect(notificationHref(notificationLink(screen, 'x1'))).toMatchObject({ params: { id: 'x1' } });
     }
+  });
+
+  it('opens something for every link screen the API can send', () => {
+    const screens = [
+      'post',
+      'verification',
+      'business',
+      'order',
+      'shop_order',
+      'profile',
+      'payments',
+      'work',
+      'team',
+      'work_order',
+      'reviews',
+      'work_reviews',
+      'delivery_job',
+      'delivery_earnings',
+      'support',
+      'event',
+      'event_order',
+      'vendor_event',
+      'coaching_course',
+      'coaching_order',
+      'vendor_course',
+      'coaching_batch',
+      'turf_ground',
+      'turf_order',
+      'vendor_ground',
+    ];
+    for (const screen of screens) expect(notificationHref(notificationLink(screen, 'x1'))).toBeDefined();
   });
 
   it('opens nothing when it points nowhere', () => {

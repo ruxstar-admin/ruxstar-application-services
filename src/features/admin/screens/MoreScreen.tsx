@@ -51,6 +51,9 @@ export function MoreScreen() {
         {allows(access, 'businesses.view') ? (
           <ListRow icon="school-outline" title="Courses" subtitle="Every institute's courses, and taking one down" onPress={() => router.push('/(admin)/coaching')} />
         ) : null}
+        {allows(access, 'businesses.view') ? (
+          <ListRow icon="football-outline" title="Grounds" subtitle="Every sports ground, taking one down, and the sports list" onPress={() => router.push('/(admin)/grounds')} />
+        ) : null}
         {allows(access, 'payouts.view') ? (
           <ListRow icon="wallet-outline" title="Payouts" subtitle="Vendors' withdrawals, and money on hold" onPress={() => router.push('/(admin)/payouts')} />
         ) : null}

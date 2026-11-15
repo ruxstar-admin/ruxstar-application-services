@@ -1,7 +1,10 @@
 import type { SlotState } from './slots';
 
-/** A cell on the vendor board. `held` is unpaid and waiting; `selected` is for boards the vendor picks on (weekly schedules). */
-export type BoardState = SlotState | 'held' | 'selected';
+/**
+ * A cell on the vendor board. `held` is unpaid and waiting; `selected` is for boards the vendor picks on (weekly schedules);
+ * `closed` is outside opening hours; `past` is a free slot whose time has gone.
+ */
+export type BoardState = SlotState | 'held' | 'selected' | 'closed' | 'past';
 
 /** A court, room, bed or batch. */
 export interface BoardRow {

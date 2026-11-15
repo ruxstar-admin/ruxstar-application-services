@@ -172,7 +172,9 @@ export function CreateBusinessScreen() {
                 ? 'You add a photo next and publish the business, then make events and sell tickets.'
                 : module === 'coaching'
                   ? 'You add a photo next and publish the business, then make courses with batches and take enrolments.'
-                  : `You add photos${module === 'pod' ? ', products and prices' : ''} next, then publish it.`}
+                  : module === 'turf'
+                    ? 'You add a photo next and publish the business, then set up your grounds and courts and take slot bookings.'
+                    : `You add photos${module === 'pod' ? ', products and prices' : ''} next, then publish it.`}
             </Text>
             {needsTerms ? (
               <View style={styles.terms}>

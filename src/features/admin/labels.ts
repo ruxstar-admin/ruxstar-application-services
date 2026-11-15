@@ -6,6 +6,7 @@ export const MODULE_LABEL: Record<ModuleName, string> = {
   events: 'Events',
   coaching: 'Coaching',
   stays: 'PG and hostel stays',
+  turf: 'Sports and turf',
   delivery: 'Delivery',
   ledger: 'Payments and ledger',
 };
@@ -15,7 +16,7 @@ export const GST_MODULE_LABEL: Record<GstModule, string> = {
   events: MODULE_LABEL.events,
   coaching: MODULE_LABEL.coaching,
   stays: MODULE_LABEL.stays,
-  turf: 'Sports and turf',
+  turf: MODULE_LABEL.turf,
   ecommerce: 'Online shop',
 };
 
@@ -123,6 +124,20 @@ export const ACTION_LABEL: Record<string, string> = {
   'coaching_session.cancel': 'Cancelled a class',
   'coaching_session.move': 'Moved a class',
   'coaching_session.add': 'Added an extra class',
+  'turf_ground.create': 'Added a ground',
+  'turf_ground.update': "Changed a ground's details",
+  'turf_ground.publish': 'Published a ground',
+  'turf_ground.delete': 'Deleted a draft ground',
+  'turf_ground.take_down': 'Took a ground down',
+  'turf_court.create': 'Added a court',
+  'turf_court.update': 'Changed a court',
+  'turf_court.delete': 'Removed a court',
+  'turf_slot.block': 'Blocked ground slots',
+  'turf_slot.unblock': 'Unblocked ground slots',
+  'turf_booking.cancel': 'Cancelled a ground booking',
+  'turf_booking.arrival': 'Marked a player arrived or no-show',
+  'turf_sport.create': 'Added a sport',
+  'turf_sport.update': 'Changed a sport',
   'gst.module_update': "Changed a module's GST rules",
   'gst.seller_update': "Changed Ruxstar's GST details",
 };

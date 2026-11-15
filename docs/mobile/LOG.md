@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-15 — Sports & Turf: grounds, slot booking, repeat weekly, owner board, console
+Prompt:    "Build the Sports & Turf business in the app — customer, ground owner and staff, console"
+Decision:  Built on the real `/v1/turf` API (backend commit f42eff5) with the shared booking pieces. Weekly bookings check each later week with one slot call per week and name the clashing dates before paying; the API's 409 is still the final word. The ground desk lives under `(customer)/ground-desk` so staff reach it from Work, and the owner from the business page. `RateOrderCard` takes any review API so turf bookings reuse it. Console rules form gained turf rules with slot-length chips.
+Done:      `features/turf/*` (screens, components, libs with tests), routes under `(customer)/turf`, `(customer)/ground-desk`, `(vendor)/businesses/[id]/grounds`, `(vendor)/grounds`, `(admin)/grounds`, `(admin)/ground`, `(admin)/sports`; Discover, business tiles, Work, team wording, notifications, invoices, coupons, console More and Modules. Full notes: `Architecture/build-log/turf-app.md`.
+Blocked:   nothing.
+Mocks:     none; API_CONTRACTS has a new Sports & Turf section.
+Verified by user: no
+Next:      Run the test checklist in the build log on a phone in Expo Go.
+
+---
+
 ## 2026-11-15 — Coaching coupons, end-date batches, event and coaching notification links
 Prompt:    "Close small gaps: coupons at coaching enrolment, batches by end date, notification links for events and coaching, check the business flow once more"
 Decision:  The enrol Pay step reuses `CheckoutCoupons`; the API checks each code (`/offers?code`) and the app only sends a code it found fine. Batches ask "Number of classes / End date"; edits start by number because the vendor batch view has no end date. The notification `screen → link` table moved from `social-service.ts` to `features/social/lib/notification-target.ts` so it can be tested. Vendor coupons now cover print, events and coaching businesses, as the API does.

@@ -140,4 +140,10 @@ export interface AppNotification {
   vendorCourseId?: string;
   /** A batch you run or teach: tapping opens its classes. */
   batchId?: string;
+  /** A ground's page. */
+  groundId?: string;
+  /** Your ground booking changed: tapping opens it. */
+  turfOrderId?: string;
+  /** A ground you own or work at: tapping opens its board. */
+  deskGroundId?: string;
 }

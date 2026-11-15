@@ -251,7 +251,7 @@ function OrderDetails({ order, onChanged }: { order: Order; onChanged: (order?: 
         </View>
       ) : null}
 
-      {order.deliveredAt ? <RateOrderCard order={order} /> : null}
+      {order.deliveredAt ? <RateOrderCard order={{ id: order.id, name: order.shop.name, reviewUntil: order.reviewUntil }} /> : null}
 
       {partials.length ? (
         <>

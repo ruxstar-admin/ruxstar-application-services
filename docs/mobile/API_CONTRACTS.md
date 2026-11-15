@@ -216,6 +216,24 @@ Every "create" below (order, ticket, enrolment, booking) takes `paymentRef` and 
 | `GET /ruxstar/coaching/courses` · `GET .../{id}` · `POST .../{id}/take-down` | `?status=draft\|live\|removed&category&q&cursor` · – · `{ reason }` | `Page<VendorCourse>` · `VendorCourse` | `businesses.view` · `businesses.manage`, `Idempotency-Key` |
 | `PATCH /ruxstar/modules/coaching` | `{ coachingRules: { certificatePercent?, minimumHours?, maxBatchSize?, maxClasses?, maxBatches?, maxDemoFee? (paise), maxDemoSeats?, joinMinutes? } }` | `ModuleSettings` with `coachingRules` | `modules.manage`. Send only what changes |
 
+## Sports & Turf (real API — `/v1`, backend commit f42eff5)
+| Path | Request | Response | Notes |
+|---|---|---|---|
+| `GET /turf/rules` · `GET /turf/sports` | – | `TurfRules` · `Page<Sport>` | Refund defaults and limits, repeat weeks, hold minutes, slot lengths, max slots, book-ahead days, commission and platform fee |
+| `GET /turf` · `GET /turf/{id}` · `GET /turf/{id}/reviews` | `?city&sport&q&cursor` · – · `?cursor` | `Page<GroundCard>` · `GroundDetail` · `Page<Review>` | `canBook` / `whyNot`; `courtList` has hours, prices (base, weekend, peak windows) and add-ons |
+| `GET /turf/courts/{id}/slots` | `?date` | `DaySlots` | Started slots aren't listed. `bookable` is false past `bookAheadDays`. The app checks later weeks of a weekly booking with one call per week |
+| `POST /turf/courts/{id}/offers` | `{ startAts[], addOns?, weeks?, code? }` | `{ offers, checked }` | A code is applied only when `checked.problem` is null |
+| `POST /turf/courts/{id}/book` | `{ startAts[] (back to back), sport?, addOns?, weeks?, coupon?, returnTo }` | `{ booking, checkoutUrl }` | `Idempotency-Key`, kept when a try times out. A taken slot is a 409 that names it ("Sat, 21 Nov, 7–8 pm is booked…"); the app shows it and reloads the slots. `COUPON_INVALID` drops the coupon |
+| `GET /turf/orders` · `GET /turf/orders/{id}` · `POST .../pay` · `POST .../cancel` | `?view=current\|past&cursor` · – · `{ returnTo }` · `{ occurrences? }` | `Page<TurfBooking>` · `TurfBooking` · `{ checkoutUrl }` · `TurfBooking` | Cancel takes `Idempotency-Key`; leaving out `occurrences` cancels every date still to come. Each date's `refundIfCancelled` follows the ground's tiers |
+| `GET\|PUT\|DELETE /turf/orders/{id}/review` | `{ rating, text? }` | `MyReview` | When `canReview` |
+| `GET\|POST /vendor/businesses/{id}/grounds` · `GET\|PATCH\|DELETE /vendor/grounds/{id}` · `POST .../photos` · `DELETE .../photos/{photoId}` · `POST .../publish` | `GroundInput` · JPEG bytes | `VendorGround` | Owner only. Create and publish take `Idempotency-Key`; publish lists every missing item. Up to 8 photos |
+| `POST /vendor/grounds/{id}/courts` · `PATCH\|DELETE /vendor/courts/{id}` | `CourtInput` | `VendorGround` | Add takes `Idempotency-Key`. A court with bookings to come can't be deleted |
+| `GET /turf/desk/grounds` · `GET .../grounds/{id}/board` · `GET .../grounds/{id}/bookings` · `GET .../orders/{id}` | – · `?date` · `?view=upcoming\|past\|all&cursor` | `Page<DeskGround>` · `Board` · `Page<DeskBooking>` · `DeskBooking` | Owner, or team members with `turf.*` permissions (`permissions` on each ground). No single-ground route; the app finds it in the list |
+| `POST /turf/desk/slots/block\|unblock` · `POST /turf/desk/orders/{id}/cancel\|arrival` · `PUT /turf/desk/courts/{id}/prices` | `{ courtId, startAts[], note? }` · `{ occurrences?, reason }` · `{ n, status }` · `{ prices?, addOns? }` | `{ done }` · `DeskBooking` · `VendorGround` | Block, unblock, cancel and arrival take `Idempotency-Key`. Desk cancel always refunds in full. Arrived from 30 min before; no-show from the start; until a day after |
+| `GET /ruxstar/turf/grounds` · `GET .../{id}` · `POST .../{id}/take-down` | `?status&q&cursor` · – · `{ reason }` | `Page<ConsoleGround>` · `{ ground, bookings }` · `{ ground, refunded }` | `businesses.view` · `businesses.manage`, `Idempotency-Key` |
+| `GET\|POST /ruxstar/turf/sports` · `PATCH .../sports/{key}` | `{ key, name, order? }` · `{ name?, active?, order? }` | `ConsoleSport` | `businesses.view` to read; `modules.manage` to change. Add takes `Idempotency-Key` |
+| `PATCH /ruxstar/modules/turf` | `{ turfRules: { refundFullHours?, refundHalfHours?, halfPercent?, minFullHours?, maxFullHours?, maxRepeatWeeks?, holdMinutes?, slotLengths?, maxSlots?, bookAheadDays?, maxGrounds?, maxCourts?, maxAddOns? } }` | `ModuleSettings` with `turfRules` | `modules.manage`. Send only what changes |
+
 ## PG / hostel (`stays.mocks.ts`)
 | Path | Request | Response | Notes |
 |---|---|---|---|

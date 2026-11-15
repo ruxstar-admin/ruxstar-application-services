@@ -23,4 +23,6 @@ export const CELL_LOOK: Record<BoardState, CellLook> = {
   booked: { label: 'Booked', icon: 'close-circle', bg: Brand.surfaceAlt, border: Brand.surfaceAlt, text: Brand.textMuted, iconColor: Brand.textMuted },
   held: { label: 'Held', icon: 'time-outline', bg: Brand.surfaceAlt, border: Brand.warning, text: Brand.textMuted, iconColor: Brand.warning, dashed: true },
   blocked: { label: 'Blocked', icon: 'lock-closed', bg: Brand.bg, border: Brand.textFaint, text: Brand.textFaint, iconColor: Brand.textFaint, dashed: true },
+  closed: { label: 'Closed', icon: 'moon-outline', bg: Brand.bg, border: Brand.bg, text: Brand.textFaint, iconColor: Brand.textFaint },
+  past: { label: 'Gone', icon: 'remove-outline', bg: Brand.bg, border: Brand.border, text: Brand.textFaint, iconColor: Brand.textFaint },
 };

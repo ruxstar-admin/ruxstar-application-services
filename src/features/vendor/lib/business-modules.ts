@@ -7,6 +7,7 @@ export const BUSINESS_MODULES: Record<BusinessModule, { label: string; icon: key
   events: { label: 'Events', icon: 'calendar-outline' },
   coaching: { label: 'Coaching', icon: 'school-outline' },
   stays: { label: 'Stays', icon: 'bed-outline' },
+  turf: { label: 'Sports & turf', icon: 'football-outline' },
 };
 
 export const TYPE_ICONS: Record<BusinessType, keyof typeof Ionicons.glyphMap> = {
@@ -17,6 +18,9 @@ export const TYPE_ICONS: Record<BusinessType, keyof typeof Ionicons.glyphMap> = 
   coaching: 'school-outline',
   pg: 'home-outline',
   hostel: 'bed-outline',
+  turf: 'football-outline',
+  sports_complex: 'trophy-outline',
+  court: 'tennisball-outline',
 };
 
 export const MISSING_LABEL: Record<BusinessMissing, string> = {

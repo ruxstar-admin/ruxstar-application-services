@@ -66,7 +66,9 @@ export function TeamScreen() {
                     ? 'Invite gate keepers to scan tickets at your events.'
                     : data.permissions.some((p) => p.key === 'classes.view')
                       ? 'Invite coaches to take attendance, message students and share notes for their batches.'
-                      : 'Invite someone to help with orders, the shop or posts.'
+                      : data.permissions.some((p) => p.key === 'turf.bookings')
+                        ? 'Invite ground staff to see the board, mark players arrived and block slots.'
+                        : 'Invite someone to help with orders, the shop or posts.'
                 }
               />
             )}

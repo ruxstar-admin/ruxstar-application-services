@@ -2,14 +2,15 @@ import type { ManagedCoupon } from '@/types/coupon';
 import { couponShops, dayKeyOf, draftErrors, draftOf, emptyDraft, newCouponOf, patchOf } from '../coupons';
 
 describe('couponShops', () => {
-  it('offers print shops, events and coaching businesses, not stays', () => {
+  it('offers print shops, events, coaching and sports grounds, not stays', () => {
     const list = [
       { id: 'p', name: 'Prints', module: 'pod' },
       { id: 'e', name: 'Gigs', module: 'events' },
       { id: 'c', name: 'Tuition', module: 'coaching' },
       { id: 's', name: 'PG', module: 'stays' },
+      { id: 't', name: 'Arena', module: 'turf' },
     ] as const;
-    expect(couponShops(list).map((b) => b.id)).toEqual(['p', 'e', 'c']);
+    expect(couponShops(list).map((b) => b.id)).toEqual(['p', 'e', 'c', 't']);
   });
 });
 

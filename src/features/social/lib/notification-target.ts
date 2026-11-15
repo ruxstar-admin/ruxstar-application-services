@@ -24,6 +24,9 @@ type Target = Pick<
   | 'coachingOrderId'
   | 'vendorCourseId'
   | 'batchId'
+  | 'groundId'
+  | 'turfOrderId'
+  | 'deskGroundId'
 >;
 
 /** The screen a notification opens, from the notifications screen or a phone notification; undefined when it opens none. */
@@ -49,6 +52,9 @@ export function notificationHref(n: Target): Href | undefined {
   if (n.coachingOrderId) return { pathname: '/(customer)/coaching/enrolment/[id]', params: { id: n.coachingOrderId } };
   if (n.vendorCourseId) return { pathname: '/(vendor)/courses/[id]', params: { id: n.vendorCourseId } };
   if (n.batchId) return { pathname: '/(customer)/teach/batch/[id]', params: { id: n.batchId } };
+  if (n.groundId) return { pathname: '/(customer)/turf/[id]', params: { id: n.groundId } };
+  if (n.turfOrderId) return { pathname: '/(customer)/turf/booking/[id]', params: { id: n.turfOrderId } };
+  if (n.deskGroundId) return { pathname: '/(customer)/ground-desk/[id]', params: { id: n.deskGroundId } };
   return undefined;
 }
 
@@ -75,6 +81,9 @@ const LINKS = {
   coaching_order: (id) => ({ coachingOrderId: id }),
   vendor_course: (id) => ({ vendorCourseId: id }),
   coaching_batch: (id) => ({ batchId: id }),
+  turf_ground: (id) => ({ groundId: id }),
+  turf_order: (id) => ({ turfOrderId: id }),
+  vendor_ground: (id) => ({ deskGroundId: id }),
 } satisfies Record<string, (id: string) => Target>;
 
 /** The API's `link.screen` values. */

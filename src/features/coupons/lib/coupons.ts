@@ -2,7 +2,7 @@ import type { Business, BusinessModule } from '@/types/business';
 import type { CouponKind, CouponPatch, CouponState, ManagedCoupon, NewCoupon } from '@/types/coupon';
 
 /** Businesses whose orders take coupons; the API refuses a vendor coupon for any other. */
-const COUPON_MODULES: readonly BusinessModule[] = ['pod', 'events', 'coaching'];
+const COUPON_MODULES: readonly BusinessModule[] = ['pod', 'events', 'coaching', 'turf'];
 
 /** The vendor's businesses a coupon can work at. */
 export const couponShops = (businesses: readonly Pick<Business, 'id' | 'name' | 'module'>[]) =>

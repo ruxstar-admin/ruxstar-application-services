@@ -306,6 +306,7 @@ function Module({ m, onSaved }: { m: ModuleSettings; onSaved: (m: ModuleSettings
       {m.delivery ? <DeliveryRates m={{ ...m, delivery: m.delivery }} onSaved={onSaved} /> : null}
       {m.eventRules ? <RulesForm m={m} kind="eventRules" onSaved={onSaved} /> : null}
       {m.coachingRules ? <RulesForm m={m} kind="coachingRules" onSaved={onSaved} /> : null}
+      {m.turfRules ? <RulesForm m={m} kind="turfRules" onSaved={onSaved} /> : null}
       <ConfirmSheet
         visible={turningOff}
         title={`Turn ${MODULE_LABEL[m.module]} off?`}

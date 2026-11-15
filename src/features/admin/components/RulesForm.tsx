@@ -2,18 +2,25 @@ import { useRef, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
+import { MultiChoiceChips } from '@/components/ui/MultiChoiceChips';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Brand, Spacing, Typography } from '@/constants/theme';
+import { slotLengthText } from '@/features/turf/lib/turf';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { AdminService } from '@/services/admin-service';
 import type { CoachingRuleSettings, EventRuleSettings, ModuleSettings } from '@/types/admin';
+import type { SlotMinutes, TurfRuleSettings } from '@/types/turf';
 import { useCan } from '../access';
 import { Fact, Facts, consoleStyles, errorText } from './parts';
 
-type RulesKey = 'eventRules' | 'coachingRules';
+type RulesKey = 'eventRules' | 'coachingRules' | 'turfRules';
 type Rules = Record<string, number>;
+
+const SLOT_LENGTHS: SlotMinutes[] = [30, 60, 90];
+const LENGTH_CHIPS = SLOT_LENGTHS.map((m) => ({ key: String(m), label: slotLengthText(m) }));
+const sameLengths = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every((n) => b.includes(n));
 
 /** One rule: the API's limits in the units typed, and `scale` turns those into what the API stores (100 for rupees to paise). */
 interface Field {
@@ -113,6 +120,39 @@ const SETS: Record<RulesKey, { title: string; intro: string; save: string; field
       },
     ],
   },
+  turfRules: {
+    title: 'Sports ground rules',
+    intro: 'Every ground’s courts and bookings follow these. Bookings already made keep their refund rule.',
+    save: 'Save ground rules',
+    fields: [
+      {
+        key: 'refundFullHours',
+        min: 0,
+        max: 168,
+        label: 'New grounds: full refund up to this many hours before',
+        show: count('hour', 'hours'),
+        hint: 'What a new ground starts with. Owners can change it between the limits below.',
+      },
+      {
+        key: 'refundHalfHours',
+        min: 0,
+        max: 168,
+        label: 'New grounds: part refund up to this many hours before',
+        show: count('hour', 'hours'),
+        hint: 'Between this and the full-refund hours, players get the share below back. No more than the full-refund hours.',
+      },
+      { key: 'halfPercent', min: 0, max: 100, label: 'Part refund (%)', show: (n) => `${n}%`, hint: '0 turns the middle step off.' },
+      { key: 'minFullHours', min: 0, max: 168, label: 'Owners’ full-refund hours: at least', show: count('hour', 'hours'), hint: 'The fewest hours an owner can pick.' },
+      { key: 'maxFullHours', min: 0, max: 168, label: 'Owners’ full-refund hours: at most', show: count('hour', 'hours'), hint: 'The most hours an owner can pick.' },
+      { key: 'maxRepeatWeeks', min: 1, max: 52, label: 'Weeks in a weekly booking', show: count('week', 'weeks'), hint: 'The first week included. 1 turns weekly booking off.' },
+      { key: 'holdMinutes', min: 5, max: 60, label: 'Minutes slots are held while paying', show: count('minute', 'minutes'), hint: 'Unpaid slots go back after this.' },
+      { key: 'maxSlots', min: 1, max: 48, label: 'Back-to-back slots in one booking', show: plain, hint: 'Like 3 one-hour slots for a 3-hour game.' },
+      { key: 'bookAheadDays', min: 1, max: 180, label: 'Days ahead the first slot can be', show: count('day', 'days'), hint: 'Later weeks of a weekly booking can go past this.' },
+      { key: 'maxGrounds', min: 1, max: 100, label: 'Grounds per business', show: plain, hint: 'Checked when an owner adds a ground.' },
+      { key: 'maxCourts', min: 1, max: 100, label: 'Courts per ground', show: plain, hint: 'Checked when an owner adds a court.' },
+      { key: 'maxAddOns', min: 0, max: 30, label: 'Add-ons per court', show: plain, hint: 'Like a ball or bibs. 0 turns add-ons off for new and edited courts.' },
+    ],
+  },
 };
 
 const wholeOf = (text: string) => (/^\d+$/.test(text.trim()) ? Number(text) : NaN);
@@ -126,27 +166,36 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
   const shown = (r: Rules, f: Field) => (r[f.key] ?? 0) / (f.scale ?? 1);
   const textOf = (r: Rules) => Object.fromEntries(fields.map((f) => [f.key, String(shown(r, f))]));
   const [text, setText] = useState<Record<string, string>>(() => textOf(rules));
+  const savedLengths = kind === 'turfRules' ? (m.turfRules?.slotLengths ?? []) : [];
+  const [lengths, setLengths] = useState<number[]>(() => [...savedLengths]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const key = useRef(newIdempotencyKey());
 
   const values = Object.fromEntries(fields.map((f) => [f.key, wholeOf(text[f.key] ?? '')]));
   const errors = Object.fromEntries(fields.map((f) => [f.key, values[f.key]! >= f.min && values[f.key]! <= f.max ? undefined : `Enter a whole number from ${f.min} to ${f.max}`]));
-  const invalid = fields.some((f) => errors[f.key]);
+  const lengthsChanged = kind === 'turfRules' && !sameLengths(lengths, savedLengths);
+  const invalid = fields.some((f) => errors[f.key]) || (kind === 'turfRules' && !lengths.length);
   const changes = Object.fromEntries(fields.filter((f) => values[f.key] !== shown(rules, f)).map((f) => [f.key, values[f.key]! * (f.scale ?? 1)]));
-  const changed = Object.keys(changes).length > 0;
+  const changed = Object.keys(changes).length > 0 || lengthsChanged;
 
   const save = async () => {
     setBusy(true);
     setError(null);
     try {
-      const patch = kind === 'eventRules' ? { eventRules: changes as Partial<EventRuleSettings> } : { coachingRules: changes as Partial<CoachingRuleSettings> };
+      const patch =
+        kind === 'eventRules'
+          ? { eventRules: changes as Partial<EventRuleSettings> }
+          : kind === 'coachingRules'
+            ? { coachingRules: changes as Partial<CoachingRuleSettings> }
+            : { turfRules: { ...changes, ...(lengthsChanged ? { slotLengths: [...lengths].sort((a, b) => a - b) as SlotMinutes[] } : {}) } as Partial<TurfRuleSettings> };
       const done = await AdminService.updateModule(token, m.module, patch, key.current);
       key.current = newIdempotencyKey();
       Feedback.success();
       onSaved(done);
       const next = done[kind];
       if (next) setText(textOf(next as unknown as Rules));
+      if (done.turfRules) setLengths([...done.turfRules.slotLengths]);
     } catch (err) {
       Feedback.error();
       setError(errorText(err));
@@ -163,6 +212,7 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
           {fields.map((f) => (
             <Fact key={f.key} label={f.label} value={f.show(shown(rules, f))} />
           ))}
+          {kind === 'turfRules' ? <Fact label="Slot lengths" value={savedLengths.map(slotLengthText).join(', ')} /> : null}
         </Facts>
       </>
     );
@@ -183,6 +233,13 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
           maxLength={String(f.max).length}
         />
       ))}
+      {kind === 'turfRules' ? (
+        <>
+          <Text style={styles.label}>Slot lengths courts can use</Text>
+          <MultiChoiceChips options={LENGTH_CHIPS} value={lengths.map(String)} onChange={(v) => setLengths(v.map(Number))} />
+          <Text style={consoleStyles.muted}>{lengths.length ? 'Courts already set up keep their length.' : 'Pick at least one.'}</Text>
+        </>
+      ) : null}
       <PrimaryButton label={saveLabel} variant="outline" onPress={save} loading={busy} disabled={invalid || !changed} />
       {error ? <ErrorBanner message={error} /> : null}
     </>
@@ -191,4 +248,5 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
 
 const styles = StyleSheet.create({
   group: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.two },
+  label: { ...Typography.bodyStrong, fontSize: 15, color: Brand.text },
 });
