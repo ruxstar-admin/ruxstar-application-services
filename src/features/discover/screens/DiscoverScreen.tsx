@@ -3,13 +3,15 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Tex
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChoiceChips } from '@/components/ui/ChoiceChips';
+import { Dropdown, DropdownRow } from '@/components/ui/Dropdown';
 import { CourseResults } from '@/features/coaching/components/CourseResults';
 import { EventResults } from '@/features/events/components/EventResults';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InputField } from '@/components/ui/InputField';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
+import { AllBusinesses } from '../components/AllBusinesses';
 import { ShopCardView } from '@/features/pod/components/ShopCardView';
 import { PropertyResults } from '@/features/stays/components/PropertyResults';
 import { StoreResults } from '@/features/store/components/StoreResults';
@@ -85,24 +87,28 @@ function Results({ filters }: { filters: ShopFilters }) {
   );
 }
 
-function HeaderButton({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void }) {
+function HeaderButton({ icon, label, spoken, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; spoken: string; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={spoken}
       onPress={() => {
         Feedback.tap();
         onPress();
       }}
-      hitSlop={6}
-      style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.headerItem, pressed && styles.pressed]}
     >
-      <Ionicons name={icon} size={20} color={Brand.text} />
+      <View style={styles.headerButton}>
+        <Ionicons name={icon} size={20} color={Brand.text} />
+      </View>
+      <Text style={styles.headerLabel} numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
-/** Businesses customers can order from: a category first, then what it offers. Only print on demand has businesses so far. */
+/** Businesses customers can order from: every kind at once, until they pick a type and then what it offers. */
 export function DiscoverScreen() {
   const router = useRouter();
   const catalog = useBusinessCatalog();
@@ -124,10 +130,11 @@ export function DiscoverScreen() {
   }
 
   const categories = catalog.data?.categories ?? [];
-  const categoryChips: { key: Category; label: string }[] = [
-    { key: 'all', label: 'All' },
+  const categoryOptions: { key: Category; label: string }[] = [
+    { key: 'all', label: 'All businesses' },
     ...categories.map((c) => ({ key: c.module, label: BUSINESS_MODULES[c.module].label })),
   ];
+  const browsable = categories.filter((c) => c.live && OPEN_MODULES.includes(c.module)).map((c) => c.module);
   const picked = categories.find((c) => c.module === category);
   const comingSoon = picked ? !picked.live || !OPEN_MODULES.includes(picked.module) : false;
   const printOpen = categories.some((c) => c.module === 'pod' && c.live) && category !== 'pod';
@@ -135,8 +142,8 @@ export function DiscoverScreen() {
   const coachingOpen = categories.some((c) => c.module === 'coaching' && c.live);
   const turfOpen = categories.some((c) => c.module === 'turf' && c.live);
   const staysOpen = categories.some((c) => c.module === 'stays' && c.live);
-  const hint = SEARCH_HINT[category] ?? { placeholder: 'Shop, what they print, or a city', label: 'Search businesses' };
-  const productChips: { key: Filter; label: string }[] = [
+  const hint = SEARCH_HINT[category] ?? { placeholder: 'Search all businesses', label: 'Search businesses' };
+  const productOptions: { key: Filter; label: string }[] = [
     { key: 'all', label: 'All print' },
     ...(catalog.data?.podProducts ?? []).map((p) => ({ key: p.id, label: p.label })),
   ];
@@ -149,17 +156,13 @@ export function DiscoverScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.titles}>
-          <Text style={styles.heading}>Discover</Text>
-          <Text style={styles.subheading}>Businesses on Ruxstar</Text>
-        </View>
-        {eventsOpen ? <HeaderButton icon="ticket-outline" label="Your tickets" onPress={() => router.push('/(customer)/events/tickets')} /> : null}
-        {coachingOpen ? <HeaderButton icon="school-outline" label="Your classes" onPress={() => router.push('/(customer)/coaching/classes')} /> : null}
-        {turfOpen ? <HeaderButton icon="football-outline" label="Your ground bookings" onPress={() => router.push('/(customer)/turf/bookings')} /> : null}
-        {staysOpen ? <HeaderButton icon="bed-outline" label="Your stays" onPress={() => router.push('/(customer)/stays/mine')} /> : null}
-        <HeaderButton icon="receipt-outline" label="Your orders" onPress={() => router.push('/(customer)/orders')} />
-        <HeaderButton icon="wallet-outline" label="Your payments" onPress={() => router.push('/(customer)/payments')} />
+      <View style={styles.header} accessibilityRole="toolbar">
+        {eventsOpen ? <HeaderButton icon="ticket-outline" label="Tickets" spoken="Your tickets" onPress={() => router.push('/(customer)/events/tickets')} /> : null}
+        {coachingOpen ? <HeaderButton icon="school-outline" label="Classes" spoken="Your classes" onPress={() => router.push('/(customer)/coaching/classes')} /> : null}
+        {turfOpen ? <HeaderButton icon="football-outline" label="Grounds" spoken="Your ground bookings" onPress={() => router.push('/(customer)/turf/bookings')} /> : null}
+        {staysOpen ? <HeaderButton icon="bed-outline" label="Stays" spoken="Your stays" onPress={() => router.push('/(customer)/stays/mine')} /> : null}
+        <HeaderButton icon="receipt-outline" label="Orders" spoken="Your orders" onPress={() => router.push('/(customer)/orders')} />
+        <HeaderButton icon="wallet-outline" label="Payments" spoken="Your payments" onPress={() => router.push('/(customer)/payments')} />
       </View>
       <View style={styles.search}>
         <InputField
@@ -172,8 +175,15 @@ export function DiscoverScreen() {
         />
       </View>
       <View style={styles.filters}>
-        <ChoiceChips options={categoryChips} value={category} onChange={pickCategory} />
-        {category === 'pod' && !comingSoon ? <ChoiceChips options={productChips} value={product} onChange={setProduct} secondary /> : null}
+        <DropdownRow>
+          <Dropdown title="Type of business" icon="options-outline" options={categoryOptions} value={category} onChange={pickCategory} />
+          {category === 'pod' && !comingSoon ? <Dropdown title="What they print" options={productOptions} value={product} onChange={setProduct} /> : null}
+          {category !== 'all' ? (
+            <View style={styles.clear}>
+              <TextLink muted label="Clear" onPress={() => pickCategory('all')} />
+            </View>
+          ) : null}
+        </DropdownRow>
       </View>
       {comingSoon && picked ? (
         <EmptyState
@@ -193,8 +203,17 @@ export function DiscoverScreen() {
         <PropertyResults q={q} />
       ) : category === 'shop' ? (
         <StoreResults q={q} />
+      ) : category === 'pod' ? (
+        <Results key={`${q}|${product}`} filters={filters} />
+      ) : catalog.data ? (
+        <AllBusinesses modules={browsable} q={q} onPick={pickCategory} />
+      ) : catalog.error ? (
+        <EmptyState icon="cloud-offline-outline" title="Could not load businesses" message="Check your connection and try again." actionLabel="Try again" onAction={catalog.reload} />
       ) : (
-        <Results key={`${q}|${category}|${product}`} filters={filters} />
+        <View style={styles.skeletons}>
+          <Skeleton height={190} radius={18} />
+          <Skeleton height={16} width="60%" />
+        </View>
       )}
     </SafeAreaView>
   );
@@ -202,8 +221,9 @@ export function DiscoverScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Brand.bg, gap: Spacing.three },
-  header: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingTop: Spacing.three },
-  titles: { flex: 1, gap: 2 },
+  header: { flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: Spacing.two, paddingTop: Spacing.three },
+  headerItem: { flex: 1, alignItems: 'center', gap: Spacing.one, maxWidth: 88 },
+  headerLabel: { ...Typography.caption, fontSize: 11, color: Brand.textMuted },
   headerButton: {
     width: 42,
     height: 42,
@@ -215,10 +235,9 @@ const styles = StyleSheet.create({
     borderColor: Brand.border,
   },
   pressed: { opacity: 0.7 },
-  heading: { ...Typography.title, color: Brand.text },
-  subheading: { ...Typography.caption, color: Brand.textMuted },
   search: { paddingHorizontal: Spacing.three },
   filters: { gap: Spacing.two },
+  clear: { marginLeft: 'auto' },
   list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three, flexGrow: 1 },
   skeletons: { paddingHorizontal: Spacing.three, gap: Spacing.four },
   skeletonCard: { gap: Spacing.two },

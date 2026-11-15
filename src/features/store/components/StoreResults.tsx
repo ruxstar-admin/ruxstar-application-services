@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ChoiceChips } from '@/components/ui/ChoiceChips';
+import { Dropdown, DropdownRow } from '@/components/ui/Dropdown';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InputField } from '@/components/ui/InputField';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -104,7 +104,9 @@ export function StoreResults({ q }: { q: string }) {
 
   return (
     <>
-      <ChoiceChips options={KIND_CHIPS} value={kind} onChange={setKind} secondary />
+      <DropdownRow>
+        <Dropdown title="Kind of shop" options={KIND_CHIPS} value={kind} onChange={setKind} />
+      </DropdownRow>
       <View style={styles.bar}>
         <View style={styles.city}>
           <InputField value={cityText} onChangeText={setCityText} placeholder="Any city" autoCorrect={false} accessibilityLabel="City" />

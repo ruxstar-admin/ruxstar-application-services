@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ChoiceChips } from '@/components/ui/ChoiceChips';
+import { Dropdown, DropdownRow } from '@/components/ui/Dropdown';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InputField } from '@/components/ui/InputField';
 import { MultiChoiceChips } from '@/components/ui/MultiChoiceChips';
@@ -24,7 +25,7 @@ import { PropertyCardView } from './PropertyCardView';
 /** Waits this long after the last keystroke before filtering by city. */
 const CITY_DELAY_MS = 350;
 
-const KIND_CHIPS = [{ key: 'all', label: 'All' }, ...KINDS.map((k) => ({ key: k, label: KIND_LABEL[k] }))] as const;
+const KIND_CHIPS = [{ key: 'all', label: 'All kinds' }, ...KINDS.map((k) => ({ key: k, label: KIND_LABEL[k] }))] as const;
 
 function Cards({ query, filtered }: { query: PropertiesQuery; filtered: boolean }) {
   const router = useRouter();
@@ -234,7 +235,9 @@ export function PropertyResults({ q }: { q: string }) {
 
   return (
     <>
-      <ChoiceChips options={KIND_CHIPS} value={kind} onChange={setKind} secondary />
+      <DropdownRow>
+        <Dropdown title="Kind of place" options={KIND_CHIPS} value={kind} onChange={setKind} />
+      </DropdownRow>
       <View style={styles.bar}>
         <View style={styles.city}>
           <InputField value={cityText} onChangeText={setCityText} placeholder="Any city" autoCorrect={false} accessibilityLabel="City" />

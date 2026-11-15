@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChoiceChips } from '@/components/ui/ChoiceChips';
+import { Dropdown, DropdownRow } from '@/components/ui/Dropdown';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Spacing } from '@/constants/theme';
@@ -80,8 +80,10 @@ export function CourseResults({ q }: { q: string }) {
   };
   return (
     <>
-      <ChoiceChips options={WHERE_CHIPS} value={where} onChange={setWhere} secondary />
-      <ChoiceChips options={CATEGORY_CHIPS} value={category} onChange={setCategory} secondary />
+      <DropdownRow>
+        <Dropdown title="In person or online" options={WHERE_CHIPS} value={where} onChange={setWhere} />
+        <Dropdown title="Subject" options={CATEGORY_CHIPS} value={category} onChange={setCategory} />
+      </DropdownRow>
       <Cards key={`${q}|${where}|${category}`} filters={filters} />
     </>
   );

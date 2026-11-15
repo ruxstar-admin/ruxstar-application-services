@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChoiceChips } from '@/components/ui/ChoiceChips';
+import { Dropdown, DropdownRow } from '@/components/ui/Dropdown';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Spacing } from '@/constants/theme';
@@ -69,7 +69,9 @@ export function EventResults({ q }: { q: string }) {
   const filters: EventFilters = { ...(q ? { q } : {}), ...(kind !== 'all' ? { kind } : {}) };
   return (
     <>
-      <ChoiceChips options={KIND_CHIPS} value={kind} onChange={setKind} secondary />
+      <DropdownRow>
+        <Dropdown title="Kind of event" options={KIND_CHIPS} value={kind} onChange={setKind} />
+      </DropdownRow>
       <Cards key={`${q}|${kind}`} filters={filters} />
     </>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChoiceChips } from '@/components/ui/ChoiceChips';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InputField } from '@/components/ui/InputField';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -81,9 +81,11 @@ export function GroundResults({ q }: { q: string }) {
   const filters: GroundFilters = { ...(q ? { q } : {}), ...(sport !== 'all' ? { sport } : {}), ...(city ? { city } : {}) };
   return (
     <>
-      <ChoiceChips options={chips} value={sport} onChange={setSport} secondary />
-      <View style={styles.city}>
-        <InputField value={cityText} onChangeText={setCityText} placeholder="Any city" autoCorrect={false} accessibilityLabel="City" />
+      <View style={styles.bar}>
+        <View style={styles.city}>
+          <InputField value={cityText} onChangeText={setCityText} placeholder="Any city" autoCorrect={false} accessibilityLabel="City" />
+        </View>
+        <Dropdown title="Sport" options={chips} value={sport} onChange={setSport} />
       </View>
       <Cards key={`${q}|${sport}|${city}`} filters={filters} />
     </>
@@ -91,7 +93,8 @@ export function GroundResults({ q }: { q: string }) {
 }
 
 const styles = StyleSheet.create({
-  city: { paddingHorizontal: Spacing.three },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.three },
+  city: { flex: 1 },
   list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three, flexGrow: 1 },
   skeletons: { paddingHorizontal: Spacing.three, gap: Spacing.four },
   skeletonCard: { gap: Spacing.two },
