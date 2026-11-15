@@ -42,3 +42,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Play Console upload key for eas submit
+google-service-account.json
