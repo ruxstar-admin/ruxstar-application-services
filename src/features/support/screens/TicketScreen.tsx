@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,7 +10,6 @@ import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
@@ -26,7 +25,26 @@ import { CATEGORY_LABEL, PHOTOS_MAX, STATUS, TEXT_MAX, reopenLine, supportErrorT
 /** While the thread is open, it checks for a reply this often. */
 const POLL_MS = 30_000;
 
-function Composer({ ticket, token, onSent }: { ticket: TicketDetail; token: string; onSent: (next: TicketDetail) => void }) {
+/** Sits at the top of the reply footer while the ticket is with Ruxstar or waiting on you, so it is always in the same place. */
+function SolvedButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="My problem is solved"
+      accessibilityHint="Asks you to confirm before marking the ticket solved"
+      onPress={() => {
+        Feedback.tap();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.solved, pressed && styles.pressed]}
+    >
+      <Ionicons name="checkmark-circle-outline" size={20} color={Brand.success} />
+      <Text style={styles.solvedLabel}>My problem is solved</Text>
+    </Pressable>
+  );
+}
+
+function Composer({ ticket, token, onSent, action }: { ticket: TicketDetail; token: string; onSent: (next: TicketDetail) => void; action?: ReactNode }) {
   const [text, setText] = useState('');
   const [photos, setPhotos] = useState<ImagePickerAsset[]>([]);
   const [sending, setSending] = useState(false);
@@ -66,6 +84,7 @@ function Composer({ ticket, token, onSent }: { ticket: TicketDetail; token: stri
 
   return (
     <View style={styles.composer}>
+      {action}
       {error ? <ErrorBanner message={error} /> : null}
       {photos.length ? <PickedPhotos photos={photos} onAdd={addPhotos} onRemove={(i) => setPhotos((prev) => prev.filter((_, j) => j !== i))} disabled={sending} /> : null}
       <View style={styles.inputRow}>
@@ -162,7 +181,6 @@ export function TicketScreen({ id }: { id: string }) {
                   </View>
                   <Badge label={STATUS[data.status].label} tone={STATUS[data.status].tone} />
                 </View>
-                {failure ? <ErrorBanner message={failure} /> : null}
                 <View style={styles.thread}>
                   {data.messages.map((m) => (
                     <MessageBubble key={m.id} text={m.text} photos={m.photos} at={m.at} mine={m.mine} author={m.from === 'staff' ? 'Ruxstar support' : undefined} />
@@ -170,16 +188,25 @@ export function TicketScreen({ id }: { id: string }) {
                 </View>
                 {data.status === 'open' ? <Text style={styles.note}>The Ruxstar team will reply here. We will let you know when they do.</Text> : null}
                 {reopen ? <Text style={styles.note}>{reopen}</Text> : null}
-                {data.status === 'open' || data.status === 'waiting' ? (
-                  <View style={styles.solved}>
-                    <TextLink label="My problem is solved" onPress={() => setConfirming(true)} />
-                  </View>
-                ) : null}
               </>
             ) : null}
           </AsyncBoundary>
         </ScrollView>
-        {data && !closed ? <Composer ticket={data} token={token} onSent={setData} /> : null}
+        {data && !closed ? (
+          <Composer
+            ticket={data}
+            token={token}
+            onSent={setData}
+            action={
+              data.status === 'open' || data.status === 'waiting' ? (
+                <>
+                  {failure ? <ErrorBanner message={failure} /> : null}
+                  <SolvedButton onPress={() => setConfirming(true)} />
+                </>
+              ) : undefined
+            }
+          />
+        ) : null}
         {data && closed ? (
           <View style={styles.footer}>
             <PrimaryButton
@@ -220,7 +247,18 @@ const styles = StyleSheet.create({
   muted: { ...Typography.caption, color: Brand.textMuted, marginTop: 2 },
   thread: { gap: Spacing.three },
   note: { ...Typography.caption, color: Brand.textMuted, textAlign: 'center' },
-  solved: { alignItems: 'center' },
+  solved: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    minHeight: 44,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Brand.border,
+  },
+  solvedLabel: { ...Typography.bodyStrong, fontSize: 15, color: Brand.text },
+  pressed: { opacity: 0.6 },
   footer: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.three, paddingTop: Spacing.two },
   composer: { gap: Spacing.two, paddingHorizontal: Spacing.three, paddingTop: Spacing.two, paddingBottom: Spacing.three, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Brand.border },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two },

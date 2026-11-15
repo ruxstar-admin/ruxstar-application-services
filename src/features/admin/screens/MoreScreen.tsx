@@ -1,26 +1,98 @@
 import { useState } from 'react';
-import { ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useRouter, type Href } from 'expo-router';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { ListRow } from '@/components/ui/ListRow';
+import { Brand, Spacing } from '@/constants/theme';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { createLogger } from '@/lib/logger';
 import { AuthService } from '@/services/auth-service';
 import { useAuthStore } from '@/stores/auth-store';
-import { allows, useAccess } from '../access';
-import { ConsoleScreen, Section, consoleStyles } from '../components/parts';
+import { allows, useAccess, type Need } from '../access';
+import { ConsoleScreen, consoleStyles } from '../components/parts';
+import { IconTile, TileCard, cellWidth, tileCardInner, type Icon, type Tint } from '../components/tiles';
 
 const log = createLogger('console');
+
+/** A tile shows when the person has any of `needs`, the same check its screen makes. */
+interface Item {
+  label: string;
+  icon: Icon;
+  href: Href;
+  needs: Need[];
+}
+
+const SECTIONS: { title: string; icon: Icon; tint: Tint; items: Item[] }[] = [
+  {
+    title: 'People & safety',
+    icon: 'people-outline',
+    tint: 'blue',
+    items: [
+      { label: 'People', icon: 'people-outline', href: '/(admin)/(tabs)/people', needs: ['users.view'] },
+      { label: 'Staff', icon: 'shield-outline', href: '/(admin)/staff', needs: ['admin'] },
+      { label: 'Verification', icon: 'shield-checkmark-outline', href: '/(admin)/(tabs)/kyc', needs: ['kyc.view'] },
+      { label: 'Reports', icon: 'flag-outline', href: '/(admin)/(tabs)/reports', needs: ['reports.view', 'orders.view'] },
+      { label: 'Help tickets', icon: 'help-buoy-outline', href: '/(admin)/support', needs: ['support.view'] },
+    ],
+  },
+  {
+    title: 'Businesses',
+    icon: 'storefront-outline',
+    tint: 'purple',
+    items: [
+      { label: 'Businesses', icon: 'storefront-outline', href: '/(admin)/businesses', needs: ['businesses.view'] },
+      { label: 'Events', icon: 'ticket-outline', href: '/(admin)/events', needs: ['businesses.view'] },
+      { label: 'Courses', icon: 'school-outline', href: '/(admin)/coaching', needs: ['businesses.view'] },
+      { label: 'Grounds', icon: 'football-outline', href: '/(admin)/grounds', needs: ['businesses.view'] },
+      { label: 'Sports list', icon: 'list-outline', href: '/(admin)/sports', needs: ['businesses.view'] },
+    ],
+  },
+  {
+    title: 'Money',
+    icon: 'wallet-outline',
+    tint: 'green',
+    items: [
+      { label: 'Payouts', icon: 'wallet-outline', href: '/(admin)/payouts', needs: ['payouts.view'] },
+      { label: 'Invoices', icon: 'document-text-outline', href: '/(admin)/invoices', needs: ['orders.view'] },
+      { label: 'GST', icon: 'calculator-outline', href: '/(admin)/gst', needs: ['modules.view'] },
+      { label: 'Coupons', icon: 'pricetag-outline', href: '/(admin)/coupons', needs: ['coupons.view'] },
+    ],
+  },
+  {
+    title: 'Settings',
+    icon: 'settings-outline',
+    tint: 'amber',
+    items: [
+      { label: 'Modules', icon: 'apps-outline', href: '/(admin)/modules', needs: ['modules.view'] },
+      { label: 'Audit log', icon: 'time-outline', href: '/(admin)/audit', needs: ['audit.view'] },
+    ],
+  },
+  {
+    title: 'Your account',
+    icon: 'person-circle-outline',
+    tint: 'purple',
+    items: [
+      { label: 'Password', icon: 'key-outline', href: '/(admin)/password', needs: [null] },
+      { label: 'Sessions', icon: 'phone-portrait-outline', href: '/(admin)/sessions', needs: [null] },
+    ],
+  },
+];
+
+const COLUMNS = 4;
 
 export function MoreScreen() {
   const router = useRouter();
   const token = useAuthToken();
   const access = useAccess();
+  const { width } = useWindowDimensions();
   const refreshToken = useAuthStore((s) => s.refreshToken);
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const name = useAuthStore((s) => s.name);
   const [confirming, setConfirming] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const tileWidth = cellWidth(tileCardInner(width, true), COLUMNS);
+
+  const sections = SECTIONS.map((s) => ({ ...s, items: s.items.filter((item) => item.needs.some((need) => allows(access, need))) })).filter((s) => s.items.length > 0);
 
   const logOut = async () => {
     setLoggingOut(true);
@@ -32,43 +104,16 @@ export function MoreScreen() {
   return (
     <ConsoleScreen title="More" subtitle={[name, access.admin ? 'Admin' : access.title].filter(Boolean).join(' · ')}>
       <ScrollView contentContainerStyle={consoleStyles.list} showsVerticalScrollIndicator={false}>
-        {access.admin ? <ListRow icon="shield-outline" title="Ruxstar staff" subtitle="Who can use the console, and what they can do" onPress={() => router.push('/(admin)/staff')} /> : null}
-        {allows(access, 'modules.view') ? (
-          <ListRow icon="apps-outline" title="Modules" subtitle="Live, new vendors, commission and event rules" onPress={() => router.push('/(admin)/modules')} />
-        ) : null}
-        {allows(access, 'modules.view') ? (
-          <ListRow icon="calculator-outline" title="GST" subtitle="Ruxstar's GSTIN and address, and each module's GST rates" onPress={() => router.push('/(admin)/gst')} />
-        ) : null}
-        {allows(access, 'orders.view') ? (
-          <ListRow icon="document-text-outline" title="Invoices" subtitle="Every GST invoice and credit note, as PDFs" onPress={() => router.push('/(admin)/invoices')} />
-        ) : null}
-        {allows(access, 'businesses.view') ? (
-          <ListRow icon="storefront-outline" title="Businesses" subtitle="Every vendor's businesses, and holds" onPress={() => router.push('/(admin)/businesses')} />
-        ) : null}
-        {allows(access, 'businesses.view') ? (
-          <ListRow icon="ticket-outline" title="Events" subtitle="Every organiser's events, and taking one down" onPress={() => router.push('/(admin)/events')} />
-        ) : null}
-        {allows(access, 'businesses.view') ? (
-          <ListRow icon="school-outline" title="Courses" subtitle="Every institute's courses, and taking one down" onPress={() => router.push('/(admin)/coaching')} />
-        ) : null}
-        {allows(access, 'businesses.view') ? (
-          <ListRow icon="football-outline" title="Grounds" subtitle="Every sports ground, taking one down, and the sports list" onPress={() => router.push('/(admin)/grounds')} />
-        ) : null}
-        {allows(access, 'payouts.view') ? (
-          <ListRow icon="wallet-outline" title="Payouts" subtitle="Vendors' withdrawals, and money on hold" onPress={() => router.push('/(admin)/payouts')} />
-        ) : null}
-        {allows(access, 'coupons.view') ? (
-          <ListRow icon="pricetag-outline" title="Coupons" subtitle="Ruxstar's offers, and vendors' coupons" onPress={() => router.push('/(admin)/coupons')} />
-        ) : null}
-        {allows(access, 'support.view') ? (
-          <ListRow icon="help-buoy-outline" title="Help tickets" subtitle="Questions and problems people sent Ruxstar" onPress={() => router.push('/(admin)/support')} />
-        ) : null}
-        {allows(access, 'audit.view') ? <ListRow icon="time-outline" title="Audit log" subtitle="Every change, newest first" onPress={() => router.push('/(admin)/audit')} /> : null}
-
-        <Section>Your account</Section>
-        <ListRow icon="key-outline" title="Change password" subtitle="Signs out your other devices" onPress={() => router.push('/(admin)/password')} />
-        <ListRow icon="phone-portrait-outline" title="Sessions & devices" subtitle="Where you are logged in" onPress={() => router.push('/(admin)/sessions')} />
-        <ListRow icon="log-out-outline" title="Log out" destructive onPress={() => setConfirming(true)} />
+        {sections.map((s) => (
+          <TileCard key={s.title} title={s.title} icon={s.icon} tint={s.tint} flat>
+            {s.items.map((item) => (
+              <IconTile key={item.label} icon={item.icon} label={item.label} tint={s.tint} width={tileWidth} onPress={() => router.push(item.href)} />
+            ))}
+          </TileCard>
+        ))}
+        <View style={styles.logOut}>
+          <ListRow icon="log-out-outline" title="Log out" destructive onPress={() => setConfirming(true)} />
+        </View>
       </ScrollView>
 
       <ConfirmSheet
@@ -83,3 +128,7 @@ export function MoreScreen() {
     </ConsoleScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  logOut: { paddingTop: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Brand.border },
+});

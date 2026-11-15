@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-15 — Owner UI fixes: solved button, console More tiles, one-screen metrics, modules split
+Prompt:    "Change the my problem is solved button position. In the admin dashboard add a layout like this for all the more options in app. All the metrics in one place. In the modules page first just show all the module names then options to edit — too much of scrolling."
+Decision:  "My problem is solved" is a full-width outline button at the top of the reply footer (same confirm sheet), shown while the ticket is open or waiting. Console More is grouped icon tiles (4 a row, sized from screen width, same permission checks as each screen). The dashboard groups every count the API has; payouts have no count route, so their queues are counted from the first page of each list ("20+"). Modules is a short list; each module has its own screen (`(admin)/modules/[module]`) and links to GST filtered to that module (`(admin)/gst?module=`).
+Done:      `TicketScreen`, `features/admin/components/{tiles,ModuleForms}.tsx`, `hooks/use-console-metrics.ts`, `lib/modules.ts` (+ test), `MoreScreen`, `DashboardScreen`, `ModulesScreen`, `ModuleScreen`, `GstSettingsScreen`, routes `(admin)/modules/{index,[module]}.tsx`, `(admin)/gst.tsx`. Notes: `Architecture/build-log/owner-ui-fixes.md`.
+Blocked:   per-module business, order and booking counts, money totals and "new today" need a backend stats route.
+Mocks:     none.
+Verified by user: no
+Next:      Run the 6-step check in the build log in Expo Go.
+
+---
+
 ## 2026-11-15 — Sports & Turf: grounds, slot booking, repeat weekly, owner board, console
 Prompt:    "Build the Sports & Turf business in the app — customer, ground owner and staff, console"
 Decision:  Built on the real `/v1/turf` API (backend commit f42eff5) with the shared booking pieces. Weekly bookings check each later week with one slot call per week and name the clashing dates before paying; the API's 409 is still the final word. The ground desk lives under `(customer)/ground-desk` so staff reach it from Work, and the owner from the business page. `RateOrderCard` takes any review API so turf bookings reuse it. Console rules form gained turf rules with slot-length chips.

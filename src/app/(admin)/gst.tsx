@@ -1,10 +1,12 @@
+import { useLocalSearchParams } from 'expo-router';
 import { Needs } from '@/features/admin/components/parts';
 import { GstSettingsScreen } from '@/features/admin/screens/GstSettingsScreen';
 
 export default function GstSettingsRoute() {
+  const { module } = useLocalSearchParams<{ module?: string }>();
   return (
     <Needs need="modules.view">
-      <GstSettingsScreen />
+      <GstSettingsScreen module={module} />
     </Needs>
   );
 }
