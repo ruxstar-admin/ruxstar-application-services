@@ -64,6 +64,49 @@ export function IconTile({ icon, label, tint, width, onPress }: { icon: Icon; la
   );
 }
 
+/** A card that opens a deeper screen: the area's icon and name, and one line on what is happening there. */
+export function SectionTile({
+  icon,
+  label,
+  line,
+  tint,
+  warn,
+  width,
+  onPress,
+}: {
+  icon: Icon;
+  label: string;
+  line?: string;
+  tint: Tint;
+  warn?: boolean;
+  width: number;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={line ? `${label}: ${line}` : label}
+      onPress={() => {
+        Feedback.tap();
+        onPress();
+      }}
+      style={({ pressed }) => [styles.section, { width }, pressed && styles.pressed]}
+    >
+      <View style={[styles.tileIcon, { backgroundColor: TINT[tint].bg }]}>
+        <Ionicons name={icon} size={22} color={TINT[tint].fg} />
+      </View>
+      <Text style={styles.sectionLabel} numberOfLines={2}>
+        {label}
+      </Text>
+      {line ? (
+        <Text style={[styles.metricLabel, warn && styles.warn]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+          {line}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
 const VALUE_TONE = { plain: Brand.text, warn: Brand.warning, good: Brand.success, quiet: Brand.textMuted } as const;
 
 /** Inside a `TileCard`: one number and what it counts. `warn` is for something waiting on Ruxstar. */
@@ -126,4 +169,7 @@ const styles = StyleSheet.create({
   metric: { gap: 2, paddingHorizontal: Spacing.two + 2, paddingVertical: Spacing.two + 2, borderRadius: Radius.md, backgroundColor: Brand.surfaceAlt },
   value: { fontFamily: Typography.title.fontFamily, fontSize: 22 },
   metricLabel: { ...Typography.caption, fontSize: 12, lineHeight: 16, color: Brand.textMuted },
+  section: { gap: Spacing.two, padding: Spacing.three, minHeight: 128, borderRadius: Radius.lg, backgroundColor: Brand.surface, borderWidth: 1, borderColor: Brand.border },
+  sectionLabel: { ...Typography.bodyStrong, color: Brand.text },
+  warn: { color: Brand.warning, fontFamily: Typography.bodyStrong.fontFamily },
 });
