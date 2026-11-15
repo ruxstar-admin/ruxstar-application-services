@@ -58,7 +58,17 @@ export function TeamScreen() {
                 </View>
               </>
             ) : (
-              <EmptyState icon="people-outline" title="No one yet" message={data.permissions.some((p) => p.key === 'tickets.scan') ? 'Invite gate keepers to scan tickets at your events.' : 'Invite someone to help with orders, the shop or posts.'} />
+              <EmptyState
+                icon="people-outline"
+                title="No one yet"
+                message={
+                  data.permissions.some((p) => p.key === 'tickets.scan')
+                    ? 'Invite gate keepers to scan tickets at your events.'
+                    : data.permissions.some((p) => p.key === 'classes.view')
+                      ? 'Invite coaches to take attendance, message students and share notes for their batches.'
+                      : 'Invite someone to help with orders, the shop or posts.'
+                }
+              />
             )}
           </>
         ) : null}

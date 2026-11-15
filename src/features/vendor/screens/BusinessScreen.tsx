@@ -213,6 +213,7 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
 
   const catalogRows = !!data?.pod && !data.suspension && can('shop.catalog');
   const events = data?.module === 'events';
+  const coaching = data?.module === 'coaching';
   return (
     <ScreenContainer title={team ? 'Shop' : 'Business'}>
       <AsyncBoundary loading={loading || place.loading} error={error ?? place.error} hasData={!!data} onRetry={reload} skeletonRows={5}>
@@ -315,10 +316,28 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                     <Tile title="Scan tickets" subtitle="Check people in at the gate, even offline" icon="qr-code-outline" onPress={() => router.push('/(customer)/gate')} />
                   </>
                 ) : null}
-                {!team && (data.pod || events) && !data.suspension ? (
+                {!team && coaching ? (
+                  <>
+                    <Tile
+                      title="Courses"
+                      subtitle={data.status === 'live' ? 'Make courses and batches, see students' : 'Make courses now; publish the business to take enrolments'}
+                      icon="school-outline"
+                      disabled={!!data.suspension}
+                      onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/courses', params: { id } })}
+                    />
+                    <Tile title="Today’s classes" subtitle="Take attendance, move or cancel a class, message a batch" icon="today-outline" onPress={() => router.push('/(customer)/teach')} />
+                  </>
+                ) : null}
+                {!team && (data.pod || events || coaching) && !data.suspension ? (
                   <Tile
-                    title={events ? 'Team & gate keepers' : 'Team'}
-                    subtitle={events ? 'Invite people to scan tickets or help run events' : 'Invite people to help with orders, the shop and posts'}
+                    title={events ? 'Team & gate keepers' : coaching ? 'Team & coaches' : 'Team'}
+                    subtitle={
+                      events
+                        ? 'Invite people to scan tickets or help run events'
+                        : coaching
+                          ? 'Invite coaches to take attendance, share materials and message batches'
+                          : 'Invite people to help with orders, the shop and posts'
+                    }
                     icon="people-outline"
                     onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/team', params: { id } })}
                   />
@@ -339,7 +358,7 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
                     onPress={() => router.push({ pathname: '/(vendor)/businesses/[id]/terms', params: { id } })}
                   />
                 ) : null}
-                {!team && (data.pod || events) ? (
+                {!team && (data.pod || events || coaching) ? (
                   <Tile
                     title="GST invoices"
                     subtitle="Invoices and credit notes for its sales, and a CSV for your return"

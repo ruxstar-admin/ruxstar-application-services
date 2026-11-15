@@ -15,7 +15,12 @@ export type TeamPermission =
   | 'posts.create'
   | 'reviews.reply'
   | 'tickets.scan'
-  | 'tickets.guests';
+  | 'tickets.guests'
+  | 'classes.view'
+  | 'classes.attendance'
+  | 'classes.message'
+  | 'classes.materials'
+  | 'classes.reschedule';
 
 /** One permission as the API describes it. `needs` is given along with it. */
 export interface PermissionInfo {

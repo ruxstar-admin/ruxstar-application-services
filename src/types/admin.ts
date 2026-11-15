@@ -1,6 +1,7 @@
 /** The Ruxstar console, `/v1/ruxstar` (Architecture decisions 41 to 43). */
 
 import type { Business, BusinessModule, PayoutMethod } from './business';
+import type { CourseCategory, CourseStatus } from './coaching';
 
 export type Permission =
   | 'kyc.view'
@@ -225,7 +226,24 @@ export interface ModuleSettings {
   delivery: DeliverySettings | null;
   /** The events module only. */
   eventRules: EventRuleSettings | null;
+  /** The coaching module only. */
+  coachingRules: CoachingRuleSettings | null;
   updatedAt: string;
+}
+
+/** Rules every institute's courses follow. `maxDemoFee` is paise. */
+export interface CoachingRuleSettings {
+  /** 1 to 100. Courses can set their own. */
+  certificatePercent: number;
+  /** 1 to 168. */
+  minimumHours: number;
+  maxBatchSize: number;
+  maxClasses: number;
+  maxBatches: number;
+  maxDemoFee: number;
+  maxDemoSeats: number;
+  /** 0 to 120. */
+  joinMinutes: number;
 }
 
 /** Rules every organiser's events follow. */
@@ -257,12 +275,21 @@ export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 
     gstinRequired?: boolean;
     /** Events only. Send only what changes. */
     eventRules?: Partial<EventRuleSettings>;
+    /** Coaching only. Send only what changes. */
+    coachingRules?: Partial<CoachingRuleSettings>;
   };
 
 /** Console events list: `q` matches the title or the organiser's name. */
 export interface EventFilter {
   q?: string;
   status?: 'draft' | 'live' | 'cancelled';
+}
+
+/** Console courses list: `q` matches the title or the institute's name. */
+export interface CourseFilter {
+  q?: string;
+  status?: CourseStatus;
+  category?: CourseCategory;
 }
 
 // Payouts and held money.

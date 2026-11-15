@@ -70,7 +70,11 @@ interface ApiNotification {
       | 'work_reviews'
       | 'delivery_job'
       | 'delivery_earnings'
-      | 'support';
+      | 'support'
+      | 'coaching_course'
+      | 'coaching_order'
+      | 'vendor_course'
+      | 'coaching_batch';
     id: string;
   };
   read: boolean;
@@ -125,6 +129,10 @@ const LINKS: Record<ApiNotification['link']['screen'], (id: string) => Partial<A
   delivery_job: () => ({ deliveryVerification: true }),
   delivery_earnings: () => ({ deliveryVerification: true }),
   support: (id) => ({ supportTicketId: id }),
+  coaching_course: (id) => ({ courseId: id }),
+  coaching_order: (id) => ({ coachingOrderId: id }),
+  vendor_course: (id) => ({ vendorCourseId: id }),
+  coaching_batch: (id) => ({ batchId: id }),
 };
 
 /** What a phone notification's `screen` and `id` point at, in the notifications screen's terms. Unknown screens point nowhere. */

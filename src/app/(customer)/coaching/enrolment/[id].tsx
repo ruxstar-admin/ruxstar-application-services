@@ -1,3 +1,3 @@
-import { EnrolmentScreen } from '@/features/coaching/screens/EnrolmentScreen';
+import { CoachingOrderScreen } from '@/features/coaching/screens/CoachingOrderScreen';
 
-export default EnrolmentScreen;
+export default CoachingOrderScreen;

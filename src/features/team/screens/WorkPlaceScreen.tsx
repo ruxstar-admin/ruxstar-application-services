@@ -69,6 +69,13 @@ const WORK_AREAS: {
     href: () => '/(customer)/gate',
   },
   {
+    title: 'Classes',
+    subtitle: 'Today’s classes, attendance and your batches',
+    icon: 'school-outline',
+    allowed: has('classes.view'),
+    href: () => '/(customer)/teach',
+  },
+  {
     title: 'Post as the business',
     subtitle: 'It goes out under the owner’s name',
     icon: 'create-outline',

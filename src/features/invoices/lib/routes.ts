@@ -10,7 +10,10 @@ export const INVOICE_PATH = {
 /** Where "View order" goes from a document, when the viewer has an order screen for it. */
 export function orderHref(invoice: Pick<Invoice, 'order'>, audience: InvoiceAudience) {
   const { type, id } = invoice.order;
-  if (audience === 'customer') return { pathname: type === 'pod_order' ? '/(customer)/pod/order/[id]' : '/(customer)/events/ticket/[id]', params: { id } } as const;
+  if (audience === 'customer') {
+    const pathname = type === 'pod_order' ? '/(customer)/pod/order/[id]' : type === 'coaching_order' ? '/(customer)/coaching/enrolment/[id]' : '/(customer)/events/ticket/[id]';
+    return { pathname, params: { id } } as const;
+  }
   if (audience === 'vendor' && type === 'pod_order') return { pathname: '/(vendor)/sale/[id]', params: { id } } as const;
   return null;
 }

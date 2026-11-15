@@ -200,13 +200,20 @@ Every "create" below (order, ticket, enrolment, booking) takes `paymentRef` and 
 | `PATCH /ruxstar/gst/modules/{module}` | `{ enabled?, code?, codeKind?, rateBps? (0 to 4000), tcsBps? (0 to 200) }` | `GstModuleSettings` | `modules.manage`, `Idempotency-Key`. `pricesIncludeTax: false` is refused, so the app shows it read only. Audited as `gst.module_update` |
 | `PATCH /ruxstar/gst/seller` | `{ legalName?, tradeName?, gstin? \| null, address? \| null, feeCode?, feeRateBps? }` | `GstSellerSettings` | `modules.manage`, `Idempotency-Key`. The GSTIN's state code must match the address state. Audited as `gst.seller_update` |
 
-## Coaching (`coaching.mocks.ts`)
+## Coaching (real API — `/v1`, backend commit ad8dde4)
 | Path | Request | Response | Notes |
 |---|---|---|---|
-| `/coaching/get` | `{ id }` | `CourseDetail` (course, batches, `enrolledBatchIds`) | |
-| `/coaching/enrol` | `{ batchId, paymentRef }` | `Enrolment` | Full batch fee up front, no instalments. The pay screen shows `COACHING_REFUND_POLICY` before payment (scope review #7) |
-| `/coaching/enrolment` | `{ id }` | `Enrolment` (`refundable` while the first session has not started, `sessions[]`) | Cancel/refund is Phase 9 |
-| `/coaching/vendor/courses` · `/create` · `/batch` · `/attendance` | – · `NewCourse` · `{ batchId }` · `{ batchId, sessionId, presentIds[] }` | `{ batch, courseTitle }[]` · `{ course, batch }` · `BatchRoster` · `{ message }` | |
+| `GET /coaching/rules` | – | `CoachingRules` | Certificate %, minimum-check hours, limits, join minutes, commission and platform fee |
+| `GET /coaching` · `GET /coaching/{id}` | `?city&category&online=true\|false&q&cursor` · – | `Page<CourseCard>` · `CourseDetail` | `myOrders` and `demoTaken` drive who can enrol or book a demo |
+| `POST /coaching/batches/{id}/enrol` · `POST /coaching/{id}/demo` | `{ student: { childId }, returnTo }` · `{ sessionId, student, returnTo }` | `{ order, checkoutUrl }` | `Idempotency-Key`, kept when a try times out. Free comes back confirmed. Coupons not offered in the app yet |
+| `GET /coaching/orders` · `GET /coaching/orders/{id}` · `POST .../pay` · `POST .../cancel` | `?view=current\|past&cursor` · – · `{ returnTo }` · – | `Page<CoachingOrder>` · `CoachingOrder` · `{ checkoutUrl }` · `CoachingOrder` | Full refund until the first class (`canCancel`); none after. `classes[].joinLink` shows from `joinFrom` |
+| `GET /coaching/orders/{id}/materials\|messages` · `GET /coaching/timetable` · `GET /coaching/certificates` | – · `?from&days (1 to 31)` · `?cursor` | `Material[]` · `BatchMessage[]` · `TimetableEntry[]` · `Page<Certificate>` | File and PDF links are signed for 10 minutes; the app refetches before opening |
+| `GET\|POST /coaching/children` · `PATCH\|DELETE /coaching/children/{id}` | `{ name (2 to 60), birthYear \| null }` | `Child` | Up to 10; a child with open bookings can't be removed |
+| `GET\|POST /vendor/businesses/{id}/courses` · `GET\|PATCH\|DELETE /vendor/courses/{id}` · `POST .../photo\|publish` | `CourseInput` · JPEG bytes | `VendorCourse` | Owner only. Mode fixed once there's a batch |
+| `POST /vendor/courses/{id}/batches` · `PATCH\|DELETE /vendor/batches/{id}` · `POST .../cancel` · `GET /vendor/courses/{id}/students` | `BatchInput` (the app always sends `classes`, `endDate: null`) · `{ reason (5 to 300) }` · `?batchId&kind&status&cursor` | `VendorCourse` · `Page<StudentRow>` | Schedule fields go together; fixed once anyone holds or has a seat |
+| `/coaching/desk/*`: `batches`, `today`, `batches/{id}`, `classes/{id}`, `PUT classes/{id}/attendance`, `classes/{id}/cancel\|move`, `batches/{id}/classes`, `batches/{id}/messages\|materials\|students`, `batches/{id}/materials/file`, `DELETE materials/{id}` | `{ marks[] }` · `{ reason }` · `{ startsAt, minutes?, reason? }` · `{ startsAt, minutes }` · `{ text }` · `{ title, url }` · bytes with `?title&wholeCourse` | `DeskBatch`, `TodayClass`, `ClassRoster`, `Material`, `BatchMessage`, `DeskStudent` | Owner, or a team coach of the batch with `classes.*` permissions. Writes take `Idempotency-Key` |
+| `GET /ruxstar/coaching/courses` · `GET .../{id}` · `POST .../{id}/take-down` | `?status=draft\|live\|removed&category&q&cursor` · – · `{ reason }` | `Page<VendorCourse>` · `VendorCourse` | `businesses.view` · `businesses.manage`, `Idempotency-Key` |
+| `PATCH /ruxstar/modules/coaching` | `{ coachingRules: { certificatePercent?, minimumHours?, maxBatchSize?, maxClasses?, maxBatches?, maxDemoFee? (paise), maxDemoSeats?, joinMinutes? } }` | `ModuleSettings` with `coachingRules` | `modules.manage`. Send only what changes |
 
 ## PG / hostel (`stays.mocks.ts`)
 | Path | Request | Response | Notes |

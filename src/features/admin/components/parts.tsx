@@ -1,13 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Avatar } from '@/components/ui/Avatar';
-import { BottomSheet } from '@/components/ui/BottomSheet';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { InputField } from '@/components/ui/InputField';
-import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { ApiError } from '@/lib/api-error';
@@ -144,53 +141,7 @@ export function Section({ children }: { children: ReactNode }) {
   return <Text style={styles.section}>{children}</Text>;
 }
 
-/** Asks for a 5 to 300 character reason before a decision the person affected will read. `message` says what happens. */
-export function ReasonSheet({
-  visible,
-  title,
-  message,
-  prompt,
-  placeholder,
-  confirmLabel,
-  loading,
-  onConfirm,
-  onCancel,
-}: {
-  visible: boolean;
-  title: string;
-  message?: string;
-  prompt: string;
-  placeholder: string;
-  confirmLabel: string;
-  loading: boolean;
-  onConfirm: (reason: string) => void;
-  onCancel: () => void;
-}) {
-  const [reason, setReason] = useState('');
-  const [shown, setShown] = useState(visible);
-  if (visible !== shown) {
-    setShown(visible);
-    if (visible) setReason('');
-  }
-
-  return (
-    <BottomSheet visible={visible} onClose={onCancel} title={title}>
-      {message ? <Text style={styles.sheetMessage}>{message}</Text> : null}
-      <InputField
-        label={prompt}
-        value={reason}
-        onChangeText={setReason}
-        placeholder={placeholder}
-        multiline
-        maxLength={300}
-        showCount
-        autoFocus
-      />
-      <PrimaryButton label={confirmLabel} onPress={() => onConfirm(reason.trim())} loading={loading} disabled={reason.trim().length < 5} />
-      <PrimaryButton label="Cancel" variant="outline" onPress={onCancel} disabled={loading} />
-    </BottomSheet>
-  );
-}
+export { ReasonSheet } from '@/components/ui/ReasonSheet';
 
 export const consoleStyles = StyleSheet.create({
   list: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.two },
@@ -222,6 +173,5 @@ const styles = StyleSheet.create({
   noteText: { ...Typography.caption, color: Brand.text },
   dangerText: { color: Brand.error },
   section: { ...Typography.overline, color: Brand.textMuted, marginTop: Spacing.three },
-  sheetMessage: { ...Typography.body, color: Brand.textMuted },
   center: { alignItems: 'center' },
 });

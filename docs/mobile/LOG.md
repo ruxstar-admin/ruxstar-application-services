@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-15 — Coaching: courses, demos, enrolment, classes, coach tools, console
+Prompt:    "Build the Coaching business in the app… replace the old fake-data Coaching screens"
+Decision:  Built on the real `/v1/coaching` API (backend commit ad8dde4). The batch builder offers a number of classes, not an end date. Coupons aren't offered at enrolment yet. `StepBar`, `KeyedSelectField` and `ReasonSheet` moved to `components/ui`; the console event rules form became one `RulesForm` for event and coaching rules.
+Done:      `features/coaching/*` (customer, teach and vendor screens, libs with tests), routes under `(customer)/coaching`, `(customer)/teach`, `(vendor)/businesses/[id]/courses`, `(vendor)/courses`, `(admin)/coaching`, `(admin)/course`; Discover, business tiles, Work, notifications, invoices. Old mock screens, `coaching.mocks.ts` and its test removed. Full notes: `Architecture/build-log/coaching-app.md`.
+Blocked:   nothing.
+Mocks:     none; API_CONTRACTS Coaching section now lists the real endpoints.
+Verified by user: no
+Next:      Run the test checklist in the build log on a phone in Expo Go.
+
+---
+
 ## 2026-11-15 — GST invoices: customer, vendor and console
 Prompt:    "build the GST invoice screens … customer invoices, vendor invoices with month/kind filters and CSV export, console invoice search and GST settings"
 Decision:  PDFs open through the signed `pdfUrl` (no token in the browser), fetched fresh on each tap. The CSV comes through the API client as text (`apiGetText`), is written with `expo-file-system` and shared. The vendor month filter runs in the app because the list has no date filter. Download-and-share moved to `src/lib/share-file.ts`, and print files use it too. No new packages.

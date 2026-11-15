@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -6,9 +6,10 @@ import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { ChoiceChips } from '@/components/ui/ChoiceChips';
 import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
+import { KeyedSelectField } from '@/components/ui/KeyedSelectField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
-import { SelectField } from '@/components/ui/SelectField';
+import { StepBar } from '@/components/ui/StepBar';
 import { TextLink } from '@/components/ui/TextLink';
 import { ToggleRow } from '@/components/ui/ToggleRow';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
@@ -19,7 +20,6 @@ import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { EventsService, VendorEventsService } from '@/services/events-service';
 import type { EventKind, EventRules, VendorEvent } from '@/types/events';
-import { StepBar } from '../components/StepBar';
 import {
   DRAFT_STEPS,
   HALF_HOURS,
@@ -45,12 +45,8 @@ const REFUND_CHIPS = [
   { key: 'none', label: 'No refunds' },
 ] as const;
 
-/** A day or a time from a searchable sheet; labels go in, keys come out. */
-function Pick({ label, value, options, onChange, error }: { label: string; value: string; options: { key: string; label: string }[]; onChange: (key: string) => void; error?: string }) {
-  const byLabel = useMemo(() => new Map(options.map((o) => [o.label, o.key])), [options]);
-  const shown = options.find((o) => o.key === value)?.label ?? (value ? (value.includes('-') ? dayLabel(value) : value) : '');
-  return <SelectField label={label} value={shown} options={options.map((o) => o.label)} onChange={(l) => onChange(byLabel.get(l) ?? value)} placeholder="Choose" error={error} />;
-}
+const dayOrTime = (value: string) => (value.includes('-') ? dayLabel(value) : value);
+const Pick = (props: Omit<ComponentProps<typeof KeyedSelectField>, 'fallback'>) => <KeyedSelectField {...props} fallback={dayOrTime} />;
 
 function Form({ rules, event, businessId }: { rules: EventRules; event?: VendorEvent; businessId?: string }) {
   const router = useRouter();

@@ -28,6 +28,13 @@ describe('notificationHref', () => {
     expect(notificationHref({ supportTicketId: 't1' })).toEqual({ pathname: '/(customer)/support/[id]', params: { id: 't1' } });
   });
 
+  it('opens the course, the enrolment, the course in the vendor portal or the batch for its coaches', () => {
+    expect(notificationHref({ courseId: 'c1' })).toEqual({ pathname: '/(customer)/coaching/[id]', params: { id: 'c1' } });
+    expect(notificationHref({ coachingOrderId: 'o3' })).toEqual({ pathname: '/(customer)/coaching/enrolment/[id]', params: { id: 'o3' } });
+    expect(notificationHref({ vendorCourseId: 'c2' })).toEqual({ pathname: '/(vendor)/courses/[id]', params: { id: 'c2' } });
+    expect(notificationHref({ batchId: 'b3' })).toEqual({ pathname: '/(customer)/teach/batch/[id]', params: { id: 'b3' } });
+  });
+
   it('opens nothing when it points nowhere', () => {
     expect(notificationHref({})).toBeUndefined();
   });

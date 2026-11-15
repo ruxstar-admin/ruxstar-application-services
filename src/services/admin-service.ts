@@ -9,6 +9,7 @@ import type {
   BusinessCase,
   BusinessFilter,
   BusinessRow,
+  CourseFilter,
   EventFilter,
   HeldOrder,
   ModuleName,
@@ -26,6 +27,7 @@ import type {
   StaffMember,
   StaffPayout,
 } from '@/types/admin';
+import type { VendorCourse } from '@/types/coaching';
 import type { CouponFunder, CouponPatch, ManagedCoupon, NewCoupon } from '@/types/coupon';
 import type { VendorEvent } from '@/types/events';
 import type { StaffOrder } from '@/types/order';
@@ -122,6 +124,13 @@ export const AdminService = {
   /** Cancels it for good: every booking is refunded in full, and the organiser and every ticket holder see the reason. */
   takeDownEvent: (token: string, id: string, reason: string, key: string) =>
     apiPost<VendorEvent>(`/v1/ruxstar/events/${id}/take-down`, { reason }, token, keyed(key)),
+
+  courses: (token: string, filter: CourseFilter, cursor?: string) =>
+    apiGetPage<VendorCourse>('/v1/ruxstar/coaching/courses', token, { ...filter, q: filter.q?.trim() || undefined, cursor }),
+  getCourse: (token: string, id: string) => apiGet<VendorCourse>(`/v1/ruxstar/coaching/courses/${id}`, token),
+  /** Cancels its live batches and refunds every enrolment not yet paid out to the institute. */
+  takeDownCourse: (token: string, id: string, reason: string, key: string) =>
+    apiPost<VendorCourse>(`/v1/ruxstar/coaching/courses/${id}/take-down`, { reason }, token, keyed(key)),
 
   audit: (token: string, filter: AuditFilter, cursor?: string) => apiGetPage<AuditEntry>('/v1/ruxstar/audit', token, { ...filter, cursor }),
 };

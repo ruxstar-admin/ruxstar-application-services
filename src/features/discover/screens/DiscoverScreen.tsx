@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChoiceChips } from '@/components/ui/ChoiceChips';
+import { CourseResults } from '@/features/coaching/components/CourseResults';
 import { EventResults } from '@/features/events/components/EventResults';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InputField } from '@/components/ui/InputField';
@@ -22,7 +23,11 @@ import type { ShopFilters } from '@/types/shop';
 /** Waits this long after the last keystroke before searching. */
 const SEARCH_DELAY_MS = 350;
 /** Categories customers can already browse here; the rest show "coming soon". */
-const OPEN_MODULES: BusinessModule[] = ['pod', 'events'];
+const OPEN_MODULES: BusinessModule[] = ['pod', 'events', 'coaching'];
+const SEARCH_HINT: Partial<Record<Category, { placeholder: string; label: string }>> = {
+  events: { placeholder: 'Event, organiser or city', label: 'Search events' },
+  coaching: { placeholder: 'Course, subject or institute', label: 'Search courses' },
+};
 
 type Filter = 'all' | PodProduct;
 type Category = 'all' | BusinessModule;
@@ -121,6 +126,8 @@ export function DiscoverScreen() {
   const comingSoon = picked ? !picked.live || !OPEN_MODULES.includes(picked.module) : false;
   const printOpen = categories.some((c) => c.module === 'pod' && c.live) && category !== 'pod';
   const eventsOpen = categories.some((c) => c.module === 'events' && c.live);
+  const coachingOpen = categories.some((c) => c.module === 'coaching' && c.live);
+  const hint = SEARCH_HINT[category] ?? { placeholder: 'Shop, what they print, or a city', label: 'Search businesses' };
   const productChips: { key: Filter; label: string }[] = [
     { key: 'all', label: 'All print' },
     ...(catalog.data?.podProducts ?? []).map((p) => ({ key: p.id, label: p.label })),
@@ -140,6 +147,7 @@ export function DiscoverScreen() {
           <Text style={styles.subheading}>Businesses on Ruxstar</Text>
         </View>
         {eventsOpen ? <HeaderButton icon="ticket-outline" label="Your tickets" onPress={() => router.push('/(customer)/events/tickets')} /> : null}
+        {coachingOpen ? <HeaderButton icon="school-outline" label="Your classes" onPress={() => router.push('/(customer)/coaching/classes')} /> : null}
         <HeaderButton icon="receipt-outline" label="Your orders" onPress={() => router.push('/(customer)/orders')} />
         <HeaderButton icon="wallet-outline" label="Your payments" onPress={() => router.push('/(customer)/payments')} />
       </View>
@@ -147,10 +155,10 @@ export function DiscoverScreen() {
         <InputField
           value={text}
           onChangeText={setText}
-          placeholder={category === 'events' ? 'Event, organiser or city' : 'Shop, what they print, or a city'}
+          placeholder={hint.placeholder}
           autoCorrect={false}
           returnKeyType="search"
-          accessibilityLabel={category === 'events' ? 'Search events' : 'Search businesses'}
+          accessibilityLabel={hint.label}
         />
       </View>
       <View style={styles.filters}>
@@ -167,6 +175,8 @@ export function DiscoverScreen() {
         />
       ) : category === 'events' ? (
         <EventResults q={q} />
+      ) : category === 'coaching' ? (
+        <CourseResults q={q} />
       ) : (
         <Results key={`${q}|${category}|${product}`} filters={filters} />
       )}

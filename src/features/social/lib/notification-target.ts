@@ -17,6 +17,10 @@ type Target = Pick<
   | 'reviewsBusinessId'
   | 'workReviewsId'
   | 'supportTicketId'
+  | 'courseId'
+  | 'coachingOrderId'
+  | 'vendorCourseId'
+  | 'batchId'
 >;
 
 /** The screen a notification opens, from the notifications screen or a phone notification; undefined when it opens none. */
@@ -35,5 +39,9 @@ export function notificationHref(n: Target): Href | undefined {
   if (n.reviewsBusinessId) return { pathname: '/(vendor)/businesses/[id]/reviews', params: { id: n.reviewsBusinessId } };
   if (n.workReviewsId) return { pathname: '/(customer)/work/reviews/[id]', params: { id: n.workReviewsId } };
   if (n.supportTicketId) return { pathname: '/(customer)/support/[id]', params: { id: n.supportTicketId } };
+  if (n.courseId) return { pathname: '/(customer)/coaching/[id]', params: { id: n.courseId } };
+  if (n.coachingOrderId) return { pathname: '/(customer)/coaching/enrolment/[id]', params: { id: n.coachingOrderId } };
+  if (n.vendorCourseId) return { pathname: '/(vendor)/courses/[id]', params: { id: n.vendorCourseId } };
+  if (n.batchId) return { pathname: '/(customer)/teach/batch/[id]', params: { id: n.batchId } };
   return undefined;
 }
