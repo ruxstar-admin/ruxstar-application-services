@@ -31,7 +31,7 @@ const LISTINGS: Record<ListingKind, string> = {
   product: 'Products on sale',
 };
 
-export const listingsLabel = (kind: ListingKind) => LISTINGS[kind];
+export const listingsLabel = (kind: ListingKind) => LISTINGS[kind] ?? 'Live listings';
 
 export const ordersWord = (module: StatsModule) => (module === 'delivery' ? 'Trips' : module === 'turf' || module === 'stays' ? 'Bookings' : 'Orders');
 
@@ -48,3 +48,6 @@ export const hasQueues = (q: Stats['queues']): q is NonNullable<Stats['queues']>
 
 /** A module block with nothing this person may see. */
 export const blockEmpty = (b: StatsModuleBlock) => !b.businesses && !b.listings && !b.orders && !b.money;
+
+/** Blocks the dashboard can draw: a module this app knows, with something in it. */
+export const shownBlocks = (blocks: StatsModuleBlock[] | undefined) => (blocks ?? []).filter((b) => isStatsModule(b.module) && !blockEmpty(b));

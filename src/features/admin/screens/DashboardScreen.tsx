@@ -12,7 +12,7 @@ import { ConsoleScreen, consoleStyles } from '../components/parts';
 import { MetricTile, TileCard, cellWidth, tileCardInner } from '../components/tiles';
 import { useConsoleMetrics } from '../hooks/use-console-metrics';
 import { MODULE_LABEL } from '../labels';
-import { asOfText, blockEmpty, hasQueues } from '../lib/stats';
+import { asOfText, hasQueues, shownBlocks } from '../lib/stats';
 
 const count = (n: number) => n.toLocaleString('en-IN');
 const waiting = (n: number) => (n > 0 ? 'warn' : 'plain');
@@ -42,7 +42,7 @@ export function DashboardScreen() {
   const q = s?.queues ?? null;
   const o = overview.data;
   const desk = support.data;
-  const modules = s?.modules.filter((b) => !blockEmpty(b)) ?? [];
+  const modules = shownBlocks(s?.modules);
 
   return (
     <ConsoleScreen

@@ -11,7 +11,7 @@ import { Brand, Spacing, Typography } from '@/constants/theme';
 import { decimalOnly, lowRateLine, MAX_TCS_BPS, moduleErrors, modulePatch, moduleValues, type ModuleValues } from '@/features/invoices/lib/gst-settings';
 import { percent } from '@/features/invoices/lib/invoices';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
 import { GstService } from '@/services/invoice-service';
@@ -91,6 +91,7 @@ export function GstModuleCard({ m, onSaved }: { m: GstModuleSettings; onSaved: (
       if (what === 'rates') setValues(moduleValues(done));
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) key.current = newIdempotencyKey();
       setError(errorText(err));
     } finally {
       setBusy(null);

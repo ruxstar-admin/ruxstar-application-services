@@ -13,12 +13,12 @@ import { Brand, Typography } from '@/constants/theme';
 import { Card, Divider, Notice, PickCard, PriceLine, Section } from '@/features/coaching/components/Parts';
 import { CheckoutCoupons } from '@/features/coupons/components/CheckoutCoupons';
 import { couponState } from '@/features/coupons/lib/coupons';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { AddressFields, addressErrors, cleanAddress, usePrefilledAddress } from '@/features/pod/components/AddressFields';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { IdempotentAttempt } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { StoreService } from '@/services/store-service';
@@ -52,7 +52,7 @@ function Checkout({ cart, store }: { cart: Cart; store: StoreDetail }) {
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const attempt = useRef<{ sig: string; key: string } | null>(null);
+  const attempt = useRef(new IdempotentAttempt());
   const cartRef = useRef(cart);
   useEffect(() => {
     cartRef.current = cart;
@@ -64,6 +64,10 @@ function Checkout({ cart, store }: { cart: Cart; store: StoreDetail }) {
   const body: QuoteBody = { lines, method, ...(drop ? { address: drop } : {}), ...(code ? { code } : {}) };
   const inputKey = JSON.stringify(body);
   const [quoteKey, setQuoteKey] = useState(inputKey);
+  const latestQuoteKey = useRef(quoteKey);
+  useEffect(() => {
+    latestQuoteKey.current = quoteKey;
+  });
   useEffect(() => {
     const t = setTimeout(() => setQuoteKey(inputKey), QUOTE_DELAY_MS);
     return () => clearTimeout(t);
@@ -72,7 +76,7 @@ function Checkout({ cart, store }: { cart: Cart; store: StoreDetail }) {
   const priced = useAsyncResource<{ key: string; quote: StoreQuote }>(
     () =>
       StoreService.quote(token, store.id, JSON.parse(quoteKey) as QuoteBody).then((quote) => {
-        setCart(withQuote(cartRef.current, quote));
+        if (latestQuoteKey.current === quoteKey) setCart(withQuote(cartRef.current, quote));
         return { key: quoteKey, quote };
       }),
     quoteKey,
@@ -104,10 +108,9 @@ function Checkout({ cart, store }: { cart: Cart; store: StoreDetail }) {
       ...(note.trim() ? { note: note.trim() } : {}),
       returnTo: storeReturn(),
     };
-    const sig = JSON.stringify(order);
-    if (attempt.current?.sig !== sig) attempt.current = { sig, key: newIdempotencyKey() };
     try {
-      const placed = await StoreService.place(token, store.id, order, { idempotencyKey: attempt.current.key });
+      const placed = await StoreService.place(token, store.id, order, { idempotencyKey: attempt.current.keyFor([store.id, order]) });
+      attempt.current.settle();
       Feedback.success();
       setCart(null);
       router.replace({ pathname: '/(customer)/store/order/[id]', params: { id: placed.order.id, pay: '1' } });
@@ -121,7 +124,7 @@ function Checkout({ cart, store }: { cart: Cart; store: StoreDetail }) {
         if (err instanceof ApiError && err.status === 409) priced.reload();
       }
       // An order that timed out may have gone through; the same key returns it instead of placing it twice.
-      if (!isOffline(err)) attempt.current = null;
+      attempt.current.settle(err);
     } finally {
       setBusy(false);
     }

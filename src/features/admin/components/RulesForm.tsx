@@ -7,7 +7,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { slotLengthText } from '@/features/turf/lib/turf';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { AdminService } from '@/services/admin-service';
 import type { CoachingRuleSettings, EventRuleSettings, ModuleSettings } from '@/types/admin';
@@ -273,6 +273,7 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
       if (done.turfRules) setLengths([...done.turfRules.slotLengths]);
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) key.current = newIdempotencyKey();
       setError(errorText(err));
     } finally {
       setBusy(false);

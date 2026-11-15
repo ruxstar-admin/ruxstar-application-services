@@ -17,7 +17,7 @@ import { checkProfile, EMPTY_PROFILE, locationOf, profileFieldOf, type ProfileEr
 import { BUSINESS_MODULES, TYPE_ICONS } from '@/features/vendor/lib/business-modules';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { BusinessService } from '@/services/business-service';
@@ -76,7 +76,7 @@ export function CreateBusinessScreen() {
       router.replace({ pathname: '/(vendor)/businesses/[id]', params: { id: business.id } });
     } catch (err) {
       Feedback.error();
-      if (err instanceof ApiError && err.kind !== 'network' && err.kind !== 'timeout') attempt.current = newIdempotencyKey();
+      if (!keepIdempotencyKey(err)) attempt.current = newIdempotencyKey();
       const detail = err instanceof ApiError ? err.details.find((d) => d.path && profileFieldOf(d.path)) : undefined;
       const field = detail?.path ? profileFieldOf(detail.path) : undefined;
       if (detail && field) setErrors({ [field]: detail.message });

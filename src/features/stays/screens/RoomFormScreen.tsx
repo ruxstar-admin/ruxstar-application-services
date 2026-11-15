@@ -13,10 +13,10 @@ import { Stepper } from '@/components/ui/Stepper';
 import { TextLink } from '@/components/ui/TextLink';
 import { ToggleRow } from '@/components/ui/ToggleRow';
 import { Brand, Spacing, Typography } from '@/constants/theme';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { StaysService, VendorStaysService } from '@/services/stays-service';
 import type { RoomFeature, RoomKind, StaysRules, VendorProperty } from '@/types/stays';
@@ -58,7 +58,7 @@ function Form({ rules, property, roomId }: { rules: StaysRules; property: Vendor
     } catch (e) {
       Feedback.error();
       setFailure(errorText(e));
-      if (!isOffline(e)) attempt.current = newIdempotencyKey();
+      if (!keepIdempotencyKey(e)) attempt.current = newIdempotencyKey();
     } finally {
       setBusy(null);
     }

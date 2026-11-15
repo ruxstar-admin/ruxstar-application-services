@@ -11,12 +11,12 @@ import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { CheckoutCoupons } from '@/features/coupons/components/CheckoutCoupons';
 import { couponState } from '@/features/coupons/lib/coupons';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { whenLine } from '@/features/events/lib/events';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { IdempotentAttempt } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { CoachingService } from '@/services/coaching-service';
@@ -45,7 +45,7 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
-  const attempt = useRef(newIdempotencyKey());
+  const attempt = useRef(new IdempotentAttempt());
 
   const batch = kind === 'batch' ? batches.find((b) => b.id === picked) : undefined;
   const demo = kind === 'demo' ? demos.find((d) => d.sessionId === picked) : undefined;
@@ -80,16 +80,15 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
     setBusy(true);
     setFailure(null);
     const who = { childId: childIdOf(chosen.key) };
+    const enrol = { student: who, ...(coupon.applied ? { coupon: coupon.applied.code } : {}), returnTo: coachingReturn() };
+    const demoBody = { sessionId: picked, student: who, returnTo: coachingReturn() };
+    const idempotencyKey = attempt.current.keyFor(kind === 'batch' ? [kind, picked, enrol] : [kind, course.id, demoBody]);
     try {
       const { order, checkoutUrl } =
         kind === 'batch'
-          ? await CoachingService.enrol(
-              token,
-              picked,
-              { student: who, ...(coupon.applied ? { coupon: coupon.applied.code } : {}), returnTo: coachingReturn() },
-              { idempotencyKey: attempt.current },
-            )
-          : await CoachingService.bookDemo(token, course.id, { sessionId: picked, student: who, returnTo: coachingReturn() }, { idempotencyKey: attempt.current });
+          ? await CoachingService.enrol(token, picked, enrol, { idempotencyKey })
+          : await CoachingService.bookDemo(token, course.id, demoBody, { idempotencyKey });
+      attempt.current.settle();
       Feedback.success();
       router.replace({ pathname: '/(customer)/coaching/enrolment/[id]', params: { id: order.id, ...(checkoutUrl ? { pay: '1' } : { fresh: '1' }) } });
     } catch (err) {
@@ -101,7 +100,7 @@ function Booking({ course, kind, batchId, kids, onChildAdded }: { course: Course
         setFailure(errorText(err));
       }
       // A place that timed out may have been taken; trying again with the same key returns it instead of holding two seats.
-      if (!isOffline(err)) attempt.current = newIdempotencyKey();
+      attempt.current.settle(err);
     } finally {
       setBusy(false);
     }

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as WebBrowser from 'expo-web-browser';
@@ -16,11 +16,12 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { ToggleRow } from '@/components/ui/ToggleRow';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { dayText } from '@/features/events/lib/events';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
+import { openLink } from '@/lib/open-link';
 import { CoachingService, TeachService } from '@/services/coaching-service';
 import type { DeskBatchDetail, Material } from '@/types/coaching';
 import { fileSize } from '../lib/materials';
@@ -74,7 +75,7 @@ function AddSheet({ batch, kind, onClose, onAdded }: { batch: DeskBatchDetail; k
     } catch (err) {
       Feedback.error();
       setFailure(errorText(err));
-      if (!isOffline(err)) attempt.current = newIdempotencyKey();
+      if (!keepIdempotencyKey(err)) attempt.current = newIdempotencyKey();
     } finally {
       setBusy(false);
     }
@@ -147,7 +148,7 @@ export function MaterialsScreen({ source }: { source: 'order' | 'batch' }) {
   const open = async (m: Material) => {
     setFailure(null);
     if (m.kind === 'link') {
-      await Linking.openURL(m.url);
+      if (!(await openLink(m.url))) setFailure('This link can’t be opened.');
       return;
     }
     setOpening(m.id);

@@ -13,7 +13,7 @@ import { isClosed, PROBLEM_LABEL, SHOP_STATUS_LABEL } from '@/features/pod/lib/o
 import { money } from '@/features/vendor/lib/pod';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { IdempotentAttempt } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
 import { AdminService, type SettleOutcome } from '@/services/admin-service';
@@ -33,7 +33,7 @@ function SettleSheet({ order, outcome, onClose, onDone }: { order: StaffOrder; o
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const key = useRef(newIdempotencyKey());
+  const key = useRef(new IdempotentAttempt());
   const [shown, setShown] = useState(outcome);
   if (outcome !== shown) {
     setShown(outcome);
@@ -50,13 +50,15 @@ function SettleSheet({ order, outcome, onClose, onDone }: { order: StaffOrder; o
     if (!outcome) return;
     setBusy(true);
     setError(null);
+    const body = { outcome, note: note.trim(), ...(outcome === 'refund_partial' ? { amount: paise } : {}) };
     try {
-      const done = await AdminService.settleOrder(token, order.id, { outcome, note: note.trim(), ...(outcome === 'refund_partial' ? { amount: paise } : {}) }, key.current);
+      const done = await AdminService.settleOrder(token, order.id, body, key.current.keyFor(body));
       Feedback.success();
-      key.current = newIdempotencyKey();
+      key.current.settle();
       onDone(done);
     } catch (err) {
       Feedback.error();
+      key.current.settle(err);
       setError(errorText(err));
     } finally {
       setBusy(false);

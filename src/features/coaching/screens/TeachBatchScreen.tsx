@@ -9,11 +9,11 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { whenLine } from '@/features/events/lib/events';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { TeachService } from '@/services/coaching-service';
 import type { DeskBatchDetail, DeskClass } from '@/types/coaching';
@@ -79,7 +79,7 @@ function BatchView({ batch, onBatch }: { batch: DeskBatchDetail; onBatch: (b: De
     } catch (err) {
       Feedback.error();
       setFailure(errorText(err));
-      if (!isOffline(err)) setAttempt(newIdempotencyKey());
+      if (!keepIdempotencyKey(err)) setAttempt(newIdempotencyKey());
     } finally {
       setBusy(false);
     }

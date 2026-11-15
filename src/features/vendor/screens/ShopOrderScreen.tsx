@@ -25,7 +25,7 @@ import { DeliverySection, type DeliveryDesk } from '@/features/vendor/components
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey, type WriteOptions } from '@/lib/api-client';
+import { IdempotentAttempt, keepIdempotencyKey, newIdempotencyKey, type WriteOptions } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
@@ -60,7 +60,7 @@ export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk,
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const keys = useRef<Partial<Record<ShopStatus, string>>>({});
-  const refundKey = useRef(newIdempotencyKey());
+  const refundKey = useRef(new IdempotentAttempt());
 
   const move = async (status: ShopStatus) => {
     setMoving(status);
@@ -73,6 +73,7 @@ export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk,
       keys.current = {};
       onChanged(next);
     } catch (err) {
+      if (!keepIdempotencyKey(err)) delete keys.current[status];
       setError(err instanceof Error ? err.message : 'Could not update the order. Try again.');
       Feedback.error();
     } finally {
@@ -108,14 +109,15 @@ export function ShopOrderDetails<T extends ShopOrder | TeamOrder>({ order, desk,
     setRefunding(true);
     setError(null);
     try {
-      const next = await desk.refund(token, order.id, refundPaise, refundReason.trim(), { idempotencyKey: refundKey.current });
+      const next = await desk.refund(token, order.id, refundPaise, refundReason.trim(), { idempotencyKey: refundKey.current.keyFor([refundPaise, refundReason.trim()]) });
       Feedback.success();
-      refundKey.current = newIdempotencyKey();
+      refundKey.current.settle();
       setRefundOpen(false);
       setRefundAmount('');
       setRefundReason('');
       onChanged(next);
     } catch (err) {
+      refundKey.current.settle(err);
       setError(err instanceof Error ? err.message : 'Could not refund. Try again.');
       setRefundOpen(false);
       Feedback.error();

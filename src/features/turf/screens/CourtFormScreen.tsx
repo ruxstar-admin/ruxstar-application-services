@@ -13,10 +13,10 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { ToggleRow } from '@/components/ui/ToggleRow';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { TurfService, VendorTurfService } from '@/services/turf-service';
 import type { SlotMinutes, Sport, TurfRules, VendorGround } from '@/types/turf';
@@ -97,7 +97,7 @@ function Form({ rules, sports, ground, courtId }: { rules: TurfRules; sports: Sp
     } catch (e) {
       Feedback.error();
       setFailure(errorText(e));
-      if (!isOffline(e)) attempt.current = newIdempotencyKey();
+      if (!keepIdempotencyKey(e)) attempt.current = newIdempotencyKey();
     } finally {
       setBusy(null);
     }

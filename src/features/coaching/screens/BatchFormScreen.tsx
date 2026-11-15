@@ -15,10 +15,10 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { dayLabel, istDays } from '@/features/events/lib/events';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import type { BoardColumn, BoardRow } from '@/lib/booking/board';
 import { istDayKey } from '@/lib/booking/days';
 import { Feedback } from '@/lib/haptics';
@@ -97,7 +97,7 @@ function Form({ rules, course, batch, coaches }: { rules: CoachingRules; course:
     } catch (e) {
       Feedback.error();
       setFailure(errorText(e));
-      if (!isOffline(e)) attempt.current = newIdempotencyKey();
+      if (!keepIdempotencyKey(e)) attempt.current = newIdempotencyKey();
     } finally {
       setBusy(null);
     }

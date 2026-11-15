@@ -14,12 +14,12 @@ import { TextLink } from '@/components/ui/TextLink';
 import { ToggleRow } from '@/components/ui/ToggleRow';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { Notice, Section } from '@/features/coaching/components/Parts';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { ShopCover } from '@/features/pod/components/ShopCover';
 import { pickSquarePhoto, toUploadJpeg } from '@/features/profile/lib/profile-photo';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { StoreDeskService, VendorStoreService } from '@/services/store-service';
 import type { ProductOption, ProductPatch, VendorProduct } from '@/types/store';
@@ -154,7 +154,7 @@ function Form({ storeId, product, owner }: { storeId: string; product: VendorPro
     } catch (err) {
       Feedback.error();
       setFailure(errorText(err));
-      if (!saved && !isOffline(err)) createKey.current = newIdempotencyKey();
+      if (!saved && !keepIdempotencyKey(err)) createKey.current = newIdempotencyKey();
     } finally {
       setBusy(null);
     }

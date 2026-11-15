@@ -191,8 +191,7 @@ export const apiPatch = <T>(path: string, body: Json, token: string, options?: W
 export const apiDelete = <T>(path: string, token: string, body?: Json, options?: WriteOptions): Promise<T> =>
   request<T>({ method: 'DELETE', path, body, token, ...options });
 
-/** A fresh `Idempotency-Key`: one per user action, kept for that action's retries. */
-export const newIdempotencyKey = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}-${Math.random().toString(36).slice(2, 12)}`;
+export { IdempotentAttempt, keepIdempotencyKey, newIdempotencyKey } from './idempotency';
 
 export const apiPutBytes = <T>(path: string, bytes: NonNullable<RequestOptions['bytes']>, token: string): Promise<T> =>
   request<T>({ method: 'PUT', path, bytes, token });

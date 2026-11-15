@@ -9,7 +9,7 @@ import { decimalOnly, sellerErrors, sellerPatch, sellerValues, type SellerValues
 import { cleanGstin, stateOfGstin, STATE_NAMES } from '@/features/invoices/lib/gstin';
 import { percent } from '@/features/invoices/lib/invoices';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
@@ -76,6 +76,7 @@ export function GstSellerCard({ s, onSaved }: { s: GstSellerSettings; onSaved: (
       setValues(sellerValues(done));
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) key.current = newIdempotencyKey();
       const fields = fieldErrorOf(err);
       setServerErrors(fields);
       if (!Object.keys(fields).length) setError(errorText(err));

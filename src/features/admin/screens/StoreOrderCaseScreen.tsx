@@ -15,7 +15,7 @@ import { optionsText } from '@/features/store/lib/variants';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { IdempotentAttempt } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
 import { ConsoleStoreService } from '@/services/store-service';
@@ -56,18 +56,20 @@ export function StoreOrderCaseScreen({ id }: { id: string }) {
   const [sheet, setSheet] = useState<Sheet>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const key = useRef(newIdempotencyKey());
+  const key = useRef(new IdempotentAttempt());
 
   const act = async (what: Exclude<Sheet, null>, note: string) => {
     setBusy(true);
     setFailure(null);
+    const k = key.current.keyFor([what, note]);
     try {
-      setData(await (what === 'cancel' ? ConsoleStoreService.cancel(token, id, note, key.current) : ConsoleStoreService.decideReturn(token, id, what, note, key.current)));
-      key.current = newIdempotencyKey();
+      setData(await (what === 'cancel' ? ConsoleStoreService.cancel(token, id, note, k) : ConsoleStoreService.decideReturn(token, id, what, note, k)));
+      key.current.settle();
       Feedback.success();
       setSheet(null);
     } catch (err) {
       Feedback.error();
+      key.current.settle(err);
       setFailure(errorText(err));
     } finally {
       setBusy(false);

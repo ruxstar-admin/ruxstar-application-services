@@ -8,7 +8,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ToggleRow } from '@/components/ui/ToggleRow';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
@@ -59,6 +59,7 @@ export function Withdrawals({ m, onSaved }: { m: ModuleSettings & { payouts: Non
       }
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) key.current = newIdempotencyKey();
       setError(errorText(err));
     } finally {
       setBusy(false);
@@ -145,6 +146,7 @@ export function DeliveryRates({ m, onSaved }: { m: ModuleSettings & { delivery: 
       onSaved(done);
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) key.current = newIdempotencyKey();
       setError(errorText(err));
     } finally {
       setBusy(false);
@@ -233,6 +235,7 @@ export function ModuleCore({ m, onSaved }: { m: ModuleSettings; onSaved: (m: Mod
       setSaved(true);
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) key.current = newIdempotencyKey();
       setError({ text: errorText(err), money: MONEY_KEYS.includes(field) });
     } finally {
       setBusy(null);

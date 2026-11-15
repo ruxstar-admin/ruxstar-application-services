@@ -16,7 +16,7 @@ import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { EventsService, VendorEventsService } from '@/services/events-service';
 import type { EventKind, EventRules, VendorEvent } from '@/types/events';
@@ -35,7 +35,7 @@ import {
   type QuestionDraft,
   type TierDraft,
 } from '../lib/events';
-import { errorText, isOffline } from '../lib/messages';
+import { errorText } from '../lib/messages';
 
 /** How far ahead an event can be put on sale from the form. */
 const DAYS_AHEAD = 365;
@@ -92,7 +92,7 @@ function Form({ rules, event, businessId }: { rules: EventRules; event?: VendorE
     } catch (e) {
       Feedback.error();
       setFailure(errorText(e));
-      if (!isOffline(e)) attempt.current = newIdempotencyKey();
+      if (!keepIdempotencyKey(e)) attempt.current = newIdempotencyKey();
     } finally {
       setBusy(false);
     }

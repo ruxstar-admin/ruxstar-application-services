@@ -11,11 +11,11 @@ import { Brand, Spacing, Typography } from '@/constants/theme';
 import { Card, Divider, Notice, PriceLine, Section } from '@/features/coaching/components/Parts';
 import { CheckoutCoupons } from '@/features/coupons/components/CheckoutCoupons';
 import { couponState } from '@/features/coupons/lib/coupons';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { IdempotentAttempt } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { dayLong, istDayKey } from '@/lib/booking/days';
 import { keepSelection, rangeText, selectionSummary } from '@/lib/booking/slots';
@@ -46,7 +46,7 @@ function Booking({ ground, rules, firstCourt }: { ground: GroundDetail; rules: T
   const [code, setCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const attempt = useRef(newIdempotencyKey());
+  const attempt = useRef(new IdempotentAttempt());
 
   const court = courts.find((c) => c.id === courtId);
   const n = repeat && rules.maxRepeatWeeks > 1 ? weeks : 1;
@@ -106,20 +106,17 @@ function Booking({ ground, rules, firstCourt }: { ground: GroundDetail; rules: T
     if (!court || !canPrice) return;
     setBusy(true);
     setFailure(null);
+    const body = {
+      startAts: selected,
+      ...(sport !== 'any' ? { sport } : {}),
+      ...(addOns.length ? { addOns } : {}),
+      ...(n > 1 ? { weeks: n } : {}),
+      ...(coupon.applied ? { coupon: coupon.applied.code } : {}),
+      returnTo: turfReturn(),
+    };
     try {
-      const { booking, checkoutUrl } = await TurfService.book(
-        token,
-        court.id,
-        {
-          startAts: selected,
-          ...(sport !== 'any' ? { sport } : {}),
-          ...(addOns.length ? { addOns } : {}),
-          ...(n > 1 ? { weeks: n } : {}),
-          ...(coupon.applied ? { coupon: coupon.applied.code } : {}),
-          returnTo: turfReturn(),
-        },
-        { idempotencyKey: attempt.current },
-      );
+      const { booking, checkoutUrl } = await TurfService.book(token, court.id, body, { idempotencyKey: attempt.current.keyFor([court.id, body]) });
+      attempt.current.settle();
       Feedback.success();
       router.replace({ pathname: '/(customer)/turf/booking/[id]', params: { id: booking.id, ...(checkoutUrl ? { pay: '1' } : { fresh: '1' }) } });
     } catch (err) {
@@ -136,7 +133,7 @@ function Booking({ ground, rules, firstCourt }: { ground: GroundDetail; rules: T
         }
       }
       // A booking that timed out may have gone through; trying again with the same key returns it instead of holding the slots twice.
-      if (!isOffline(err)) attempt.current = newIdempotencyKey();
+      attempt.current.settle(err);
     } finally {
       setBusy(false);
     }

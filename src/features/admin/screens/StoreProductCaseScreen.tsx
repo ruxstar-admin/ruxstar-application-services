@@ -14,7 +14,7 @@ import { PRODUCT_STATUS } from '@/features/store/lib/store';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { ConsoleStoreService } from '@/services/store-service';
 import { useCan } from '../access';
@@ -46,6 +46,7 @@ export function StoreProductCaseScreen({ id }: { id: string }) {
       setDone('Product taken down. The shop has been told why. Orders already placed carry on.');
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) key.current = newIdempotencyKey();
       setOpen(false);
       setFailure(errorText(err));
     } finally {

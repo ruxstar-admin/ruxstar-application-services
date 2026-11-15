@@ -21,7 +21,7 @@ import { readyLine } from '@/features/pod/lib/shop';
 import { money, OPTION_LABELS, titleCase } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { IdempotentAttempt } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { OrderService } from '@/services/order-service';
@@ -115,7 +115,7 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
   const [placing, setPlacing] = useState(false);
   /** Set once Pay is tapped with something missing; from then on, what's missing shows in red. */
   const [checked, setChecked] = useState(false);
-  const attempt = useRef(newIdempotencyKey());
+  const attempt = useRef(new IdempotentAttempt());
   const terms = useAsyncResource(() => ShopService.terms(token));
 
   const qty = Number(quantity) || 0;
@@ -135,7 +135,6 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
   /** The offers stay on screen while a new price loads, so the list doesn't jump. */
   const offers = priceable ? (priced?.quote?.offers ?? null) : null;
   useEffect(() => {
-    attempt.current = newIdempotencyKey();
     if (!priceable) return;
     let live = true;
     const timer = setTimeout(() => {
@@ -200,26 +199,26 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
     }
     setPlacing(true);
     setError(null);
+    const body = {
+      shopId: shop.id,
+      product: productId,
+      options,
+      colour,
+      quantity: qty,
+      fileIds,
+      address: cleanAddress(address),
+      note: note.trim() || undefined,
+      couponCode: quote?.coupon?.code,
+      returnTo: checkoutReturn(),
+    };
     try {
-      const { order } = await OrderService.place(
-        token,
-        {
-          shopId: shop.id,
-          product: productId,
-          options,
-          colour,
-          quantity: qty,
-          fileIds,
-          address: cleanAddress(address),
-          note: note.trim() || undefined,
-          couponCode: quote?.coupon?.code,
-          returnTo: checkoutReturn(),
-        },
-        { idempotencyKey: attempt.current },
-      );
+      const { order } = await OrderService.place(token, body, { idempotencyKey: attempt.current.keyFor(body) });
+      attempt.current.settle();
       Feedback.success();
       router.replace({ pathname: '/(customer)/pod/order/[id]', params: { id: order.id, pay: '1' } });
     } catch (err) {
+      // An order that timed out may have been placed; trying again with the same key returns it instead of placing it twice.
+      attempt.current.settle(err);
       setError(messageOf(err));
       Feedback.error();
     } finally {
@@ -253,7 +252,7 @@ function OrderForm({ shop, initialProduct }: { shop: Shop; initialProduct?: stri
               <Text style={styles.faint}>{!shop.open ? 'This shop is closed right now' : (hint ?? readyLine(quote?.turnaroundDays ?? product.turnaroundDays))}</Text>
             </View>
             <View style={styles.payButton}>
-              <PrimaryButton label="Pay" onPress={place} loading={placing} disabled={!shop.open || uploading} />
+              <PrimaryButton label="Pay" onPress={place} loading={placing} disabled={!shop.open || uploading || (filled && !quote && !quoteError)} />
             </View>
           </View>
         </>

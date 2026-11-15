@@ -22,7 +22,7 @@ import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
@@ -163,7 +163,7 @@ function Withdraw({ data, onDone }: { data: Payments; onDone: () => void }) {
     } catch (err) {
       Feedback.error();
       // Unsure whether it reached Ruxstar: trying again with the same key can't withdraw twice.
-      const unsure = !(err instanceof ApiError) || err.kind === 'network' || err.kind === 'timeout';
+      const unsure = !(err instanceof ApiError) || keepIdempotencyKey(err);
       if (unsure) setFailure('Could not reach Ruxstar. Check your connection and try again.');
       else {
         setKey(newIdempotencyKey());

@@ -9,11 +9,11 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { Stepper } from '@/components/ui/Stepper';
 import { Brand, Spacing, Typography } from '@/constants/theme';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { TurfService, VendorTurfService } from '@/services/turf-service';
 import type { Amenity, TurfRules, VendorGround } from '@/types/turf';
@@ -57,7 +57,7 @@ function Form({ rules, ground, businessId }: { rules: TurfRules; ground?: Vendor
     } catch (e) {
       Feedback.error();
       setFailure(errorText(e));
-      if (!isOffline(e)) attempt.current = newIdempotencyKey();
+      if (!keepIdempotencyKey(e)) attempt.current = newIdempotencyKey();
     } finally {
       setBusy(false);
     }

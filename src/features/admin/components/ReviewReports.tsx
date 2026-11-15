@@ -12,7 +12,7 @@ import { Stars } from '@/features/reviews/components/Stars';
 import { REPORT_REASONS, listingWord, orderWord, replyFrom, starsLabel } from '@/features/reviews/lib/review';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
 import { ReviewReportService } from '@/services/review-service';
@@ -57,6 +57,7 @@ function ReviewDetail({ c, onDone }: { c: ReviewCase; onDone: (done: ReviewCase,
       onDone(done, kind === 'keep' ? 'Review kept up.' : 'Review removed. The customer was told why.');
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) keys.current[kind] = newIdempotencyKey();
       setError(errorText(err));
     } finally {
       setBusy(null);

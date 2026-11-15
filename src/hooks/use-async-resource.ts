@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 interface ResourceState<T> {
   data?: T;
   error?: unknown;
+  /** The `key` the error came from: once the key moves on, that error no longer describes the inputs. */
+  errorKey?: string;
   loading: boolean;
 }
 
@@ -25,7 +27,7 @@ export function useAsyncResource<T>(load: () => Promise<T>, key?: string) {
     loadRef
       .current()
       .then((data) => !cancelled && setState({ data, loading: false }))
-      .catch((error) => !cancelled && setState((prev) => ({ data: prev.data, error, loading: false })));
+      .catch((error) => !cancelled && setState((prev) => ({ data: prev.data, error, errorKey: key, loading: false })));
     return () => {
       cancelled = true;
     };
@@ -43,5 +45,6 @@ export function useAsyncResource<T>(load: () => Promise<T>, key?: string) {
     [],
   );
 
-  return { ...state, reload, setData };
+  const { errorKey, ...rest } = state;
+  return { ...rest, error: errorKey === key ? state.error : undefined, reload, setData };
 }

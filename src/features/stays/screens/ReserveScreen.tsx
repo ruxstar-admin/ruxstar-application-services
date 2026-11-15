@@ -13,12 +13,12 @@ import { Brand, Spacing, Typography } from '@/constants/theme';
 import { Card, Divider, Notice, PickCard, PriceLine, Section } from '@/features/coaching/components/Parts';
 import { CheckoutCoupons } from '@/features/coupons/components/CheckoutCoupons';
 import { couponState } from '@/features/coupons/lib/coupons';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { IdempotentAttempt } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { istDayKey } from '@/lib/booking/days';
 import { Feedback } from '@/lib/haptics';
@@ -64,7 +64,7 @@ function Reserve({ property, rules, firstRoom }: { property: PropertyDetail; rul
   const [code, setCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const attempt = useRef(newIdempotencyKey());
+  const attempt = useRef(new IdempotentAttempt());
 
   const kyc = useAsyncResource(() => KycService.getOverview(token), 'kyc');
   const reloadKyc = kyc.reload;
@@ -114,13 +114,10 @@ function Reserve({ property, rules, firstRoom }: { property: PropertyDetail; rul
     if (!room || !canPrice || !picked) return;
     setBusy(true);
     setFailure(null);
+    const body = { ...pick, ...(coupon.applied ? { coupon: coupon.applied.code } : {}), returnTo: staysReturn() };
     try {
-      const { reservation, checkoutUrl } = await StaysService.reserve(
-        token,
-        room.id,
-        { ...pick, ...(coupon.applied ? { coupon: coupon.applied.code } : {}), returnTo: staysReturn() },
-        { idempotencyKey: attempt.current },
-      );
+      const { reservation, checkoutUrl } = await StaysService.reserve(token, room.id, body, { idempotencyKey: attempt.current.keyFor([room.id, body]) });
+      attempt.current.settle();
       Feedback.success();
       router.replace({ pathname: '/(customer)/stays/order/[id]', params: { id: reservation.id, ...(checkoutUrl ? { pay: '1' } : { fresh: '1' }) } });
     } catch (err) {
@@ -136,7 +133,7 @@ function Reserve({ property, rules, firstRoom }: { property: PropertyDetail; rul
         if (err instanceof ApiError && err.status === 409) avail.reload();
       }
       // A reservation that timed out may have gone through; trying again with the same key returns it instead of holding the bed twice.
-      if (!isOffline(err)) attempt.current = newIdempotencyKey();
+      attempt.current.settle(err);
     } finally {
       setBusy(false);
     }

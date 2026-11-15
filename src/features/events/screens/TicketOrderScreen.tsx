@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
@@ -19,6 +19,7 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
+import { openLink } from '@/lib/open-link';
 import { EventsService } from '@/services/events-service';
 import { reviewsOf } from '@/services/review-service';
 import type { TicketOrder } from '@/types/events';
@@ -126,7 +127,10 @@ function OrderView({ order, reload, openPay, fresh }: { order: TicketOrder; relo
       ) : null}
 
       {order.status === 'confirmed' && order.event.online && order.event.onlineLink ? (
-        <PrimaryButton label="Join online" onPress={() => Linking.openURL(order.event.onlineLink!)} />
+        <PrimaryButton
+          label="Join online"
+          onPress={() => void openLink(order.event.onlineLink).then((opened) => opened || setFailure('This link can’t be opened. Ask the organiser for another one.'))}
+        />
       ) : null}
 
       {showsPasses ? (

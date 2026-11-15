@@ -14,7 +14,7 @@ import { Brand, Spacing } from '@/constants/theme';
 import { money } from '@/features/vendor/lib/pod';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { IdempotentAttempt } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
@@ -162,19 +162,20 @@ function HeldDetail({ order, onReleased }: { order: HeldOrder; onReleased: () =>
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const key = useRef(newIdempotencyKey());
+  const key = useRef(new IdempotentAttempt());
 
   const release = async (reason: string) => {
     setBusy(true);
     setError(null);
     try {
-      await AdminService.releaseHeld(token, order.id, reason, key.current);
-      key.current = newIdempotencyKey();
+      await AdminService.releaseHeld(token, order.id, reason, key.current.keyFor(reason));
+      key.current.settle();
       Feedback.success();
       setAsking(false);
       onReleased();
     } catch (err) {
       Feedback.error();
+      key.current.settle(err);
       setAsking(false);
       setError(errorText(err));
     } finally {

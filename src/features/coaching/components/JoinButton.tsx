@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Linking, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Brand, Typography } from '@/constants/theme';
 import { errorText } from '@/features/events/lib/messages';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { Feedback } from '@/lib/haptics';
+import { openLink } from '@/lib/open-link';
 import { CoachingService } from '@/services/coaching-service';
 import type { ClassView, CourseMode } from '@/types/coaching';
 import { joinState, opensText } from '../lib/classes';
@@ -40,7 +41,7 @@ export function JoinButton({ orderId, cls, mode, now }: { orderId: string; cls: 
       return;
     }
     Feedback.tap();
-    await Linking.openURL(link);
+    if (!(await openLink(link))) setFailure('This link can’t be opened. Ask the institute for another one.');
   };
 
   return (

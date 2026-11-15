@@ -14,7 +14,7 @@ import { ShopCover } from '@/features/pod/components/ShopCover';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { timeAgo } from '@/lib/time';
 import { AdminService } from '@/services/admin-service';
@@ -57,6 +57,7 @@ function TakeDown({ event, onDone }: { event: VendorEvent; onDone: (next: Vendor
       );
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) key.current = newIdempotencyKey();
       setOpen(false);
       setError(errorText(err));
     } finally {

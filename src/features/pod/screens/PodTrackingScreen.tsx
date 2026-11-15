@@ -43,7 +43,7 @@ import { contactSupport } from '@/features/support/lib/support';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { IdempotentAttempt, keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
 import { OrderService } from '@/services/order-service';
@@ -108,16 +108,19 @@ function ReportSheet({ order, visible, onClose, onReported }: { order: Order; vi
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const key = useRef(newIdempotencyKey());
+  const key = useRef(new IdempotentAttempt());
 
   const send = async () => {
     setSending(true);
     setError(null);
+    const body = { kind, note: note.trim() };
     try {
-      const next = await OrderService.reportProblem(token, order.id, { kind, note: note.trim() }, { idempotencyKey: key.current });
+      const next = await OrderService.reportProblem(token, order.id, body, { idempotencyKey: key.current.keyFor(body) });
+      key.current.settle();
       Feedback.success();
       onReported(next);
     } catch (err) {
+      key.current.settle(err);
       Feedback.error();
       setError(err instanceof Error ? err.message : 'Could not send. Try again.');
     } finally {
@@ -181,6 +184,7 @@ function OrderDetails({ order, onChanged }: { order: Order; onChanged: (order?: 
       setConfirming(false);
       onChanged(next);
     } catch (err) {
+      if (!keepIdempotencyKey(err)) cancelKey.current = newIdempotencyKey();
       setError(err instanceof Error ? err.message : 'Could not cancel. Try again.');
       setConfirming(false);
       Feedback.error();
@@ -209,6 +213,7 @@ function OrderDetails({ order, onChanged }: { order: Order; onChanged: (order?: 
       photoKey.current = newIdempotencyKey();
       onChanged(next);
     } catch (err) {
+      if (!keepIdempotencyKey(err)) photoKey.current = newIdempotencyKey();
       setError(err instanceof Error ? err.message : 'Could not add the photo. Try again.');
     } finally {
       setAdding(false);

@@ -14,11 +14,11 @@ import { TextLink } from '@/components/ui/TextLink';
 import { ToggleRow } from '@/components/ui/ToggleRow';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { Section } from '@/features/coaching/components/Parts';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { clockText } from '@/lib/booking/slots';
 import { Feedback } from '@/lib/haptics';
 import { StaysDeskService, StaysService, VendorStaysService } from '@/services/stays-service';
@@ -103,7 +103,7 @@ function Form({ rules, facilities, target }: { rules: StaysRules; facilities: Fa
     } catch (e) {
       Feedback.error();
       setFailure(errorText(e));
-      if (!isOffline(e)) attempt.current = newIdempotencyKey();
+      if (!keepIdempotencyKey(e)) attempt.current = newIdempotencyKey();
     } finally {
       setBusy(false);
     }

@@ -4,9 +4,9 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Spacing } from '@/constants/theme';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { CoachingService } from '@/services/coaching-service';
 import type { Child } from '@/types/coaching';
@@ -41,7 +41,7 @@ export function ChildForm({ child, onSaved, label }: { child?: Child; onSaved: (
     } catch (err) {
       Feedback.error();
       setFailure(errorText(err));
-      if (!isOffline(err)) attempt.current = newIdempotencyKey();
+      if (!keepIdempotencyKey(err)) attempt.current = newIdempotencyKey();
     } finally {
       setBusy(false);
     }

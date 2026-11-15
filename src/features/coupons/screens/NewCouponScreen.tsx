@@ -9,7 +9,7 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { Brand, Typography } from '@/constants/theme';
 import { useVendorBusinesses } from '@/features/vendor/hooks/use-vendor-businesses';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { IdempotentAttempt } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { dateKey } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
@@ -21,33 +21,29 @@ import { couponShops, draftErrors, emptyDraft, newCouponOf } from '../lib/coupon
 
 const errorText = (err: unknown) =>
   err instanceof ApiError && err.status > 0 && err.kind !== 'server' ? err.message : 'Could not reach Ruxstar. Check your connection and try again.';
-const retryable = (err: unknown) => err instanceof ApiError && (err.kind === 'network' || err.kind === 'timeout');
-
 function Form({ who, shops, placeId }: { who: 'ruxstar' | 'vendor' | 'team'; shops?: { id: string; name: string }[]; placeId?: string }) {
   const router = useRouter();
   const token = useAuthToken();
   const [draft, setDraft] = useState(() => ({ ...emptyDraft(), businessIds: shops?.length === 1 ? [shops[0]!.id] : [] }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const key = useRef(newIdempotencyKey());
+  const attempt = useRef(new IdempotentAttempt());
   const errors = draftErrors(draft, { creating: true, needsShops: who === 'vendor', needsModules: who === 'ruxstar', today: dateKey(new Date()) });
   const ready = Object.keys(errors).length === 0;
 
   const create = async () => {
     setBusy(true);
     setError(null);
+    const body = newCouponOf(draft, who === 'vendor', who === 'ruxstar');
+    const k = attempt.current.keyFor(body);
     try {
-      const body = newCouponOf(draft, who === 'vendor', who === 'ruxstar');
-      await (who === 'ruxstar'
-        ? AdminService.createCoupon(token, body, key.current)
-        : who === 'team'
-          ? TeamCouponService.create(token, placeId!, body, key.current)
-          : CouponService.create(token, body, key.current));
+      await (who === 'ruxstar' ? AdminService.createCoupon(token, body, k) : who === 'team' ? TeamCouponService.create(token, placeId!, body, k) : CouponService.create(token, body, k));
+      attempt.current.settle();
       Feedback.success();
       router.back();
     } catch (err) {
       Feedback.error();
-      if (!retryable(err)) key.current = newIdempotencyKey();
+      attempt.current.settle(err);
       setError(errorText(err));
     } finally {
       setBusy(false);

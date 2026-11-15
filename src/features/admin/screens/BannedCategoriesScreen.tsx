@@ -12,7 +12,7 @@ import { Brand, Spacing, Typography } from '@/constants/theme';
 import { sportKeyOf } from '@/features/turf/lib/turf';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { ConsoleStoreService } from '@/services/store-service';
 import type { BannedCategory } from '@/types/store';
@@ -73,6 +73,7 @@ function BannedSheet({ category, visible, onClose, onSaved }: { category: Banned
       onSaved(saved);
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) attempt.current = newIdempotencyKey();
       setError(errorText(err));
     } finally {
       setBusy(false);

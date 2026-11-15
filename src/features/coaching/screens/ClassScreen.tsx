@@ -12,10 +12,10 @@ import { ReasonSheet } from '@/components/ui/ReasonSheet';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { whenLine } from '@/features/events/lib/events';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { TeachService } from '@/services/coaching-service';
 import type { ClassRoster, DeskBatchDetail } from '@/types/coaching';
@@ -73,7 +73,7 @@ function ClassView({ roster, batch, onRoster, reloadBatch }: { roster: ClassRost
     } catch (err) {
       Feedback.error();
       setSheetFailure(errorText(err));
-      if (!isOffline(err)) setAttempt(newIdempotencyKey());
+      if (!keepIdempotencyKey(err)) setAttempt(newIdempotencyKey());
     } finally {
       setBusy(false);
     }

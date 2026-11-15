@@ -1,5 +1,5 @@
 import type { StatsModuleBlock } from '@/types/admin';
-import { asOfText, blockEmpty, hasQueues, isStatsModule, listingsLabel, ordersWord } from '../stats';
+import { asOfText, blockEmpty, hasQueues, isStatsModule, listingsLabel, ordersWord, shownBlocks } from '../stats';
 
 const NOW = Date.parse('2026-11-15T10:00:00.000Z');
 
@@ -57,5 +57,16 @@ describe('module blocks', () => {
     expect(isStatsModule('shop')).toBe(true);
     expect(isStatsModule('delivery')).toBe(true);
     expect(isStatsModule('ledger')).toBe(false);
+  });
+
+  it('shows only known modules with something in them', () => {
+    const shop: StatsModuleBlock = { ...empty, module: 'shop', orders: { today: 1, thisWeek: 2, open: 0 } };
+    const future = { ...shop, module: 'rentals' } as unknown as StatsModuleBlock;
+    expect(shownBlocks([empty, shop, future])).toEqual([shop]);
+    expect(shownBlocks(undefined)).toEqual([]);
+  });
+
+  it('labels a listing kind it doesn’t know yet', () => {
+    expect(listingsLabel('rental' as never)).toBe('Live listings');
   });
 });

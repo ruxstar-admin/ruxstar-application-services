@@ -13,7 +13,7 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { Brand, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { formatDay } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
@@ -27,8 +27,6 @@ import { MEMBER_STATUS, inviteEnds, payLine } from '../lib/team';
 
 const errorText = (err: unknown) =>
   err instanceof ApiError && err.status > 0 && err.kind !== 'server' ? err.message : 'Could not reach Ruxstar. Check your connection and try again.';
-const retryable = (err: unknown) => err instanceof ApiError && (err.kind === 'network' || err.kind === 'timeout');
-
 function Invite({ businessId, team }: { businessId: string; team: Team }) {
   const router = useRouter();
   const token = useAuthToken();
@@ -51,7 +49,7 @@ function Invite({ businessId, team }: { businessId: string; team: Team }) {
       router.back();
     } catch (err) {
       Feedback.error();
-      if (!retryable(err)) key.current = newIdempotencyKey();
+      if (!keepIdempotencyKey(err)) key.current = newIdempotencyKey();
       const onField = err instanceof ApiError && err.detailFor('username');
       const onPay = err instanceof ApiError && err.detailFor('pay');
       setError(onField ? { field: err.message } : onPay ? { pay: err.message } : { banner: errorText(err) });

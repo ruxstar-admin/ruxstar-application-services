@@ -18,7 +18,7 @@ import { bedsText, momentText, stayText } from '@/features/stays/lib/stays';
 import { money } from '@/features/vendor/lib/pod';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { ConsoleStaysService } from '@/services/stays-service';
 import type { ConsoleReservation, ObjectionStatus } from '@/types/stays';
@@ -72,6 +72,7 @@ function DecideSheet({ stay, onClose, onDone }: { stay: ConsoleReservation | nul
       );
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) setAttempt(newIdempotencyKey());
       setError(errorText(err));
     } finally {
       setBusy(false);

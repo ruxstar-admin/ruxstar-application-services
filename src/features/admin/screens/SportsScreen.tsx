@@ -11,7 +11,7 @@ import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { AdminService } from '@/services/admin-service';
 import { sportKeyOf } from '@/features/turf/lib/turf';
@@ -56,6 +56,7 @@ function SportSheet({ sport, visible, onClose, onSaved }: { sport: ConsoleSport 
       onSaved(saved);
     } catch (err) {
       Feedback.error();
+      if (!keepIdempotencyKey(err)) attempt.current = newIdempotencyKey();
       setError(errorText(err));
     } finally {
       setBusy(false);

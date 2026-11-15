@@ -9,10 +9,10 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { dayText, timeText } from '@/features/events/lib/events';
-import { errorText, isOffline } from '@/features/events/lib/messages';
+import { errorText } from '@/features/events/lib/messages';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { CoachingService, TeachService } from '@/services/coaching-service';
 
@@ -46,7 +46,7 @@ export function MessagesScreen({ source }: { source: 'order' | 'batch' }) {
     } catch (err) {
       Feedback.error();
       setFailure(errorText(err));
-      if (!isOffline(err)) attempt.current = newIdempotencyKey();
+      if (!keepIdempotencyKey(err)) attempt.current = newIdempotencyKey();
     } finally {
       setBusy(false);
     }

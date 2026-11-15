@@ -16,7 +16,7 @@ import { couponState } from '@/features/coupons/lib/coupons';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey } from '@/lib/api-client';
+import { IdempotentAttempt } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { replacePerson } from '@/lib/booking/people';
 import { Feedback } from '@/lib/haptics';
@@ -26,7 +26,7 @@ import type { CouponCheck } from '@/types/coupon';
 import type { EventDetail } from '@/types/events';
 import { ticketReturn } from '../lib/checkout';
 import { countOf, orderPrice, peopleFor, personErrors, playersFor, refundText, toHolders, whenLine, type PersonDraft, type Selection } from '../lib/events';
-import { errorText, isOffline } from '../lib/messages';
+import { errorText } from '../lib/messages';
 
 const STEPS = ['Tickets', 'Who’s coming', 'Pay'] as const;
 
@@ -50,7 +50,7 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [code, setCode] = useState<string | null>(null);
-  const attempt = useRef(newIdempotencyKey());
+  const attempt = useRef(new IdempotentAttempt());
 
   const picked = team ? { [teamTier]: 1 } : selection;
   const count = team ? players : countOf(selection);
@@ -99,19 +99,16 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
   const place = async () => {
     setBusy(true);
     setFailure(null);
+    const body = {
+      tickets: toHolders(people, event.questions),
+      ...(team ? { team: { tierId: teamTier, name: teamName.trim() } } : {}),
+      ...(offer ? { waitlistId: offer.id } : {}),
+      ...(coupon.applied ? { coupon: coupon.applied.code } : {}),
+      returnTo: ticketReturn(),
+    };
     try {
-      const { order, checkoutUrl } = await EventsService.book(
-        token,
-        event.id,
-        {
-          tickets: toHolders(people, event.questions),
-          ...(team ? { team: { tierId: teamTier, name: teamName.trim() } } : {}),
-          ...(offer ? { waitlistId: offer.id } : {}),
-          ...(coupon.applied ? { coupon: coupon.applied.code } : {}),
-          returnTo: ticketReturn(),
-        },
-        { idempotencyKey: attempt.current },
-      );
+      const { order, checkoutUrl } = await EventsService.book(token, event.id, body, { idempotencyKey: attempt.current.keyFor(body) });
+      attempt.current.settle();
       Feedback.success();
       router.replace({ pathname: '/(customer)/events/ticket/[id]', params: { id: order.id, ...(checkoutUrl ? { pay: '1' } : { fresh: '1' }) } });
     } catch (err) {
@@ -123,7 +120,7 @@ function Booking({ event, waitlistId }: { event: EventDetail; waitlistId?: strin
         setFailure(errorText(err));
       }
       // A booking that timed out may have been placed; trying again with the same key returns it instead of holding seats twice.
-      if (!isOffline(err)) attempt.current = newIdempotencyKey();
+      attempt.current.settle(err);
     } finally {
       setBusy(false);
     }

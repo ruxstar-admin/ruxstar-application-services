@@ -11,7 +11,7 @@ import { RiderCard } from '@/features/pod/components/RiderCard';
 import { tripActive, vehicleLine } from '@/features/pod/lib/order';
 import { money } from '@/features/vendor/lib/pod';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { newIdempotencyKey, type WriteOptions } from '@/lib/api-client';
+import { IdempotentAttempt, type WriteOptions } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
 import type { AssignChoice, DeliveryOptions, ShopDelivery } from '@/types/order';
@@ -46,7 +46,7 @@ export function DeliverySection<T extends Deliverable>({ order, desk, canManage,
   const [sending, setSending] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const key = useRef(newIdempotencyKey());
+  const key = useRef(new IdempotentAttempt());
   const { delivery } = order;
   const live = tripActive(delivery);
 
@@ -68,12 +68,13 @@ export function DeliverySection<T extends Deliverable>({ order, desk, canManage,
     setSending(choice.carrier === 'team' ? choice.placeId : 'partner');
     setError(null);
     try {
-      const next = await desk.assign(token, order.id, choice, { idempotencyKey: key.current });
-      key.current = newIdempotencyKey();
+      const next = await desk.assign(token, order.id, choice, { idempotencyKey: key.current.keyFor(choice) });
+      key.current.settle();
       Feedback.success();
       setPicking(false);
       onChanged(next);
     } catch (err) {
+      key.current.settle(err);
       Feedback.error();
       setError(errorText(err, 'Could not send it. Try again.'));
     } finally {
