@@ -1,6 +1,6 @@
 import { money } from '@/features/vendor/lib/pod';
 import type { AddOn, Board, BoardSlot, DaySlot, DaySlots } from '@/types/turf';
-import { boardLegend, boardModel, cellOf, totalsText } from '../board';
+import { boardLegend, boardModel, cellOf, closedText, emptyDayText, totalsText } from '../board';
 import { courtDraftOf, courtErrors, emptyCourt, groundErrors, emptyGround, hasCourtErrors, toCourtInput } from '../forms';
 import { turfPrice, pickedAddOns } from '../price';
 import { plusDays, repeatDays, weekLines, weekProblem } from '../repeat';
@@ -126,14 +126,14 @@ describe('boardModel', () => {
   });
 
   it('labels a slot where it starts and fills the rest of a longer slot', () => {
-    expect(model.cells['c1|18:00']).toEqual({ state: 'past' });
+    expect(model.cells['c1|18:00']).toEqual({ state: 'past', label: 'Gone' });
     expect(model.cells['c1|18:30']).toEqual({ state: 'past' });
     expect(model.cells['c1|19:00']).toEqual({ state: 'booked', label: 'Ravi' });
     expect(model.cells['c1|20:00']).toEqual({ state: 'peak', label: money(120000) });
-    expect(model.cells['c2|18:00']).toEqual({ state: 'closed' });
+    expect(model.cells['c2|18:00']).toEqual({ state: 'closed', label: 'Closed' });
     expect(model.cells['c2|18:30']).toEqual({ state: 'blocked', label: 'Repairs' });
     expect(model.cells['c2|19:00']).toEqual({ state: 'blocked' });
-    expect(model.cells['c2|20:00']).toEqual({ state: 'closed' });
+    expect(model.cells['c2|20:00']).toEqual({ state: 'closed', label: 'Closed' });
     expect(model.slotAt['c2|19:00']!.slot.start).toBe('18:30');
     expect(model.slotAt['c2|20:00']).toBeUndefined();
   });
@@ -148,6 +148,15 @@ describe('boardModel', () => {
   it('keys only the states on the board, and sums the day', () => {
     expect(boardLegend(model.cells)).toEqual(['peak', 'booked', 'blocked', 'past', 'closed']);
     expect(totalsText(board.totals)).toBe('1 booked · 1 free · 1 blocked');
+  });
+
+  it('says why a time or a whole day has nothing to book', () => {
+    expect(closedText(board.courts[1]!, '8 pm')).toBe('Nets isn’t open at 8 pm. Players can book only within its opening hours.');
+    expect(closedText({ ...board.courts[1]!, open: false }, '8 pm')).toBe('Nets is closed all day. Change its opening hours to take bookings on this day.');
+    expect(emptyDayText(board)).toBeNull();
+    const shutDay = { ...board, courts: board.courts.map((c) => ({ ...c, open: false, slots: [] })) };
+    expect(emptyDayText(shutDay)).toBe('Every court is closed on this day, so there are no slots to book. Change the opening hours to open it.');
+    expect(emptyDayText({ ...board, courts: [] })).toBeNull();
   });
 });
 

@@ -47,17 +47,19 @@ export function VendorBoard({ rows, columns, cells, onCellPress, corner = '' }: 
           </View>
         ))}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.lines}>
-        <View style={styles.line}>
-          {columns.map((col) => (
-            <Text key={col.key} style={[styles.colName, styles.head]} numberOfLines={1}>
-              {col.label}
-            </Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <View style={styles.lines}>
+          <View style={styles.line}>
+            {columns.map((col) => (
+              <Text key={col.key} style={[styles.colName, styles.head]} numberOfLines={1}>
+                {col.label}
+              </Text>
+            ))}
+          </View>
+          {rows.map((row) => (
+            <BoardLine key={row.key} row={row} columns={columns} cells={cells} onPress={press} />
           ))}
         </View>
-        {rows.map((row) => (
-          <BoardLine key={row.key} row={row} columns={columns} cells={cells} onPress={press} />
-        ))}
       </ScrollView>
     </View>
   );
@@ -115,7 +117,8 @@ const styles = StyleSheet.create({
   rowLabel: { height: CELL_H, justifyContent: 'center' },
   rowName: { ...Typography.bodyStrong, fontSize: 14, color: Brand.text },
   rowSub: { ...Typography.caption, fontSize: 11, color: Brand.textMuted },
-  lines: { gap: GAP, paddingRight: Spacing.three },
+  scroll: { paddingRight: Spacing.three },
+  lines: { gap: GAP },
   line: { flexDirection: 'row', gap: GAP },
   colName: { width: CELL_W, ...Typography.caption, fontSize: 12, color: Brand.textMuted, textAlign: 'center' },
   cell: { width: CELL_W, height: CELL_H, borderRadius: Radius.sm, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 2 },

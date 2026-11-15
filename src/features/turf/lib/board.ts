@@ -27,7 +27,7 @@ export function cellOf(slot: BoardSlot): BoardCell {
   }
   if (slot.state === 'held') return { state: 'held', label: 'Paying' };
   if (slot.state === 'blocked') return { state: 'blocked', label: slot.block?.note?.trim().split(/\s+/)[0] || 'Block' };
-  if (slot.past) return { state: 'past' };
+  if (slot.past) return { state: 'past', label: 'Gone' };
   return { state: slot.peak ? 'peak' : 'free', label: money(slot.price) };
 }
 
@@ -45,7 +45,7 @@ export function boardModel(board: Board): BoardModel {
   }));
   const cells: Record<string, BoardCell> = {};
   const slotAt: BoardModel['slotAt'] = {};
-  const closed: BoardCell = { state: 'closed' };
+  const closed: BoardCell = { state: 'closed', label: 'Closed' };
   for (const court of board.courts) {
     for (const start of starts) {
       const at = minutesOf(start);
@@ -61,6 +61,20 @@ export function boardModel(board: Board): BoardModel {
     }
   }
   return { rows, columns, cells, slotAt };
+}
+
+/** Why nobody can book a court at a time it has no slot. */
+export function closedText(court: BoardCourt, time: string): string {
+  if (!court.open) return `${court.name} is closed all day. Change its opening hours to take bookings on this day.`;
+  return `${court.name} isn’t open at ${time}. Players can book only within its opening hours.`;
+}
+
+/** Why a day has no slots at all, or null when it has some. */
+export function emptyDayText(board: Board): string | null {
+  if (!board.courts.length || board.courts.some((c) => c.slots.length)) return null;
+  return board.courts.every((c) => !c.open)
+    ? 'Every court is closed on this day, so there are no slots to book. Change the opening hours to open it.'
+    : 'No court has slots on this day. Check the courts’ opening hours.';
 }
 
 /** The states the day's board shows, in legend order. */

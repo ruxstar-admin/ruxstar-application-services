@@ -27,7 +27,7 @@ import { istDayKey } from '@/lib/booking/days';
 import { Feedback } from '@/lib/haptics';
 import { TurfDeskService } from '@/services/turf-service';
 import type { BoardCourt, BoardSlot, DeskGround } from '@/types/turf';
-import { boardLegend, boardModel, totalsText } from '../lib/board';
+import { boardLegend, boardModel, closedText, emptyDayText, totalsText } from '../lib/board';
 import { arrivalChoices, BOOKING_STATUS, deskCan, slotWhen } from '../lib/turf';
 
 /** Days the board looks ahead, like the booking page. */
@@ -212,16 +212,20 @@ function Board({ ground }: { ground: DeskGround }) {
   const token = useAuthToken();
   const [day, setDay] = useState(() => istDayKey(Date.now()));
   const [picked, setPicked] = useState<Picked | null>(null);
+  const [shut, setShut] = useState<string | null>(null);
   const { data, error, reload } = useAsyncResource(() => TurfDeskService.board(token, ground.id, day), `${ground.id}|${day}`);
   useRefetchOnFocus(useCallback(() => reload(), [reload]));
   const board = data?.date === day ? data : null;
   const model = board ? boardModel(board) : null;
+  const emptyDay = board ? emptyDayText(board) : null;
 
   const press = (row: BoardRow, column: BoardColumn) => {
     const hit = model?.slotAt[boardKey(row.key, column.key)];
-    if (!hit) return;
+    const court = board?.courts.find((c) => c.id === row.key);
+    if (!hit && !court) return;
     Feedback.select();
-    setPicked({ ...hit, at: Date.now() });
+    if (hit) setPicked({ ...hit, at: Date.now() });
+    else if (court) setShut(closedText(court, column.label));
   };
 
   return (
@@ -236,7 +240,9 @@ function Board({ ground }: { ground: DeskGround }) {
             <Text style={styles.totals}>{totalsText(board.totals)}</Text>
             <TextLink label="Refresh" onPress={reload} />
           </View>
-          {board.courts.length ? (
+          {emptyDay ? (
+            <Notice tone="warning" text={emptyDay} />
+          ) : board.courts.length ? (
             <>
               <VendorBoard rows={model.rows} columns={model.columns} cells={model.cells} onCellPress={press} corner="Court" />
               <Legend items={boardLegend(model.cells)} />
@@ -280,6 +286,9 @@ function Board({ ground }: { ground: DeskGround }) {
           reload();
         }}
       />
+      <BottomSheet visible={!!shut} onClose={() => setShut(null)} title="Not open for bookings">
+        <Text style={styles.text}>{shut}</Text>
+      </BottomSheet>
     </ScreenContainer>
   );
 }
