@@ -4,45 +4,26 @@ import { AdminService } from '@/services/admin-service';
 import { SupportDeskService } from '@/services/support-service';
 import { allows, useAccess } from '../access';
 
-/** How many a list's first page holds; `more` when it has further pages, so it reads "20+". */
-export interface PageCount {
-  n: number;
-  more: boolean;
-}
-
-const countOf = (page: { items: unknown[]; nextCursor: string | null }): PageCount => ({ n: page.items.length, more: page.nextCursor !== null });
-
-export const pageCountText = (c: PageCount) => `${c.n.toLocaleString('en-IN')}${c.more ? '+' : ''}`;
-
 /**
- * Everything the console dashboard counts, each source loaded at the same time and on its own, so a
- * slow or failing one does not hold the others back. Payouts have no count route: their queues are
- * counted from the first page of each list.
+ * Everything the console dashboard shows, each source loaded at the same time and on its own, so a
+ * slow or failing one does not hold the others back. The stats route has every count; the overview
+ * adds staff and which modules are live, and the help desk summary adds who tickets wait on.
  */
 export function useConsoleMetrics() {
   const token = useAuthToken();
   const access = useAccess();
   const desk = allows(access, 'support.view');
-  const money = allows(access, 'payouts.view');
 
-  const overview = useAsyncResource(() => AdminService.getOverview(token));
-  const support = useAsyncResource(() => (desk ? SupportDeskService.summary(token) : Promise.resolve(null)));
-  const payouts = useAsyncResource(() =>
-    money
-      ? Promise.all([AdminService.payouts(token, 'pending'), AdminService.payouts(token, 'failed'), AdminService.heldOrders(token)]).then(([pending, failed, held]) => ({
-          pending: countOf(pending),
-          failed: countOf(failed),
-          held: countOf(held),
-        }))
-      : Promise.resolve(null),
-  );
+  const stats = useAsyncResource(() => AdminService.stats(token), 'console-stats');
+  const overview = useAsyncResource(() => AdminService.getOverview(token), 'console-overview');
+  const support = useAsyncResource(() => (desk ? SupportDeskService.summary(token) : Promise.resolve(null)), `console-desk-${desk}`);
 
   const reload = () => {
+    stats.reload();
     overview.reload();
     support.reload();
-    payouts.reload();
   };
-  const refreshing = (overview.loading && !!overview.data) || (support.loading && support.data !== undefined) || (payouts.loading && payouts.data !== undefined);
+  const refreshing = (stats.loading && !!stats.data) || (overview.loading && !!overview.data) || (support.loading && !!support.data);
 
-  return { overview, support, payouts, reload, refreshing };
+  return { stats, overview, support, reload, refreshing };
 }

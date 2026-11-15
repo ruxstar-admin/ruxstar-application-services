@@ -16,6 +16,17 @@ Next:      one line
 
 ---
 
+## 2026-11-15 — Console dashboard from the stats route, per module
+Prompt:    "Wire GET /v1/ruxstar/stats into the console dashboard: queues amber above 0, people, money with payouts as count and amount instead of 20+ page counts, by-module cards tapping through to their lists, hide null sections, as of, pull to refresh; each module screen shows its own numbers via ?module="
+Decision:  The dashboard reads every count from `/v1/ruxstar/stats` (backend commit 6526b06). The overview still gives the staff count and which modules are live; the help desk summary gives overdue, unassigned and mine. Null sections and counts are hidden, and a module card with nothing visible is left out. `ModuleStats` draws one module's block for both the dashboard and the module screen. The payouts first-page counts ("20+") are gone.
+Done:      `types/admin.ts` (`Stats`), `AdminService.stats`, `admin/lib/stats.ts` (+ tests), `admin/components/ModuleStats.tsx`, `admin/hooks/use-console-metrics.ts`, `DashboardScreen`, `ModuleScreen`. Notes: `Architecture/build-log/owner-ui-fixes.md` (Stats (app)).
+Blocked:   none.
+Mocks:     none; API_CONTRACTS has a Console stats section.
+Verified by user: no
+Next:      Open the console dashboard in Expo Go with a staff account that lacks some permissions and check those sections hide.
+
+---
+
 ## 2026-11-15 — E-commerce: local shops, variants, one-shop cart, delivery or pickup, returns, owner tools, console
 Prompt:    "Build the E-commerce business (local shops, module shop) in the app: discover, shop page, product with variants, one-shop cart, checkout with delivery or pickup and returns, order page with returns and product reviews, owner setup, products and stock, shop desk, console shops, products, orders, banned categories and rules"
 Decision:  Every shop screen uses the real API at backend commit 98d44b7. The code says "store" so it never mixes with print-on-demand's shop. The cart is one shop at a time and kept on the phone; adding from another shop asks before clearing it. The quote throws for stock, radius and min order, so checkout shows those as a banner and keeps the last good quote's stock. The variant picker disables combinations the shop doesn't sell and strikes through sold-out ones. There's no team route to read one product, so a team member's product form edits the copy from the list. `DeliverySection` now takes any order with a `delivery`, so shop orders share it.

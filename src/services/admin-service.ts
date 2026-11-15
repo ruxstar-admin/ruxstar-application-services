@@ -26,6 +26,8 @@ import type {
   ReviewTrack,
   StaffMember,
   StaffPayout,
+  Stats,
+  StatsModule,
 } from '@/types/admin';
 import type { VendorCourse } from '@/types/coaching';
 import type { CouponFunder, CouponPatch, ManagedCoupon, NewCoupon } from '@/types/coupon';
@@ -45,6 +47,8 @@ const keyed = (idempotencyKey: string) => ({ idempotencyKey });
 export const AdminService = {
   getAccess: (token: string) => apiGet<Access>('/v1/ruxstar/access', token),
   getOverview: (token: string) => apiGet<Overview>('/v1/ruxstar/overview', token),
+  /** Every dashboard number, or one module's with `module`. */
+  stats: (token: string, module?: StatsModule) => apiGet<Stats>('/v1/ruxstar/stats', token, module ? { module } : undefined),
 
   reviewQueue: (token: string, status: ReviewStatus, track: ReviewTrack, cursor?: string) =>
     apiGetPage<ReviewCase>('/v1/ruxstar/kyc', token, { status, track, cursor }),

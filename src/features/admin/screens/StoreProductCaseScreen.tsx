@@ -16,7 +16,6 @@ import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
-import { timeAgo } from '@/lib/time';
 import { ConsoleStoreService } from '@/services/store-service';
 import { useCan } from '../access';
 import { Card, Fact, Facts, Note, ReasonSheet, Section, consoleStyles, errorText } from '../components/parts';
@@ -68,7 +67,7 @@ export function StoreProductCaseScreen({ id }: { id: string }) {
               <Badge {...PRODUCT_STATUS[product.status]} />
             </View>
             {done ? <Note>{done}</Note> : null}
-            {product.removal ? <Note tone="danger">{`Taken down by Ruxstar ${timeAgo(product.removal.at)}: ${product.removal.reason}`}</Note> : null}
+            {product.removal ? <Note tone="danger">{`Taken down by Ruxstar on ${shortDate(product.removal.at)}: ${product.removal.reason}`}</Note> : null}
 
             <Card>
               <Facts>

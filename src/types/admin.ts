@@ -52,6 +52,58 @@ export interface Overview {
   support?: { open: number; overdue: number; unassigned: number } | null;
 }
 
+// Console stats: `GET /v1/ruxstar/stats`. Paise; days and weeks are India time, weeks from Monday.
+
+/** A business module, or `delivery` for Ruxstar partners' trips. */
+export type StatsModule = 'pod' | 'events' | 'coaching' | 'turf' | 'stays' | 'shop' | 'delivery';
+
+export interface StatsMoney {
+  /** What customers paid through the gateway; coupons Ruxstar pays for are not in it. */
+  collectedToday: number;
+  collectedThisWeek: number;
+  collectedThisMonth: number;
+  refundsToday: number;
+  refundsThisMonth: number;
+  /** Vendors' and partners' shares not yet released. */
+  held: number;
+}
+
+export interface PayoutTotal {
+  count: number;
+  /** The payout fee included. */
+  amount: number;
+}
+
+/** Each part is null without its permission, or when the module has none (print and delivery have no listings). */
+export interface StatsModuleBlock {
+  module: StatsModule;
+  /** `takenDown` is businesses on hold. */
+  businesses: { total: number; live: number; drafts: number; takenDown: number } | null;
+  listings: { kind: 'event' | 'course' | 'ground' | 'property' | 'product'; live: number; takenDown: number } | null;
+  /** Paid or free; delivery counts trips. */
+  orders: { today: number; thisWeek: number; open: number } | null;
+  money: StatsMoney | null;
+}
+
+/** With `module`, `people`, `money` and `queues` are null and `modules` holds that one. */
+export interface Stats {
+  /** When the oldest number was counted; numbers are kept up to a minute. */
+  asOf: string;
+  module: StatsModule | null;
+  people: { total: number; joinedToday: number; joinedThisWeek: number; verified: number; onHold: number } | null;
+  modules: StatsModuleBlock[];
+  money: (StatsMoney & { payouts: { pending: PayoutTotal; failed: PayoutTotal; paidThisMonth: PayoutTotal } }) | null;
+  /** Work waiting for Ruxstar; each null without its permission. */
+  queues: {
+    kyc: number | null;
+    helpTickets: number | null;
+    reports: number | null;
+    orderProblems: number | null;
+    staysObjections: number | null;
+    shopReturns: number | null;
+  } | null;
+}
+
 // Verification.
 
 export type ReviewStatus = 'submitted' | 'approved' | 'rejected' | 'locked';

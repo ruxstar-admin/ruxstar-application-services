@@ -287,6 +287,13 @@ The app calls it "store" in code so it never mixes with print-on-demand's shop; 
 
 The shop's money is released `releaseHours` after delivery or when the return window ends, whichever is later. Payments and statement lines with `module: shop` open the shop order. Coupons: vendor coupons cover shop businesses and Ruxstar coupons can work on `shop`. Types: `src/types/store.ts`. Services: `src/services/store-service.ts` (`StoreService`, `VendorStoreService`, `StoreDeskService`, `ConsoleStoreService`).
 
+## Console stats (real API — `/v1`, backend commit 6526b06)
+| Path | Request | Response | Notes |
+|---|---|---|---|
+| `GET /ruxstar/stats` | `?module=pod\|events\|coaching\|turf\|stays\|shop\|delivery` | `Stats { asOf, module, people, modules[], money, queues }` | Staff. Each section or count is null without its permission (`users.view` people, `businesses.view` businesses and listings, `orders.view` orders, `payouts.view` money, each queue its own). With `module`, `people`, `money` and `queues` are null and `modules` holds that one. Paise; today, this week (from Monday) and this month are India time. Numbers are kept up to 60 s; `asOf` is the oldest. `money.payouts.{pending,failed,paidThisMonth}` are `{ count, amount }` |
+
+The dashboard uses it for queues (amber above 0), people, money and one card per module; `/ruxstar/overview` still gives the staff count and which modules are live, and the help desk summary who tickets wait on. Each module's settings screen shows its own block with `?module=`. Types: `Stats` in `src/types/admin.ts`. Service: `AdminService.stats`.
+
 ## Money: ledger, payouts, coupons, cancellation (`money.mocks.ts`, state in `commerce-state.ts`)
 `/payments/start` now takes `{ amount, itemTotal, purpose, module?, couponCode? }` and returns `{ sessionId, amount, discount }` — **the server validates the coupon and is authoritative**; `amount` = lines incl. delivery, `itemTotal` = the part a coupon may discount (never the delivery fee). A confirmed payment's `reference` links the purchase to the ledger.
 

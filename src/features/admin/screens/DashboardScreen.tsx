@@ -3,15 +3,20 @@ import { useRouter, type Href } from 'expo-router';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Radius, Spacing } from '@/constants/theme';
+import { money } from '@/features/vendor/lib/pod';
 import { useAuthStore } from '@/stores/auth-store';
-import { allows, useAccess } from '../access';
+import type { PayoutTotal } from '@/types/admin';
+import { useAccess } from '../access';
+import { ModuleStats } from '../components/ModuleStats';
 import { ConsoleScreen, consoleStyles } from '../components/parts';
 import { MetricTile, TileCard, cellWidth, tileCardInner } from '../components/tiles';
-import { pageCountText, useConsoleMetrics } from '../hooks/use-console-metrics';
+import { useConsoleMetrics } from '../hooks/use-console-metrics';
 import { MODULE_LABEL } from '../labels';
+import { asOfText, blockEmpty, hasQueues } from '../lib/stats';
 
 const count = (n: number) => n.toLocaleString('en-IN');
 const waiting = (n: number) => (n > 0 ? 'warn' : 'plain');
+const payoutLabel = (label: string, p: PayoutTotal) => `${label} (${count(p.count)})`;
 
 function Cells({ width, n }: { width: number; n: number }) {
   return (
@@ -23,19 +28,21 @@ function Cells({ width, n }: { width: number; n: number }) {
   );
 }
 
-/** The console home: every count the console has, grouped by area, each one opening the screen behind it. */
+/** The console home: every number from the stats route, grouped by area and module, each one opening the screen behind it. */
 export function DashboardScreen() {
   const router = useRouter();
   const access = useAccess();
-  const canPayouts = allows(access, 'payouts.view');
   const name = useAuthStore((s) => s.name);
   const { width } = useWindowDimensions();
-  const { overview, support, payouts, reload, refreshing } = useConsoleMetrics();
+  const { stats, overview, support, reload, refreshing } = useConsoleMetrics();
   const first = name?.split(' ')[0];
   const cell = cellWidth(tileCardInner(width), width < 340 ? 2 : 3);
   const go = (href: Href) => () => router.push(href);
+  const s = stats.data;
+  const q = s?.queues ?? null;
   const o = overview.data;
-  const desk = support.data ?? o?.support ?? null;
+  const desk = support.data;
+  const modules = s?.modules.filter((b) => !blockEmpty(b)) ?? [];
 
   return (
     <ConsoleScreen
@@ -47,93 +54,88 @@ export function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} tintColor={Brand.primarySoft} />}
         showsVerticalScrollIndicator={false}
       >
-        {!o && overview.loading ? (
+        {!s && stats.loading ? (
           <View style={styles.loading} accessibilityLabel="Loading">
             {[3, 3, 6].map((n, i) => (
               <Skeleton key={i} height={60 + Math.ceil(n / 3) * 80} radius={Radius.xl} />
             ))}
           </View>
         ) : null}
-        {!o && !overview.loading && overview.error ? (
+        {!s && !stats.loading && stats.error ? (
           <EmptyState icon="cloud-offline-outline" title="Could not load this" message="Check your connection and try again." actionLabel="Try again" onAction={reload} />
         ) : null}
+        {s ? <Text style={consoleStyles.muted}>{`${asOfText(s.asOf)}. Pull down to refresh.`}</Text> : null}
 
-        {o && (o.kyc || o.reports || o.orders) ? (
-          <TileCard title="Waiting for a decision" icon="alert-circle-outline" tint="amber">
-            {o.kyc ? (
-              <>
-                <MetricTile label="Verification to review" value={count(o.kyc.waiting)} tone={waiting(o.kyc.waiting)} width={cell} onPress={go('/(admin)/(tabs)/kyc')} />
-                <MetricTile label="Of those, delivery partners" value={count(o.kyc.delivery)} width={cell} onPress={go('/(admin)/(tabs)/kyc')} />
-              </>
+        {hasQueues(q) ? (
+          <TileCard title="Waiting for Ruxstar" icon="alert-circle-outline" tint="amber">
+            {q.kyc !== null ? <MetricTile label="Verification to review" value={count(q.kyc)} tone={waiting(q.kyc)} width={cell} onPress={go('/(admin)/(tabs)/kyc')} /> : null}
+            {q.helpTickets !== null ? (
+              <MetricTile label="Help tickets to answer" value={count(q.helpTickets)} tone={waiting(q.helpTickets)} width={cell} onPress={go('/(admin)/support')} />
             ) : null}
-            {o.reports ? (
-              <>
-                <MetricTile label="Reported posts" value={count(o.reports.posts)} tone={waiting(o.reports.posts)} width={cell} onPress={go('/(admin)/(tabs)/reports')} />
-                <MetricTile label="Reports on those posts" value={count(o.reports.reports)} width={cell} onPress={go('/(admin)/(tabs)/reports')} />
-                <MetricTile label="Reported people" value={count(o.reports.people)} tone={waiting(o.reports.people)} width={cell} onPress={go('/(admin)/(tabs)/reports')} />
-                <MetricTile label="Reported reviews" value={count(o.reports.reviews)} tone={waiting(o.reports.reviews)} width={cell} onPress={go('/(admin)/(tabs)/reports')} />
-              </>
+            {q.reports !== null ? <MetricTile label="Open reports" value={count(q.reports)} tone={waiting(q.reports)} width={cell} onPress={go('/(admin)/(tabs)/reports')} /> : null}
+            {q.orderProblems !== null ? (
+              <MetricTile label="Print order problems" value={count(q.orderProblems)} tone={waiting(q.orderProblems)} width={cell} onPress={go('/(admin)/(tabs)/reports')} />
             ) : null}
-            {o.orders ? (
-              <MetricTile label="Print order problems" value={count(o.orders.problems)} tone={waiting(o.orders.problems)} width={cell} onPress={go('/(admin)/(tabs)/reports')} />
+            {q.staysObjections !== null ? (
+              <MetricTile label="PG objections" value={count(q.staysObjections)} tone={waiting(q.staysObjections)} width={cell} onPress={go('/(admin)/objections')} />
+            ) : null}
+            {q.shopReturns !== null ? (
+              <MetricTile
+                label="Shop returns open"
+                value={count(q.shopReturns)}
+                tone={waiting(q.shopReturns)}
+                width={cell}
+                onPress={go({ pathname: '/(admin)/store-orders', params: { returns: 'open' } })}
+              />
             ) : null}
           </TileCard>
         ) : null}
 
-        {o && desk ? (
+        {s && desk ? (
           <TileCard title="Help tickets" icon="help-buoy-outline" tint="blue">
-            <MetricTile label="Open" value={count(desk.open)} width={cell} onPress={go('/(admin)/support')} />
             <MetricTile label="Past reply-by" value={count(desk.overdue)} tone={waiting(desk.overdue)} width={cell} onPress={go('/(admin)/support')} />
             <MetricTile label="With nobody on them" value={count(desk.unassigned)} tone={waiting(desk.unassigned)} width={cell} onPress={go('/(admin)/support')} />
-            {support.data ? (
-              <>
-                <MetricTile label="Assigned to you" value={count(support.data.mine)} width={cell} onPress={go('/(admin)/support')} />
-                <MetricTile label="Waiting on the person" value={count(support.data.waiting)} width={cell} onPress={go('/(admin)/support')} />
-              </>
-            ) : support.loading ? (
-              <Cells width={cell} n={2} />
-            ) : null}
+            <MetricTile label="Assigned to you" value={count(desk.mine)} width={cell} onPress={go('/(admin)/support')} />
+            <MetricTile label="Waiting on the person" value={count(desk.waiting)} tone="quiet" width={cell} onPress={go('/(admin)/support')} />
           </TileCard>
         ) : null}
 
-        {o && (o.users || o.staff) ? (
+        {s?.people ? (
           <TileCard title="People" icon="people-outline" tint="purple">
-            {o.users ? (
-              <>
-                <MetricTile label="Accounts" value={count(o.users.total)} width={cell} onPress={go('/(admin)/(tabs)/people')} />
-                <MetricTile label="Joined this week" value={count(o.users.newThisWeek)} width={cell} onPress={go('/(admin)/(tabs)/people')} />
-                <MetricTile label="On hold" value={count(o.users.suspended)} width={cell} onPress={go('/(admin)/(tabs)/people')} />
-              </>
-            ) : null}
-            {o.staff ? <MetricTile label="Ruxstar staff" value={count(o.staff.active)} width={cell} onPress={go('/(admin)/staff')} /> : null}
+            <MetricTile label="Accounts" value={count(s.people.total)} width={cell} onPress={go('/(admin)/(tabs)/people')} />
+            <MetricTile label="Joined today" value={count(s.people.joinedToday)} width={cell} onPress={go('/(admin)/(tabs)/people')} />
+            <MetricTile label="Joined this week" value={count(s.people.joinedThisWeek)} width={cell} onPress={go('/(admin)/(tabs)/people')} />
+            <MetricTile label="Verified" value={count(s.people.verified)} tone="good" width={cell} onPress={go('/(admin)/(tabs)/people')} />
+            <MetricTile label="On hold" value={count(s.people.onHold)} tone="quiet" width={cell} onPress={go('/(admin)/(tabs)/people')} />
+            {o?.staff ? <MetricTile label="Ruxstar staff" value={count(o.staff.active)} width={cell} onPress={go('/(admin)/staff')} /> : null}
           </TileCard>
         ) : null}
 
-        {o?.businesses ? (
-          <TileCard title="Businesses" icon="storefront-outline" tint="purple">
-            <MetricTile label="All businesses" value={count(o.businesses.total)} width={cell} onPress={go('/(admin)/businesses')} />
-            <MetricTile label="Live" value={count(o.businesses.live)} width={cell} onPress={go('/(admin)/businesses')} />
-            <MetricTile label="On hold" value={count(o.businesses.suspended)} width={cell} onPress={go('/(admin)/businesses')} />
-          </TileCard>
-        ) : null}
-
-        {o && canPayouts ? (
+        {s?.money ? (
           <TileCard title="Money" icon="wallet-outline" tint="green">
-            {payouts.data ? (
-              <>
-                <MetricTile label="Withdrawals on the way" value={pageCountText(payouts.data.pending)} width={cell} onPress={go('/(admin)/payouts')} />
-                <MetricTile label="Failed withdrawals" value={pageCountText(payouts.data.failed)} tone={waiting(payouts.data.failed.n)} width={cell} onPress={go('/(admin)/payouts')} />
-                <MetricTile label="Orders with money on hold" value={pageCountText(payouts.data.held)} width={cell} onPress={go('/(admin)/payouts')} />
-              </>
-            ) : payouts.loading ? (
-              <Cells width={cell} n={3} />
-            ) : (
-              <Text style={consoleStyles.muted}>Could not load payouts. Pull down to try again.</Text>
-            )}
+            <MetricTile label="Collected today" value={money(s.money.collectedToday)} tone="good" width={cell} />
+            <MetricTile label="This week" value={money(s.money.collectedThisWeek)} width={cell} />
+            <MetricTile label="This month" value={money(s.money.collectedThisMonth)} width={cell} />
+            <MetricTile label="Refunded today" value={money(s.money.refundsToday)} width={cell} />
+            <MetricTile label="Refunded this month" value={money(s.money.refundsThisMonth)} width={cell} />
+            <MetricTile label="Held for vendors and partners" value={money(s.money.held)} width={cell} onPress={go('/(admin)/payouts')} />
+            <MetricTile label={payoutLabel('Withdrawals on the way', s.money.payouts.pending)} value={money(s.money.payouts.pending.amount)} width={cell} onPress={go('/(admin)/payouts')} />
+            <MetricTile
+              label={payoutLabel('Failed withdrawals', s.money.payouts.failed)}
+              value={money(s.money.payouts.failed.amount)}
+              tone={waiting(s.money.payouts.failed.count)}
+              width={cell}
+              onPress={go('/(admin)/payouts')}
+            />
+            <MetricTile label={payoutLabel('Paid out this month', s.money.payouts.paidThisMonth)} value={money(s.money.payouts.paidThisMonth.amount)} width={cell} onPress={go('/(admin)/payouts')} />
           </TileCard>
         ) : null}
 
-        {o?.modules ? (
+        {modules.map((b) => (
+          <ModuleStats key={b.module} block={b} cell={cell} />
+        ))}
+
+        {s && o?.modules ? (
           <TileCard title="Modules" icon="apps-outline" tint="amber">
             {o.modules.map((m) => (
               <MetricTile
@@ -145,6 +147,10 @@ export function DashboardScreen() {
                 onPress={go({ pathname: '/(admin)/modules/[module]', params: { module: m.module } })}
               />
             ))}
+          </TileCard>
+        ) : s && overview.loading ? (
+          <TileCard title="Modules" icon="apps-outline" tint="amber">
+            <Cells width={cell} n={3} />
           </TileCard>
         ) : null}
       </ScrollView>

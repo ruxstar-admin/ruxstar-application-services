@@ -1,4 +1,4 @@
-import { Text } from 'react-native';
+import { Text, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -7,13 +7,31 @@ import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { AdminService } from '@/services/admin-service';
-import type { ModuleName } from '@/types/admin';
+import type { ModuleName, StatsModule } from '@/types/admin';
 import { useCan } from '../access';
 import { DeliveryRates, ModuleCore, Withdrawals } from '../components/ModuleForms';
+import { ModuleStats } from '../components/ModuleStats';
 import { Card, Section, consoleStyles } from '../components/parts';
 import { RulesForm } from '../components/RulesForm';
+import { cellWidth, tileCardInner } from '../components/tiles';
 import { MODULE_LABEL } from '../labels';
 import { isGstModule, isModuleName } from '../lib/modules';
+import { asOfText, blockEmpty, isStatsModule } from '../lib/stats';
+
+/** The module's own numbers; nothing while they load or when this person may see none of them. */
+function Numbers({ module }: { module: StatsModule }) {
+  const token = useAuthToken();
+  const { width } = useWindowDimensions();
+  const { data } = useAsyncResource(() => AdminService.stats(token, module), `stats-${module}`);
+  const block = data?.modules.find((b) => b.module === module);
+  if (!data || !block || blockEmpty(block)) return null;
+  return (
+    <>
+      <ModuleStats block={block} cell={cellWidth(tileCardInner(width), width < 340 ? 2 : 3)} title="Numbers" unlinked={module === 'delivery'} />
+      <Text style={consoleStyles.muted}>{asOfText(data.asOf)}.</Text>
+    </>
+  );
+}
 
 function Settings({ module }: { module: ModuleName }) {
   const router = useRouter();
@@ -31,6 +49,7 @@ function Settings({ module }: { module: ModuleName }) {
         {m === null ? <EmptyState icon="apps-outline" title="Module not found" message="This module isn't on Ruxstar any more." /> : null}
         {m ? (
           <>
+            {isStatsModule(module) ? <Numbers module={module} /> : null}
             <ModuleCore m={m} onSaved={setData} />
             {m.payouts ? (
               <>
