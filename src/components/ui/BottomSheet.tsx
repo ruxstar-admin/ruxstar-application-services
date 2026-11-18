@@ -25,7 +25,7 @@ const FALLBACK_HEIGHT = 600;
 
 /**
  * The one modal pattern for the whole app (report, pickers, confirmations): slides up over a dimmed
- * backdrop, closes on backdrop tap, Android back, or swipe down. Content sizes the sheet.
+ * backdrop, closes on backdrop tap, Android back, or swiping its top down. Content sizes the sheet.
  */
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
   const [mounted, setMounted] = useState(visible);
@@ -93,20 +93,23 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
         </Animated.View>
 
-        <GestureDetector gesture={pan}>
-          <Animated.View
-            style={[styles.sheet, sheetStyle]}
-            onLayout={(e) => {
-              height.value = e.nativeEvent.layout.height;
-            }}
-          >
-            <SafeAreaView edges={['bottom']}>
-              <View style={styles.grabber} />
-              {title ? <Text style={styles.title}>{title}</Text> : null}
-              <View style={styles.content}>{children}</View>
-            </SafeAreaView>
-          </Animated.View>
-        </GestureDetector>
+        <Animated.View
+          style={[styles.sheet, sheetStyle]}
+          onLayout={(e) => {
+            height.value = e.nativeEvent.layout.height;
+          }}
+        >
+          <SafeAreaView edges={['bottom']}>
+            {/* Only the top drags the sheet down; on the whole sheet it would take every swipe from lists inside. */}
+            <GestureDetector gesture={pan}>
+              <View style={styles.handle}>
+                <View style={styles.grabber} />
+                {title ? <Text style={styles.title}>{title}</Text> : null}
+              </View>
+            </GestureDetector>
+            <View style={styles.content}>{children}</View>
+          </SafeAreaView>
+        </Animated.View>
       </GestureHandlerRootView>
     </Modal>
   );
@@ -121,6 +124,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: Radius.xxl,
     paddingHorizontal: Spacing.three,
   },
+  handle: { alignSelf: 'stretch' },
   grabber: {
     alignSelf: 'center',
     width: 40,
