@@ -19,7 +19,7 @@ import { PropertyResults } from '@/features/stays/components/PropertyResults';
 import { StoreResults } from '@/features/store/components/StoreResults';
 import { GroundResults } from '@/features/turf/components/GroundResults';
 import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
-import { BUSINESS_MODULES } from '@/features/vendor/lib/business-modules';
+import { BUSINESS_MODULES, isKnownModule } from '@/features/vendor/lib/business-modules';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { Feedback } from '@/lib/haptics';
@@ -130,7 +130,7 @@ export function DiscoverScreen() {
   const [linked, setLinked] = useState<string | undefined>(undefined);
   if (params.category !== linked) {
     setLinked(params.category);
-    if (params.category && params.category in BUSINESS_MODULES) setCategory(params.category as BusinessModule);
+    if (params.category && isKnownModule(params.category)) setCategory(params.category);
   }
 
   const categories = catalog.data?.categories ?? [];

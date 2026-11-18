@@ -12,6 +12,14 @@ export const BUSINESS_MODULES: Record<BusinessModule, { label: string; icon: key
   gigs: { label: 'Freelancers', icon: 'briefcase-outline' },
 };
 
+/** Installed builds can be older than the API, which may already send a module they have never heard of. */
+export const isKnownModule = (module: string): module is BusinessModule => Object.prototype.hasOwnProperty.call(BUSINESS_MODULES, module);
+
+const UNKNOWN_MODULE: { label: string; icon: keyof typeof Ionicons.glyphMap } = { label: 'Business', icon: 'storefront-outline' };
+
+/** The label and icon for a module from the API, with a plain fallback for one this build doesn't know. */
+export const moduleInfo = (module: string) => (isKnownModule(module) ? BUSINESS_MODULES[module] : UNKNOWN_MODULE);
+
 export const TYPE_ICONS: Record<BusinessType, keyof typeof Ionicons.glyphMap> = {
   print_shop: 'print-outline',
   concert: 'musical-notes-outline',

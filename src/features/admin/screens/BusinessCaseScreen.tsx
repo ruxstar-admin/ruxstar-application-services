@@ -9,7 +9,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
-import { BUSINESS_MODULES, MISSING_LABEL, listOf, statusOf } from '@/features/vendor/lib/business-modules';
+import { MISSING_LABEL, listOf, moduleInfo, statusOf } from '@/features/vendor/lib/business-modules';
 import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
 import { addressOf, areaLine, money, priceLine } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
@@ -178,7 +178,7 @@ export function BusinessCaseScreen({ id }: { id: string }) {
               <View style={styles.flex}>
                 <Text style={styles.name}>{data.business.name}</Text>
                 <Text style={consoleStyles.muted}>
-                  {BUSINESS_MODULES[data.business.module].label}
+                  {moduleInfo(data.business.module).label}
                   {catalog.data ? ` · ${catalog.data.categories.flatMap((c) => c.types).find((t) => t.id === data.business.type)?.label ?? data.business.type}` : ''}
                 </Text>
               </View>

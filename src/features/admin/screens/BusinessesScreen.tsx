@@ -10,7 +10,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Spacing } from '@/constants/theme';
-import { BUSINESS_MODULES, statusOf } from '@/features/vendor/lib/business-modules';
+import { BUSINESS_MODULES, moduleInfo, statusOf } from '@/features/vendor/lib/business-modules';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
 import { timeAgo } from '@/lib/time';
@@ -72,7 +72,7 @@ function Results({ filter }: { filter: BusinessFilter }) {
             name={b.name}
             avatarUrl={b.photos[0]?.url}
             title={b.name}
-            subtitle={`${BUSINESS_MODULES[b.module].label} · ${owner ? `@${owner.username}` : 'Owner gone'} · ${timeAgo(b.updatedAt)}`}
+            subtitle={`${moduleInfo(b.module).label} · ${owner ? `@${owner.username}` : 'Owner gone'} · ${timeAgo(b.updatedAt)}`}
             right={<Badge {...statusOf(b)} />}
             onPress={() => router.push({ pathname: '/(admin)/business/[id]', params: { id: b.id } })}
           />

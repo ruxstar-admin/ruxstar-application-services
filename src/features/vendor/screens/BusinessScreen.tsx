@@ -18,7 +18,7 @@ import { ratingLine } from '@/features/reviews/lib/review';
 import { contactSupport } from '@/features/support/lib/support';
 import { useBusinessCatalog } from '@/features/vendor/hooks/use-business-catalog';
 import { canOpen } from '@/features/vendor/hooks/use-vendor-businesses';
-import { BUSINESS_MODULES, MISSING_LABEL, listOf, statusOf } from '@/features/vendor/lib/business-modules';
+import { MISSING_LABEL, listOf, moduleInfo, statusOf } from '@/features/vendor/lib/business-modules';
 import { addressOf, areaLine } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
@@ -167,7 +167,7 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
   const typeLabel = (b: Business) => {
     const category = catalog.data?.categories.find((c) => c.module === b.module);
     const type = category?.types.find((t) => t.id === b.type);
-    return type ? `${category!.label} · ${type.label}` : BUSINESS_MODULES[b.module].label;
+    return type ? `${category!.label} · ${type.label}` : moduleInfo(b.module).label;
   };
   const [busy, setBusy] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -249,7 +249,7 @@ export function BusinessScreen({ team = false }: { team?: boolean }) {
               <View style={styles.note}>
                 <Ionicons name="pause-circle-outline" size={20} color={Brand.warning} />
                 <Text style={styles.noteText}>
-                  Ruxstar has paused {BUSINESS_MODULES[data.module].label.toLowerCase()} for now. Customers can&apos;t order until it is back.
+                  Ruxstar has paused {moduleInfo(data.module).label.toLowerCase()} for now. Customers can&apos;t order until it is back.
                 </Text>
               </View>
             ) : null}

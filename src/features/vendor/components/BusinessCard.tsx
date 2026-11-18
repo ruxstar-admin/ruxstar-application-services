@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Badge } from '@/components/ui/Badge';
 import { Brand, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { canOpen } from '@/features/vendor/hooks/use-vendor-businesses';
-import { BUSINESS_MODULES, statusOf } from '@/features/vendor/lib/business-modules';
+import { moduleInfo, statusOf } from '@/features/vendor/lib/business-modules';
 import { Feedback } from '@/lib/haptics';
 import type { Business } from '@/types/business';
 
@@ -17,7 +17,7 @@ interface BusinessCardProps {
 
 /** A business in the portal's grid: cover, status, name, and an Open switch when it can open. */
 export function BusinessCard({ business, busy, onPress, onToggle }: BusinessCardProps) {
-  const info = BUSINESS_MODULES[business.module];
+  const info = moduleInfo(business.module);
   const status = statusOf(business);
   const cover = business.photos[0];
   const switchable = canOpen(business);

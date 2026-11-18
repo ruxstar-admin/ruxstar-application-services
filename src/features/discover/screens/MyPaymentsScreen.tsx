@@ -12,7 +12,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
-import { BUSINESS_MODULES } from '@/features/vendor/lib/business-modules';
+import { moduleInfo } from '@/features/vendor/lib/business-modules';
 import { money } from '@/features/vendor/lib/pod';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
@@ -41,7 +41,7 @@ function PaymentRow({ payment, onPress }: { payment: Payment; onPress: () => voi
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       <View style={styles.icon}>
-        <Ionicons name={BUSINESS_MODULES[payment.module].icon} size={20} color={Brand.primarySoft} />
+        <Ionicons name={moduleInfo(payment.module).icon} size={20} color={Brand.primarySoft} />
       </View>
       <View style={styles.text}>
         <Text style={styles.title} numberOfLines={1}>
