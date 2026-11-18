@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -18,6 +18,7 @@ import { Brand } from '@/constants/theme';
 import { initMonitoring, wrapRoot } from '@/lib/monitoring';
 import { initPushNotifications, usePushNotifications } from '@/lib/push-notifications';
 import { ErrorFallback } from '@/components/ui/ErrorFallback';
+import { AnimatedSplash } from '@/components/brand/AnimatedSplash';
 
 initMonitoring();
 initPushNotifications();
@@ -102,10 +103,16 @@ function RootLayout() {
     PlusJakartaSans_700Bold,
   });
   const ready = fontsLoaded || !!fontError;
+  const [intro, setIntro] = useState(true);
+  const hideSplash = useCallback(() => SplashScreen.hideAsync().catch(() => undefined), []);
+  const endIntro = useCallback(() => setIntro(false), []);
 
+  // The intro hides the native splash once it is drawn; this is only a fallback if that never happens.
   useEffect(() => {
-    if (ready) SplashScreen.hideAsync().catch(() => undefined);
-  }, [ready]);
+    if (!ready) return;
+    const timeout = setTimeout(hideSplash, 1500);
+    return () => clearTimeout(timeout);
+  }, [ready, hideSplash]);
 
   if (!ready) return null;
 
@@ -115,6 +122,7 @@ function RootLayout() {
       <AuthGuard />
       {/* A stack, not a slot: opening the vendor portal from Profile must keep Profile underneath for Back. */}
       <Stack screenOptions={STACK_SCREEN_OPTIONS} />
+      {intro ? <AnimatedSplash onShown={hideSplash} onDone={endIntro} /> : null}
     </GestureHandlerRootView>
   );
 }
