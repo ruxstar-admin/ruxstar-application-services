@@ -6,6 +6,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Spacing, Typography } from '@/constants/theme';
+import { useMyFreelancer } from '@/features/gigs/hooks/use-gigs';
 import { useVendorBusinesses } from '@/features/vendor/hooks/use-vendor-businesses';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePaginated } from '@/hooks/use-paginated';
@@ -19,14 +20,17 @@ import { couponShops } from '../lib/coupons';
 /**
  * A vendor's coupons for their print shops, events, coaching and sports businesses: what each takes off, how often it's used, and changing them.
  * With `placeId` it is one shop's coupons for someone on its team, who changes only the ones for that shop alone.
+ * With `freelance` it is a freelancer's coupons for their gigs, from the Freelancing home, for freelancers who aren't vendors.
  */
-export function VendorCouponsScreen({ placeId }: { placeId?: string }) {
+export function VendorCouponsScreen({ placeId, freelance }: { placeId?: string; freelance?: boolean }) {
   const router = useRouter();
   const token = useAuthToken();
   const list = usePaginated((cursor) => (placeId ? TeamCouponService.list(token, placeId, cursor) : CouponService.list(token, cursor)));
   useRefetchOnFocus(list.refresh);
-  const businesses = useVendorBusinesses({ skip: !!placeId });
-  const shops = placeId ? [] : couponShops(businesses.data ?? []);
+  const businesses = useVendorBusinesses({ skip: !!placeId || !!freelance });
+  const me = useMyFreelancer(!freelance);
+  const shops = placeId ? [] : freelance ? (me.data ? [{ id: me.data.businessId, name: me.data.name }] : []) : couponShops(businesses.data ?? []);
+  const newHref = placeId ? { pathname: '/(customer)/work/coupons/[id]/new' as const, params: { id: placeId } } : freelance ? '/(customer)/freelance/coupons/new' : '/(vendor)/coupons/new';
   const refused = list.error instanceof ApiError && list.error.status > 0 && list.error.kind !== 'server' ? list.error.message : null;
 
   return (
@@ -64,14 +68,15 @@ export function VendorCouponsScreen({ placeId }: { placeId?: string }) {
                   ? 'A coupon’s discount comes out of the shop’s share. Coupons the owner made for several shops are theirs to change.'
                   : 'A coupon’s discount comes out of your share, and Ruxstar’s commission is on the price after it.'}
               </Text>
-              <PrimaryButton
-                label="New coupon"
-                onPress={() => router.push(placeId ? { pathname: '/(customer)/work/coupons/[id]/new', params: { id: placeId } } : '/(vendor)/coupons/new')}
-              />
+              <PrimaryButton label="New coupon" onPress={() => router.push(newHref)} />
             </View>
           }
           ListEmptyComponent={
-            <EmptyState icon="pricetag-outline" title="No coupons yet" message={placeId ? 'Make one to bring customers to this shop.' : 'Make one to bring customers to your businesses.'} />
+            <EmptyState
+              icon="pricetag-outline"
+              title="No coupons yet"
+              message={placeId ? 'Make one to bring customers to this shop.' : freelance ? 'Make one to bring customers to your gigs and custom offers.' : 'Make one to bring customers to your businesses.'}
+            />
           }
           ListFooterComponent={list.loadingMore ? <ActivityIndicator color={Brand.primarySoft} style={styles.footer} /> : null}
           renderItem={({ item }) => (

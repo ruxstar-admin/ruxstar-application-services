@@ -11,6 +11,7 @@ export const MODULE_ICON: Record<ModuleName, Icon> = {
   stays: 'bed-outline',
   turf: 'football-outline',
   shop: 'storefront-outline',
+  gigs: 'briefcase-outline',
   delivery: 'bicycle-outline',
   ledger: 'wallet-outline',
 };

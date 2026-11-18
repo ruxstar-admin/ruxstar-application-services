@@ -160,4 +160,14 @@ export interface AppNotification {
   storeOrderId?: string;
   /** An order at a local shop you own or work at: tapping opens it on the shop desk. */
   deskStoreOrderId?: string;
+  /** A freelancer's gig, such as yours being taken down. */
+  gigId?: string;
+  /** Your freelance order changed: tapping opens it. */
+  gigOrderId?: string;
+  /** An order you are doing as a freelancer: tapping opens it on your desk. */
+  deskGigOrderId?: string;
+  /** Your freelancing was put on hold or is back: tapping opens the Freelancing home. */
+  freelance?: boolean;
+  /** A withdrawal of a freelancer with no other business arrived or came back: tapping opens Payments in Freelancing. */
+  freelancePayments?: boolean;
 }

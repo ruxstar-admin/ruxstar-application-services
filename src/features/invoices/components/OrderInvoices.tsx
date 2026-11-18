@@ -2,12 +2,13 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import type { InvoiceAudience, InvoiceRef } from '@/types/invoice';
-import { INVOICE_PATH } from '../lib/routes';
+import { useInvoicePath } from '../lib/routes';
 import { InvoiceRow } from './InvoiceRow';
 
 /** An order's GST invoices and credit notes, each opening the document. Nothing for older orders, which have none. */
 export function OrderInvoices({ refs, audience = 'customer' }: { refs: InvoiceRef[] | undefined; audience?: InvoiceAudience }) {
   const router = useRouter();
+  const path = useInvoicePath(audience);
   if (!refs?.length) return null;
   return (
     <View style={styles.wrap}>
@@ -17,7 +18,7 @@ export function OrderInvoices({ refs, audience = 'customer' }: { refs: InvoiceRe
           key={ref.id}
           doc={ref}
           detail={ref.issuer === 'ruxstar' ? 'Ruxstar' : undefined}
-          onPress={() => router.push({ pathname: INVOICE_PATH[audience], params: { id: ref.id } })}
+          onPress={() => router.push({ pathname: path, params: { id: ref.id } })}
         />
       ))}
     </View>

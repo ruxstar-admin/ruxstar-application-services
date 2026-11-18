@@ -17,6 +17,8 @@ import { TypingBubble } from '@/features/chat/components/TypingBubble';
 import { useThread, type Recording } from '@/features/chat/hooks/use-thread';
 import { seenMessageId } from '@/features/chat/lib/merge-messages';
 import { activeLabel, layoutThread, type ThreadRow } from '@/features/chat/lib/thread-layout';
+import { ChatOffers, type OfferAsk } from '@/features/gigs/components/ChatOffers';
+import type { QuoteAction } from '@/features/gigs/components/QuoteBubble';
 import { PhotoViewer } from '@/features/social/components/PhotoViewer';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { ApiError } from '@/lib/api-error';
@@ -188,6 +190,15 @@ function ChatThread({ id, titleParam, initial }: { id: string; titleParam?: stri
     setReplyingTo(message);
   }, []);
   const canRespond = chat?.state === 'active' && chat.canSend;
+  const [offerAsk, setOfferAsk] = useState<OfferAsk | null>(null);
+  const onQuote = useCallback(
+    (message: PendingMessage, action: QuoteAction) => {
+      const orderId = message.quote?.orderId;
+      if (action !== 'order') setOfferAsk({ message, action });
+      else if (orderId) router.push({ pathname: message.mine ? '/(customer)/freelance/orders/[id]' : '/(customer)/gigs/order/[id]', params: { id: orderId } });
+    },
+    [router],
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: ThreadRow }) => (
@@ -205,9 +216,11 @@ function ChatThread({ id, titleParam, initial }: { id: string; titleParam?: stri
         onReply={reply}
         onOpenPost={openPost}
         onOpenPhoto={openPhoto}
+        onQuote={onQuote}
+        now={item.message.quote ? now : 0}
       />
     ),
-    [isGroup, seenId, openedWith, canRespond, retry, openMenu, react, reply, openPost, openPhoto],
+    [isGroup, seenId, openedWith, canRespond, retry, openMenu, react, reply, openPost, openPhoto, onQuote, now],
   );
 
   const pickPhoto = async () => {
@@ -342,16 +355,26 @@ function ChatThread({ id, titleParam, initial }: { id: string; titleParam?: stri
             </View>
           </View>
         ) : chat ? (
-          <Composer
-            onSend={sendText}
-            onPhoto={pickPhoto}
-            onCamera={takePhoto}
-            onVoice={sendVoice}
-            onTyping={thread.noteTyping}
-            replyingTo={replyingTo}
-            onCancelReply={() => setReplyingTo(null)}
-            notice={noticeOf(chat)}
-          />
+          <>
+            <ChatOffers
+              chatId={id}
+              peerName={title}
+              offerable={chat.kind === 'dm' && !!canRespond}
+              ask={offerAsk}
+              onClose={() => setOfferAsk(null)}
+              onChanged={thread.setQuote}
+            />
+            <Composer
+              onSend={sendText}
+              onPhoto={pickPhoto}
+              onCamera={takePhoto}
+              onVoice={sendVoice}
+              onTyping={thread.noteTyping}
+              replyingTo={replyingTo}
+              onCancelReply={() => setReplyingTo(null)}
+              notice={noticeOf(chat)}
+            />
+          </>
         ) : null}
       </KeyboardAvoidingView>
 

@@ -7,6 +7,7 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { Brand, Typography } from '@/constants/theme';
+import { useMyFreelancer } from '@/features/gigs/hooks/use-gigs';
 import { useVendorBusinesses } from '@/features/vendor/hooks/use-vendor-businesses';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { IdempotentAttempt } from '@/lib/api-client';
@@ -99,8 +100,21 @@ function VendorForm() {
   );
 }
 
-/** Making a coupon: Ruxstar's from the console, a vendor's for their own businesses, or one shop's from Work (`placeId`). */
-export function NewCouponScreen({ who, placeId }: { who: 'ruxstar' | 'vendor' | 'team'; placeId?: string }) {
+function FreelanceForm() {
+  const me = useMyFreelancer();
+  if (me.data) return <Form who="vendor" shops={[{ id: me.data.businessId, name: me.data.name }]} />;
+  return (
+    <ScreenContainer title="New coupon">
+      <AsyncBoundary loading={me.loading} error={me.error} hasData={false} onRetry={me.reload} skeletonRows={5}>
+        {me.data === null ? <EmptyState icon="pricetag-outline" title="No freelancer profile" message="Start freelancing from Settings first." /> : null}
+      </AsyncBoundary>
+    </ScreenContainer>
+  );
+}
+
+/** Making a coupon: Ruxstar's from the console, a vendor's for their own businesses, a freelancer's for their gigs, or one shop's from Work (`placeId`). */
+export function NewCouponScreen({ who, placeId }: { who: 'ruxstar' | 'vendor' | 'freelance' | 'team'; placeId?: string }) {
+  if (who === 'freelance') return <FreelanceForm />;
   return who === 'vendor' ? <VendorForm /> : who === 'team' ? <Form who="team" placeId={placeId} /> : <Form who="ruxstar" />;
 }
 

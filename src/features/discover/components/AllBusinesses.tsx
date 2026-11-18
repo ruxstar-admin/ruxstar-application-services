@@ -8,6 +8,7 @@ import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Spacing, Typography } from '@/constants/theme';
 import { CourseCardView } from '@/features/coaching/components/CourseCardView';
 import { EventCardView } from '@/features/events/components/EventCardView';
+import { GigCardView } from '@/features/gigs/components/GigCardView';
 import { ShopCardView } from '@/features/pod/components/ShopCardView';
 import { PropertyCardView } from '@/features/stays/components/PropertyCardView';
 import { StoreCardView } from '@/features/store/components/StoreCardView';
@@ -17,6 +18,7 @@ import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { CoachingService } from '@/services/coaching-service';
 import { EventsService } from '@/services/events-service';
+import { GigsService } from '@/services/gigs-service';
 import { ShopService } from '@/services/shop-service';
 import { StaysService } from '@/services/stays-service';
 import { StoreService } from '@/services/store-service';
@@ -56,6 +58,10 @@ function load(module: BusinessModule, token: string, q: string, router: Router):
     case 'shop':
       return first(StoreService.list(token, query)).then((items) =>
         items.map((s) => <StoreCardView key={s.id} store={s} onPress={() => router.push({ pathname: '/(customer)/store/[id]', params: { id: s.id } })} />),
+      );
+    case 'gigs':
+      return first(GigsService.list(token, query)).then((items) =>
+        items.map((g) => <GigCardView key={g.id} gig={g} onPress={() => router.push({ pathname: '/(customer)/gigs/[id]', params: { id: g.id } })} />),
       );
     default:
       return null;

@@ -11,7 +11,8 @@ import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { createLogger } from '@/lib/logger';
 import { ChatService, UPDATES_WAIT_S } from '@/services/chat-service';
-import type { ChatDetail, ChatUpdates, PendingMessage } from '@/types/chat';
+import type { ChatDetail, ChatMessage, ChatUpdates, PendingMessage } from '@/types/chat';
+import type { QuoteCard } from '@/types/gigs';
 import type { Author } from '@/types/social';
 
 /** After a failed check, wait this long before the next. */
@@ -196,6 +197,7 @@ export function useThread(id: string, initial?: ChatDetail) {
     post: null,
     photo: null,
     voice: null,
+    quote: null,
     replyTo: replyTo ? quoteOf(replyTo) : null,
     reactions: [],
     createdAt: new Date().toISOString(),
@@ -276,6 +278,13 @@ export function useThread(id: string, initial?: ChatDetail) {
     }
   };
 
+  /** A message the API made another way, such as an offer, shown at once; the next poll knows it already. */
+  const addSent = (message: ChatMessage) => setMessages((prev) => mergeIncoming(prev, [message]));
+
+  /** An offer that changed here, such as one just withdrawn, ahead of the next poll. */
+  const setQuote = (messageId: string, quote: QuoteCard) =>
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, quote } : m)));
+
   const loadOlder = useCallback(() => {
     if (!olderCursor || loadingOlder) return;
     setLoadingOlder(true);
@@ -312,6 +321,8 @@ export function useThread(id: string, initial?: ChatDetail) {
     retry,
     unsend,
     react,
+    addSent,
+    setQuote,
     noteTyping,
     loadOlder,
     loadingOlder,

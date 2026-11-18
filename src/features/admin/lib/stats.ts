@@ -3,7 +3,7 @@ import type { ModuleName, Stats, StatsModule, StatsModuleBlock } from '@/types/a
 
 type ListingKind = NonNullable<StatsModuleBlock['listings']>['kind'];
 
-const STATS_MODULES: readonly StatsModule[] = ['pod', 'events', 'coaching', 'turf', 'stays', 'shop', 'delivery'];
+const STATS_MODULES: readonly StatsModule[] = ['pod', 'events', 'coaching', 'turf', 'stays', 'shop', 'gigs', 'delivery'];
 
 export const isStatsModule = (m: ModuleName): m is StatsModule => (STATS_MODULES as readonly string[]).includes(m);
 
@@ -15,12 +15,14 @@ export const MODULE_LIST: Record<StatsModule, Href> = {
   turf: '/(admin)/grounds',
   stays: '/(admin)/properties',
   shop: '/(admin)/stores',
+  gigs: '/(admin)/freelancers',
   delivery: { pathname: '/(admin)/modules/[module]', params: { module: 'delivery' } },
 };
 
 /** Modules whose orders the console lists on their own. */
 export const MODULE_ORDERS: Partial<Record<StatsModule, Href>> = {
   shop: '/(admin)/store-orders',
+  gigs: '/(admin)/gig-orders',
 };
 
 const LISTINGS: Record<ListingKind, string> = {
@@ -29,6 +31,7 @@ const LISTINGS: Record<ListingKind, string> = {
   ground: 'Live grounds',
   property: 'Live PGs & hostels',
   product: 'Products on sale',
+  gig: 'Live gigs',
 };
 
 export const listingsLabel = (kind: ListingKind) => LISTINGS[kind] ?? 'Live listings';

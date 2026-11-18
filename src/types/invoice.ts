@@ -1,6 +1,6 @@
 /** `bill_of_supply` is a sale without GST: the seller has no GSTIN, or the sale is exempt. */
 export type InvoiceKind = 'tax_invoice' | 'bill_of_supply' | 'credit_note';
-export type GstModule = 'pod' | 'events' | 'coaching' | 'stays' | 'turf' | 'ecommerce';
+export type GstModule = 'pod' | 'events' | 'coaching' | 'stays' | 'turf' | 'ecommerce' | 'gigs';
 /** `vendor`: the business's own document. `ruxstar`: Ruxstar's. */
 export type InvoiceIssuer = 'vendor' | 'ruxstar';
 /** `supply`: what was bought. `fee`: Ruxstar's platform fee. */
@@ -57,7 +57,7 @@ export interface Invoice {
   issuer: InvoiceIssuer;
   role: InvoiceRole;
   module: GstModule;
-  order: { type: 'pod_order' | 'event_order' | 'coaching_order' | 'turf_booking' | 'stay_reservation' | 'shop_order'; id: string; orderNo: number };
+  order: { type: 'pod_order' | 'event_order' | 'coaching_order' | 'turf_booking' | 'stay_reservation' | 'shop_order' | 'gig_order'; id: string; orderNo: number };
   business: { id: string; name: string };
   seller: InvoiceParty;
   buyer: InvoiceParty;

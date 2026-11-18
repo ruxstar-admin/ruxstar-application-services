@@ -1,11 +1,27 @@
 import type { Invoice, InvoiceAudience } from '@/types/invoice';
+import { ROLES } from '@/constants/roles';
 import { InvoiceService } from '@/services/invoice-service';
+import { useAuthStore } from '@/stores/auth-store';
 
 export const INVOICE_PATH = {
   customer: '/(customer)/invoices/[id]',
   vendor: '/(vendor)/invoices/[id]',
   staff: '/(admin)/invoices/[id]',
 } as const satisfies Record<InvoiceAudience, string>;
+
+/** A business owner's documents: in the vendor portal, or under Freelancing for freelancers, who can't open the portal. */
+export function useSalesInvoicePaths() {
+  const vendor = useAuthStore((s) => s.roles.includes(ROLES.VENDOR));
+  return vendor
+    ? ({ list: '/(vendor)/invoices', one: INVOICE_PATH.vendor } as const)
+    : ({ list: '/(customer)/freelance/invoices', one: '/(customer)/freelance/invoices/[id]' } as const);
+}
+
+/** Where one document opens for whoever is signed in. */
+export function useInvoicePath(audience: InvoiceAudience) {
+  const sales = useSalesInvoicePaths();
+  return audience === 'vendor' ? sales.one : INVOICE_PATH[audience];
+}
 
 const CUSTOMER_ORDER_PATH = {
   pod_order: '/(customer)/pod/order/[id]',
@@ -14,6 +30,7 @@ const CUSTOMER_ORDER_PATH = {
   turf_booking: '/(customer)/turf/booking/[id]',
   stay_reservation: '/(customer)/stays/order/[id]',
   shop_order: '/(customer)/store/order/[id]',
+  gig_order: '/(customer)/gigs/order/[id]',
 } as const satisfies Record<Invoice['order']['type'], string>;
 
 /** Where "View order" goes from a document, when the viewer has an order screen for it. */
@@ -25,6 +42,8 @@ export function orderHref(invoice: Pick<Invoice, 'order'>, audience: InvoiceAudi
   }
   if (audience === 'vendor' && type === 'pod_order') return { pathname: '/(vendor)/sale/[id]', params: { id } } as const;
   if (audience === 'vendor' && type === 'shop_order') return { pathname: '/(customer)/store-desk/order/[id]', params: { id } } as const;
+  if (audience === 'vendor' && type === 'gig_order') return { pathname: '/(customer)/freelance/orders/[id]', params: { id } } as const;
+  if (audience === 'staff' && type === 'gig_order') return { pathname: '/(admin)/gig-order/[id]', params: { id } } as const;
   return null;
 }
 

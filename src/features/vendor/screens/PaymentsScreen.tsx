@@ -11,9 +11,11 @@ import { ErrorBanner } from '@/components/ui/ErrorBanner';
 import { InputField } from '@/components/ui/InputField';
 import { ListRow } from '@/components/ui/ListRow';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
+import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Brand, Fonts, Radius, Spacing, Typography } from '@/constants/theme';
 import { KIND_LABEL } from '@/features/invoices/lib/invoices';
+import { useSalesInvoicePaths } from '@/features/invoices/lib/routes';
 import { digitsOnly, isValidAccountNumber, isValidIfsc } from '@/features/kyc/lib/validators';
 import { VendorTabScreen } from '@/features/vendor/components/VendorTabScreen';
 import { money } from '@/features/vendor/lib/pod';
@@ -411,9 +413,22 @@ function StatementList({ list, onOpen }: { list: ReturnType<typeof usePaginated<
   );
 }
 
-/** What can be withdrawn, what's on hold and what was paid out; where the vendor is paid; the statement and payouts. */
-export function PaymentsScreen() {
+function Page({ freelance, onRefresh, children }: { freelance: boolean; onRefresh: () => void; children: React.ReactNode }) {
+  if (freelance) return <ScreenContainer title="Payments">{children}</ScreenContainer>;
+  return (
+    <VendorTabScreen title="Payments" onRefresh={onRefresh}>
+      {children}
+    </VendorTabScreen>
+  );
+}
+
+/**
+ * What can be withdrawn, what's on hold and what was paid out; where the vendor is paid; the statement and payouts.
+ * `freelance` is a pushed screen under Freelancing, for freelancers who aren't vendors.
+ */
+export function PaymentsScreen({ freelance = false }: { freelance?: boolean }) {
   const token = useAuthToken();
+  const invoices = useSalesInvoicePaths();
   const { data, loading, error, reload, setData } = useAsyncResource(() => BusinessService.payments(token));
   const statement = usePaginated((cursor) => BusinessService.statement(token, cursor));
   const { refresh: refreshStatement } = statement;
@@ -429,14 +444,15 @@ export function PaymentsScreen() {
   const [payout, setPayout] = useState<Payout | null>(null);
 
   const openOrder = (id: string) => {
-    const shop = line?.module === 'shop';
+    const module = line?.module;
     setLine(null);
-    if (shop) router.push({ pathname: '/(customer)/store-desk/order/[id]', params: { id } });
+    if (module === 'shop') router.push({ pathname: '/(customer)/store-desk/order/[id]', params: { id } });
+    else if (module === 'gigs') router.push({ pathname: '/(customer)/freelance/orders/[id]', params: { id } });
     else router.push({ pathname: '/(vendor)/sale/[id]', params: { id } });
   };
   const openInvoice = (id: string) => {
     setLine(null);
-    router.push({ pathname: '/(vendor)/invoices/[id]', params: { id } });
+    router.push({ pathname: invoices.one, params: { id } });
   };
   const saved = (payoutMethod: PayoutMethod) => {
     if (data) setData({ ...data, payoutMethod });
@@ -444,7 +460,7 @@ export function PaymentsScreen() {
   };
 
   return (
-    <VendorTabScreen title="Payments" onRefresh={refresh}>
+    <Page freelance={freelance} onRefresh={refresh}>
       <AsyncBoundary loading={loading} error={error} hasData={!!data} onRetry={reload} skeletonRows={4}>
         {data ? (
           <>
@@ -487,7 +503,7 @@ export function PaymentsScreen() {
               icon="document-text-outline"
               title="GST invoices"
               subtitle="Invoices and credit notes for your sales, as PDFs or a CSV for your return"
-              onPress={() => router.push('/(vendor)/invoices')}
+              onPress={() => router.push(invoices.list)}
             />
 
             <View style={styles.tabs}>
@@ -520,7 +536,7 @@ export function PaymentsScreen() {
           </>
         ) : null}
       </AsyncBoundary>
-    </VendorTabScreen>
+    </Page>
   );
 }
 

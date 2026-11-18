@@ -20,7 +20,7 @@ interface MessageMenuProps {
   onUnsend: (message: PendingMessage) => void;
 }
 
-/** What you get when you hold a message: quick reactions, when it was sent, Reply, Copy, and Unsend for your own. */
+/** What you get when you hold a message: quick reactions, when it was sent, Reply, Copy, and Unsend for your own (offers are withdrawn instead). */
 export function MessageMenu({ message, canRespond, onClose, onReact, onReply, onUnsend }: MessageMenuProps) {
   const mineEmoji = message?.reactions.find((r) => r.mine)?.emoji;
 
@@ -56,7 +56,7 @@ export function MessageMenu({ message, canRespond, onClose, onReact, onReply, on
       ) : null}
       {message && canRespond ? <ListRow icon="arrow-undo-outline" title="Reply" onPress={() => choose(() => onReply(message))} /> : null}
       {message?.text ? <ListRow icon="copy-outline" title="Copy text" onPress={copy} /> : null}
-      {message?.mine ? (
+      {message?.mine && message.kind !== 'quote' ? (
         <ListRow
           icon="trash-outline"
           title="Unsend"

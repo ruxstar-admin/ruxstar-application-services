@@ -1,7 +1,9 @@
+import type { QuoteCard } from './gigs';
 import type { Author, Page } from './social';
 
 export type ChatKind = 'dm' | 'group';
-export type MessageKind = 'text' | 'post' | 'photo' | 'voice' | 'event';
+/** `quote`: a freelancer's custom offer; it can't be unsent. */
+export type MessageKind = 'text' | 'post' | 'photo' | 'voice' | 'event' | 'quote';
 /** `request`: someone you don't follow started it or added you. It sits in Requests until you accept. */
 export type ChatState = 'active' | 'request';
 export type ChatBox = 'chats' | 'requests';
@@ -101,6 +103,7 @@ export interface ChatMessage {
   post: SharedPost | null;
   photo: ChatPhoto | null;
   voice: ChatVoice | null;
+  quote: QuoteCard | null;
   replyTo: ReplyPreview | null;
   reactions: ReactionCount[];
   createdAt: string;
@@ -122,7 +125,7 @@ export interface PendingMessage extends ChatMessage {
 export interface ChatUpdates {
   /** Oldest first; may repeat a few already held. */
   messages: ChatMessage[];
-  /** Older messages whose reactions changed. */
+  /** Older messages whose reactions or offer changed. */
   updated: ChatMessage[];
   unsent: string[];
   seenAt: string | null;

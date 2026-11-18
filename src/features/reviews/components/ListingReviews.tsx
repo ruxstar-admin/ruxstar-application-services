@@ -17,7 +17,7 @@ import type { Rating, ReviewListing } from '@/types/review';
 const PAGE = 10;
 
 interface ListingReviewsProps {
-  module: 'events' | 'coaching' | 'turf' | 'stays' | 'shop';
+  module: 'events' | 'coaching' | 'turf' | 'stays' | 'shop' | 'gigs';
   listing: ReviewListing;
   /** The business, whose rating covers all its reviews; a product's rating is its own. */
   business: string;

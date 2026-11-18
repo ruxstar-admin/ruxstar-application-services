@@ -4,6 +4,7 @@ import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { ListRow } from '@/components/ui/ListRow';
 import { ScreenContainer } from '@/components/ui/ScreenContainer';
 import { ToggleRow } from '@/components/ui/ToggleRow';
+import { useGigsRules, useMyFreelancer } from '@/features/gigs/hooks/use-gigs';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { usePushPermission } from '@/hooks/use-push-permission';
 import { Feedback } from '@/lib/haptics';
@@ -24,6 +25,8 @@ export function SettingsScreen() {
   const [loggingOut, setLoggingOut] = useState(false);
   const showActivity = useAuthStore((s) => s.showActivity);
   const setShowActivity = useAuthStore((s) => s.setShowActivity);
+  const gigs = useGigsRules();
+  const freelancer = useMyFreelancer();
 
   // Shows the remembered value at once; this only corrects it if it changed elsewhere, like on the website.
   useEffect(() => {
@@ -57,6 +60,14 @@ export function SettingsScreen() {
       <ListRow icon="wallet-outline" title="Payments" subtitle="What you paid and any refunds" onPress={() => router.push('/(customer)/payments')} />
       <ListRow icon="document-text-outline" title="Invoices" subtitle="GST invoices and credit notes, as PDFs" onPress={() => router.push('/(customer)/invoices')} />
       <ListRow icon="briefcase-outline" title="Work" subtitle="Team invites and businesses you help run" onPress={() => router.push('/(customer)/work')} />
+      {freelancer.data || gigs.data?.live ? (
+        <ListRow
+          icon="color-palette-outline"
+          title="Freelancing"
+          subtitle={freelancer.data ? 'Your gigs, offers and freelance orders' : 'Sell your skills as gigs'}
+          onPress={() => router.push('/(customer)/freelance')}
+        />
+      ) : null}
       <ListRow icon="shield-outline" title="Verification" subtitle="Ruxstar Card, Verified tick and vendor" onPress={() => router.push('/(customer)/settings/verification')} />
       <ListRow icon="key-outline" title="Change password" subtitle="Signs out your other devices" onPress={() => router.push('/(customer)/settings/password')} />
       <ListRow icon="phone-portrait-outline" title="Sessions & devices" subtitle="Where you are logged in" onPress={() => router.push('/(customer)/settings/sessions')} />

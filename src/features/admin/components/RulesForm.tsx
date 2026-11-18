@@ -5,24 +5,27 @@ import { InputField } from '@/components/ui/InputField';
 import { MultiChoiceChips } from '@/components/ui/MultiChoiceChips';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Brand, Spacing, Typography } from '@/constants/theme';
+import { FILE_TYPES } from '@/features/gigs/lib/files';
 import { slotLengthText } from '@/features/turf/lib/turf';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { keepIdempotencyKey, newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { AdminService } from '@/services/admin-service';
 import type { CoachingRuleSettings, EventRuleSettings, ModuleSettings } from '@/types/admin';
+import type { GigsRuleSettings } from '@/types/gigs';
 import type { StaysRuleSettings } from '@/types/stays';
 import type { ShopRuleSettings } from '@/types/store';
 import type { SlotMinutes, TurfRuleSettings } from '@/types/turf';
 import { useCan } from '../access';
 import { Fact, Facts, consoleStyles, errorText } from './parts';
 
-type RulesKey = 'eventRules' | 'coachingRules' | 'turfRules' | 'staysRules' | 'shopRules';
+type RulesKey = 'eventRules' | 'coachingRules' | 'turfRules' | 'staysRules' | 'shopRules' | 'gigsRules';
 type Rules = Record<string, number>;
 
 const SLOT_LENGTHS: SlotMinutes[] = [30, 60, 90];
 const LENGTH_CHIPS = SLOT_LENGTHS.map((m) => ({ key: String(m), label: slotLengthText(m) }));
-const sameLengths = (a: readonly number[], b: readonly number[]) => a.length === b.length && a.every((n) => b.includes(n));
+const sameItems = <T,>(a: readonly T[], b: readonly T[]) => a.length === b.length && a.every((n) => b.includes(n));
+const typeLabel = (ext: string) => ext.toUpperCase();
 
 /** One rule: the API's limits in the units typed, and `scale` turns those into what the API stores (100 for rupees to paise). */
 interface Field {
@@ -224,6 +227,52 @@ const SETS: Record<RulesKey, { title: string; intro: string; save: string; field
       { key: 'maxQuantity', min: 1, max: 100, label: 'Of one item in one order', show: plain, hint: 'The most of one size or colour.' },
     ],
   },
+  gigsRules: {
+    title: 'Freelancer rules',
+    intro: 'Every freelancer’s gigs, offers and orders follow these. Orders already placed keep their package, price and days.',
+    save: 'Save freelancer rules',
+    fields: [
+      { key: 'acceptHours', min: 1, max: 72, label: 'Hours a freelancer has to accept a paid order', show: count('hour', 'hours'), hint: 'Not accepted by then: cancelled and refunded in full.' },
+      {
+        key: 'autoCompleteDays',
+        min: 1,
+        max: 30,
+        label: 'Days after delivery it completes by itself',
+        show: count('day', 'days'),
+        hint: 'If the customer doesn’t approve, ask for changes or report a problem by then, the freelancer is paid.',
+      },
+      { key: 'quoteDays', min: 1, max: 30, label: 'Days a custom offer can be paid for', show: count('day', 'days'), hint: 'From when it’s sent in the chat.' },
+      { key: 'deliveryMaxMb', min: 1, max: 25, label: 'MB of files in one delivery or brief', show: (n) => `${n} MB`, hint: 'Never more than 25.' },
+      { key: 'fileDays', min: 1, max: 365, label: 'Days files are kept after an order ends', show: count('day', 'days'), hint: 'The order and its messages stay.' },
+      { key: 'maxGigs', min: 1, max: 50, label: 'Gigs per freelancer', show: plain, hint: 'Drafts included.' },
+      { key: 'maxPackages', min: 1, max: 3, label: 'Packages per gig', show: plain, hint: 'Basic, then Standard, then Premium.' },
+      { key: 'minPrice', min: 1, max: 500000, scale: 100, label: 'Lowest price (₹)', show: (n) => `₹${n}`, hint: 'For a package or a custom offer.' },
+      { key: 'maxPrice', min: 1, max: 500000, scale: 100, label: 'Highest price (₹)', show: (n) => `₹${n}`, hint: 'At least the lowest price.' },
+      { key: 'minDays', min: 1, max: 365, label: 'Fewest delivery days', show: count('day', 'days'), hint: 'For a package or a custom offer.' },
+      { key: 'maxDays', min: 1, max: 365, label: 'Most delivery days', show: count('day', 'days'), hint: 'At least the fewest.' },
+      { key: 'maxRevisions', min: 0, max: 50, label: 'Most revisions included', show: plain, hint: '0 turns revisions off for new and edited gigs.' },
+      {
+        key: 'maxPortfolio',
+        min: 1,
+        max: 30,
+        label: 'Portfolio photos and links',
+        show: plain,
+        hint: 'Together, on one freelancer’s profile. Profiles that already have more keep them but can’t add more.',
+      },
+      { key: 'maxGigPhotos', min: 1, max: 10, label: 'Photos per gig', show: plain, hint: 'Publishing needs at least one. Gigs that already have more keep them.' },
+      {
+        key: 'maxQuestions',
+        min: 1,
+        max: 10,
+        label: 'Questions per gig',
+        show: plain,
+        hint: 'Asked when a customer orders. Gigs that already have more keep selling, and must fit when they’re next edited.',
+      },
+      { key: 'maxFiles', min: 1, max: 20, label: 'Files in one brief or delivery', show: plain, hint: 'Together they still fit in the MB above.' },
+      { key: 'maxLinks', min: 1, max: 20, label: 'Links in one delivery', show: plain, hint: 'Like a shared drive folder.' },
+      { key: 'maxAnswer', min: 100, max: 2000, label: 'Characters in one answer', show: count('character', 'characters'), hint: 'A customer’s answer to each of a gig’s questions.' },
+    ],
+  },
 };
 
 const wholeOf = (text: string) => (/^\d+$/.test(text.trim()) ? Number(text) : NaN);
@@ -239,16 +288,20 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
   const [text, setText] = useState<Record<string, string>>(() => textOf(rules));
   const savedLengths = kind === 'turfRules' ? (m.turfRules?.slotLengths ?? []) : [];
   const [lengths, setLengths] = useState<number[]>(() => [...savedLengths]);
+  const savedTypes = kind === 'gigsRules' ? (m.gigsRules?.fileTypes ?? []) : [];
+  const [types, setTypes] = useState<string[]>(() => [...savedTypes]);
+  const typeOptions = [...new Set<string>([...FILE_TYPES, ...savedTypes])];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const key = useRef(newIdempotencyKey());
 
   const values = Object.fromEntries(fields.map((f) => [f.key, wholeOf(text[f.key] ?? '')]));
   const errors = Object.fromEntries(fields.map((f) => [f.key, values[f.key]! >= f.min && values[f.key]! <= f.max ? undefined : `Enter a whole number from ${f.min} to ${f.max}`]));
-  const lengthsChanged = kind === 'turfRules' && !sameLengths(lengths, savedLengths);
-  const invalid = fields.some((f) => errors[f.key]) || (kind === 'turfRules' && !lengths.length);
+  const lengthsChanged = kind === 'turfRules' && !sameItems(lengths, savedLengths);
+  const typesChanged = kind === 'gigsRules' && !sameItems(types, savedTypes);
+  const invalid = fields.some((f) => errors[f.key]) || (kind === 'turfRules' && !lengths.length) || (kind === 'gigsRules' && !types.length);
   const changes = Object.fromEntries(fields.filter((f) => values[f.key] !== shown(rules, f)).map((f) => [f.key, values[f.key]! * (f.scale ?? 1)]));
-  const changed = Object.keys(changes).length > 0 || lengthsChanged;
+  const changed = Object.keys(changes).length > 0 || lengthsChanged || typesChanged;
 
   const save = async () => {
     setBusy(true);
@@ -263,7 +316,9 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
               ? { staysRules: changes as Partial<StaysRuleSettings> }
               : kind === 'shopRules'
                 ? { shopRules: changes as Partial<ShopRuleSettings> }
-                : { turfRules: { ...changes, ...(lengthsChanged ? { slotLengths: [...lengths].sort((a, b) => a - b) as SlotMinutes[] } : {}) } as Partial<TurfRuleSettings> };
+                : kind === 'gigsRules'
+                  ? { gigsRules: { ...changes, ...(typesChanged ? { fileTypes: typeOptions.filter((t) => types.includes(t)) } : {}) } as Partial<GigsRuleSettings> }
+                  : { turfRules: { ...changes, ...(lengthsChanged ? { slotLengths: [...lengths].sort((a, b) => a - b) as SlotMinutes[] } : {}) } as Partial<TurfRuleSettings> };
       const done = await AdminService.updateModule(token, m.module, patch, key.current);
       key.current = newIdempotencyKey();
       Feedback.success();
@@ -271,6 +326,7 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
       const next = done[kind];
       if (next) setText(textOf(next as unknown as Rules));
       if (done.turfRules) setLengths([...done.turfRules.slotLengths]);
+      if (done.gigsRules) setTypes([...(done.gigsRules.fileTypes ?? [])]);
     } catch (err) {
       Feedback.error();
       if (!keepIdempotencyKey(err)) key.current = newIdempotencyKey();
@@ -289,6 +345,7 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
             <Fact key={f.key} label={f.label} value={f.show(shown(rules, f))} />
           ))}
           {kind === 'turfRules' ? <Fact label="Slot lengths" value={savedLengths.map(slotLengthText).join(', ')} /> : null}
+          {kind === 'gigsRules' ? <Fact label="File types" value={savedTypes.map(typeLabel).join(', ')} /> : null}
         </Facts>
       </>
     );
@@ -314,6 +371,13 @@ export function RulesForm({ m, kind, onSaved }: { m: ModuleSettings; kind: Rules
           <Text style={styles.label}>Slot lengths courts can use</Text>
           <MultiChoiceChips options={LENGTH_CHIPS} value={lengths.map(String)} onChange={(v) => setLengths(v.map(Number))} />
           <Text style={consoleStyles.muted}>{lengths.length ? 'Courts already set up keep their length.' : 'Pick at least one.'}</Text>
+        </>
+      ) : null}
+      {kind === 'gigsRules' ? (
+        <>
+          <Text style={styles.label}>File types customers and freelancers can send</Text>
+          <MultiChoiceChips options={typeOptions.map((t) => ({ key: t, label: typeLabel(t) }))} value={types} onChange={setTypes} />
+          <Text style={consoleStyles.muted}>{types.length ? 'For briefs and deliveries. Files already sent stay.' : 'Pick at least one.'}</Text>
         </>
       ) : null}
       <PrimaryButton label={saveLabel} variant="outline" onPress={save} loading={busy} disabled={invalid || !changed} />

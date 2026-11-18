@@ -37,6 +37,15 @@ export function WaitingArea({ q, cell }: { q: NonNullable<Stats['queues']>; cell
           onPress={go({ pathname: '/(admin)/store-orders', params: { returns: 'open' } })}
         />
       ) : null}
+      {q.gigDisputes != null ? (
+        <MetricTile
+          label="Freelance problems"
+          value={count(q.gigDisputes)}
+          tone={waiting(q.gigDisputes)}
+          width={cell}
+          onPress={go({ pathname: '/(admin)/gig-orders', params: { status: 'disputed' } })}
+        />
+      ) : null}
     </TileCard>
   );
 }

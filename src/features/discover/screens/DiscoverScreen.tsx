@@ -6,6 +6,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Dropdown, DropdownRow } from '@/components/ui/Dropdown';
 import { CourseResults } from '@/features/coaching/components/CourseResults';
 import { EventResults } from '@/features/events/components/EventResults';
+import { GigResults } from '@/features/gigs/components/GigResults';
+import { useGigsRules } from '@/features/gigs/hooks/use-gigs';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { InputField } from '@/components/ui/InputField';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -28,9 +30,10 @@ import type { ShopFilters } from '@/types/shop';
 /** Waits this long after the last keystroke before searching. */
 const SEARCH_DELAY_MS = 350;
 /** Categories customers can already browse here; the rest show "coming soon". */
-const OPEN_MODULES: BusinessModule[] = ['pod', 'events', 'coaching', 'turf', 'stays', 'shop'];
+const OPEN_MODULES: BusinessModule[] = ['pod', 'events', 'coaching', 'turf', 'stays', 'shop', 'gigs'];
 const SEARCH_HINT: Partial<Record<Category, { placeholder: string; label: string }>> = {
   shop: { placeholder: 'Shop name', label: 'Search local shops' },
+  gigs: { placeholder: 'Gig or freelancer', label: 'Search freelancers' },
   events: { placeholder: 'Event, organiser or city', label: 'Search events' },
   coaching: { placeholder: 'Course, subject or institute', label: 'Search courses' },
   turf: { placeholder: 'Ground or area', label: 'Search grounds' },
@@ -112,6 +115,7 @@ function HeaderButton({ icon, label, spoken, onPress }: { icon: keyof typeof Ion
 export function DiscoverScreen() {
   const router = useRouter();
   const catalog = useBusinessCatalog();
+  const gigs = useGigsRules();
   const params = useLocalSearchParams<{ category?: string }>();
   const [text, setText] = useState('');
   const [q, setQ] = useState('');
@@ -203,6 +207,16 @@ export function DiscoverScreen() {
         <PropertyResults q={q} />
       ) : category === 'shop' ? (
         <StoreResults q={q} />
+      ) : category === 'gigs' ? (
+        gigs.data ? (
+          <GigResults q={q} categories={gigs.data.categories} />
+        ) : gigs.error ? (
+          <EmptyState icon="cloud-offline-outline" title="Could not load freelancers" message="Check your connection and try again." actionLabel="Try again" onAction={gigs.reload} />
+        ) : (
+          <View style={styles.skeletons}>
+            <Skeleton height={190} radius={18} />
+          </View>
+        )
       ) : category === 'pod' ? (
         <Results key={`${q}|${product}`} filters={filters} />
       ) : catalog.data ? (

@@ -49,6 +49,8 @@ export function CreateBusinessScreen() {
 
   const chooseCategory = (c: Category) => {
     Feedback.select();
+    // Freelancers aren't made here: their profile starts under Freelancing.
+    if (c.module === 'gigs') return router.push('/(customer)/freelance');
     setModule(c.module);
     // A category with one kind of business skips the type step.
     setType(c.types.length === 1 ? c.types[0].id : null);

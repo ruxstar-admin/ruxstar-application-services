@@ -3,6 +3,7 @@
 import type { Business, BusinessModule, PayoutMethod } from './business';
 import type { CourseCategory, CourseStatus } from './coaching';
 import type { StaysRuleSettings } from './stays';
+import type { GigsRuleSettings } from './gigs';
 import type { ShopRuleSettings } from './store';
 import type { TurfRuleSettings } from './turf';
 
@@ -55,7 +56,7 @@ export interface Overview {
 // Console stats: `GET /v1/ruxstar/stats`. Paise; days and weeks are India time, weeks from Monday.
 
 /** A business module, or `delivery` for Ruxstar partners' trips. */
-export type StatsModule = 'pod' | 'events' | 'coaching' | 'turf' | 'stays' | 'shop' | 'delivery';
+export type StatsModule = 'pod' | 'events' | 'coaching' | 'turf' | 'stays' | 'shop' | 'gigs' | 'delivery';
 
 export interface StatsMoney {
   /** What customers paid through the gateway; coupons Ruxstar pays for are not in it. */
@@ -79,7 +80,7 @@ export interface StatsModuleBlock {
   module: StatsModule;
   /** `takenDown` is businesses on hold. */
   businesses: { total: number; live: number; drafts: number; takenDown: number } | null;
-  listings: { kind: 'event' | 'course' | 'ground' | 'property' | 'product'; live: number; takenDown: number } | null;
+  listings: { kind: 'event' | 'course' | 'ground' | 'property' | 'product' | 'gig'; live: number; takenDown: number } | null;
   /** Paid or free; delivery counts trips. */
   orders: { today: number; thisWeek: number; open: number } | null;
   money: StatsMoney | null;
@@ -101,6 +102,8 @@ export interface Stats {
     orderProblems: number | null;
     staysObjections: number | null;
     shopReturns: number | null;
+    /** Missing from an API older than freelancers. */
+    gigDisputes?: number | null;
   } | null;
 }
 
@@ -262,7 +265,7 @@ export interface BusinessFilter {
 
 // Modules.
 
-export type ModuleName = 'pod' | 'events' | 'coaching' | 'stays' | 'turf' | 'shop' | 'delivery' | 'ledger';
+export type ModuleName = 'pod' | 'events' | 'coaching' | 'stays' | 'turf' | 'shop' | 'gigs' | 'delivery' | 'ledger';
 
 export interface ModuleSettings {
   module: ModuleName;
@@ -289,6 +292,8 @@ export interface ModuleSettings {
   staysRules: StaysRuleSettings | null;
   /** The shop module only. */
   shopRules: ShopRuleSettings | null;
+  /** The gigs (freelancers) module only; missing from an older API. */
+  gigsRules?: GigsRuleSettings | null;
   updatedAt: string;
 }
 
@@ -344,6 +349,8 @@ export type ModulePatch = Partial<Pick<ModuleSettings, 'live' | 'signupsOpen' | 
     staysRules?: Partial<StaysRuleSettings>;
     /** Shop only. Send only what changes. */
     shopRules?: Partial<ShopRuleSettings>;
+    /** Freelancers only. Send only what changes; `categories` goes whole. */
+    gigsRules?: Partial<GigsRuleSettings>;
   };
 
 /** Console events list: `q` matches the title or the organiser's name. */

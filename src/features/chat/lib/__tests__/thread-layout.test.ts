@@ -11,6 +11,7 @@ const at = (iso: string, mine: boolean, extra: Partial<PendingMessage> = {}): Pe
   post: null,
   photo: null,
   voice: null,
+  quote: null,
   replyTo: null,
   reactions: [],
   createdAt: iso,

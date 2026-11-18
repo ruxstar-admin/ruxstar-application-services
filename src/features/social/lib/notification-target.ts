@@ -34,6 +34,11 @@ type Target = Pick<
   | 'storeProductId'
   | 'storeOrderId'
   | 'deskStoreOrderId'
+  | 'gigId'
+  | 'gigOrderId'
+  | 'deskGigOrderId'
+  | 'freelance'
+  | 'freelancePayments'
 >;
 
 /** The screen a notification opens, from the notifications screen or a phone notification; undefined when it opens none. */
@@ -69,6 +74,11 @@ export function notificationHref(n: Target): Href | undefined {
   if (n.storeProductId) return { pathname: '/(customer)/store/product/[id]', params: { id: n.storeProductId } };
   if (n.storeOrderId) return { pathname: '/(customer)/store/order/[id]', params: { id: n.storeOrderId } };
   if (n.deskStoreOrderId) return { pathname: '/(customer)/store-desk/order/[id]', params: { id: n.deskStoreOrderId } };
+  if (n.gigId) return { pathname: '/(customer)/gigs/[id]', params: { id: n.gigId } };
+  if (n.gigOrderId) return { pathname: '/(customer)/gigs/order/[id]', params: { id: n.gigOrderId } };
+  if (n.deskGigOrderId) return { pathname: '/(customer)/freelance/orders/[id]', params: { id: n.deskGigOrderId } };
+  if (n.freelance) return '/(customer)/freelance';
+  if (n.freelancePayments) return '/(customer)/freelance/payments';
   return undefined;
 }
 
@@ -105,6 +115,11 @@ const LINKS = {
   store_product: (id) => ({ storeProductId: id }),
   store_order: (id) => ({ storeOrderId: id }),
   vendor_store_order: (id) => ({ deskStoreOrderId: id }),
+  gig: (id) => ({ gigId: id }),
+  gig_order: (id) => ({ gigOrderId: id }),
+  vendor_gig_order: (id) => ({ deskGigOrderId: id }),
+  freelance: () => ({ freelance: true }),
+  freelance_payments: () => ({ freelancePayments: true }),
 } satisfies Record<string, (id: string) => Target>;
 
 /** The API's `link.screen` values. */

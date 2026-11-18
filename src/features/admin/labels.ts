@@ -8,6 +8,7 @@ export const MODULE_LABEL: Record<ModuleName, string> = {
   stays: 'PG and hostel stays',
   turf: 'Sports and turf',
   shop: 'Local shops',
+  gigs: 'Freelancers',
   delivery: 'Delivery',
   ledger: 'Payments and ledger',
 };
@@ -19,6 +20,7 @@ export const GST_MODULE_LABEL: Record<GstModule, string> = {
   stays: MODULE_LABEL.stays,
   turf: MODULE_LABEL.turf,
   ecommerce: 'Online shop',
+  gigs: MODULE_LABEL.gigs,
 };
 
 export const REASON_LABEL: Record<ReportReason, string> = {
@@ -171,6 +173,22 @@ export const ACTION_LABEL: Record<string, string> = {
   'shop_order.return_refund': 'Refunded a return',
   'shop_banned.create': 'Banned a shop category',
   'shop_banned.update': 'Changed a banned category',
+  'freelancer.start': 'Started freelancing',
+  'freelancer.update': 'Changed a freelancer profile',
+  'gig.create': 'Made a gig',
+  'gig.update': "Changed a gig's details",
+  'gig.delete': 'Deleted a gig',
+  'gig.publish': 'Published a gig',
+  'gig.pause': 'Paused a gig',
+  'gig.take_down': 'Took a gig down',
+  'gig_quote.withdraw': 'Withdrew a custom offer',
+  'gig_order.accept': 'Accepted a freelance order',
+  'gig_order.deliver': 'Delivered a freelance order',
+  'gig_order.approve': 'Approved a delivery',
+  'gig_order.revision': 'Asked for changes',
+  'gig_order.dispute': 'Reported a problem with a freelance order',
+  'gig_order.decide': 'Decided a freelance problem',
+  'gig_order.cancel': 'Cancelled a freelance order',
   'gst.module_update': "Changed a module's GST rules",
   'gst.seller_update': "Changed Ruxstar's GST details",
 };

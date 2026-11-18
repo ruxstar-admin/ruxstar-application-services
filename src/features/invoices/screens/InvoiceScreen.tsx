@@ -17,7 +17,7 @@ import { InvoiceBody } from '../components/InvoiceBody';
 import { InvoiceRow } from '../components/InvoiceRow';
 import { useInvoicePdf } from '../hooks/use-invoice-pdf';
 import { indiaDay, KIND_LABEL, KIND_TONE, kindNote } from '../lib/invoices';
-import { INVOICE_PATH, orderHref, relatedInvoices } from '../lib/routes';
+import { orderHref, relatedInvoices, useInvoicePath } from '../lib/routes';
 
 function Head({ invoice, audience }: { invoice: Invoice; audience: InvoiceAudience }) {
   return (
@@ -44,7 +44,8 @@ function Head({ invoice, audience }: { invoice: Invoice; audience: InvoiceAudien
 function Details({ invoice, related, audience }: { invoice: Invoice; related: Invoice[]; audience: InvoiceAudience }) {
   const router = useRouter();
   const pdf = useInvoicePdf(audience, invoice.id);
-  const open = (id: string) => router.push({ pathname: INVOICE_PATH[audience], params: { id } });
+  const path = useInvoicePath(audience);
+  const open = (id: string) => router.push({ pathname: path, params: { id } });
   const order = orderHref(invoice, audience);
 
   return (

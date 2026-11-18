@@ -2,7 +2,8 @@ import type { PendingMessage, ReplyPreview } from '@/types/chat';
 
 /** What a reply shows of the message it answers, the same way the API describes it. */
 export function quoteOf(m: PendingMessage): ReplyPreview {
-  const text = m.kind === 'photo' ? 'Photo' : m.kind === 'voice' ? 'Voice message' : m.kind === 'post' ? m.text || 'Post' : m.text;
+  const text =
+    m.kind === 'photo' ? 'Photo' : m.kind === 'voice' ? 'Voice message' : m.kind === 'post' ? m.text || 'Post' : m.kind === 'quote' ? `Offer: ${m.quote?.title ?? ''}` : m.text;
   return { id: m.id, available: true, sender: m.mine ? 'You' : m.sender?.name || m.sender?.username || 'Someone', mine: m.mine, kind: m.kind, text };
 }
 

@@ -9,6 +9,7 @@ export const BUSINESS_MODULES: Record<BusinessModule, { label: string; icon: key
   stays: { label: 'Stays', icon: 'bed-outline' },
   turf: { label: 'Sports & turf', icon: 'football-outline' },
   shop: { label: 'Local shops', icon: 'bag-handle-outline' },
+  gigs: { label: 'Freelancers', icon: 'briefcase-outline' },
 };
 
 export const TYPE_ICONS: Record<BusinessType, keyof typeof Ionicons.glyphMap> = {
@@ -29,6 +30,7 @@ export const TYPE_ICONS: Record<BusinessType, keyof typeof Ionicons.glyphMap> = 
   gifts: 'gift-outline',
   bakery: 'cafe-outline',
   general_store: 'storefront-outline',
+  freelancer: 'briefcase-outline',
 };
 
 export const MISSING_LABEL: Record<BusinessMissing, string> = {

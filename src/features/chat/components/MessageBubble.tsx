@@ -9,6 +9,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Motion } from '@/constants/motion';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
 import { VoiceNote } from '@/features/chat/components/VoiceNote';
+import { QuoteBubble, type QuoteAction } from '@/features/gigs/components/QuoteBubble';
 import { PostText } from '@/features/social/components/PostText';
 import type { BubblePosition } from '@/features/chat/lib/thread-layout';
 import type { ChatPhoto, PendingMessage } from '@/types/chat';
@@ -33,6 +34,10 @@ interface MessageBubbleProps {
   onReply: (message: PendingMessage) => void;
   onOpenPost: (postId: string) => void;
   onOpenPhoto: (photo: ChatPhoto) => void;
+  /** Pay, withdraw or open the order of a custom offer. */
+  onQuote: (message: PendingMessage, action: QuoteAction) => void;
+  /** For an offer's time left; moves on each minute. */
+  now: number;
 }
 
 const PHOTO_WIDTH = 240;
@@ -77,6 +82,8 @@ export const MessageBubble = memo(function MessageBubble({
   onReply,
   onOpenPost,
   onOpenPhoto,
+  onQuote,
+  now,
 }: MessageBubbleProps) {
   const entering = fresh ? FadeInDown.duration(Motion.duration.base) : undefined;
   const headerLine = header ? <Text style={styles.header}>{header}</Text> : null;
@@ -202,7 +209,8 @@ export const MessageBubble = memo(function MessageBubble({
               accessibilityRole={failed ? 'button' : undefined}
               accessibilityLabel={[
                 message.mine ? 'You' : message.sender?.name,
-                message.text || (message.kind === 'photo' ? 'Photo' : message.kind === 'voice' ? 'Voice message' : post ? 'Shared post' : ''),
+                message.text ||
+                  (message.kind === 'photo' ? 'Photo' : message.kind === 'voice' ? 'Voice message' : post ? 'Shared post' : message.quote ? `Offer: ${message.quote.title}` : ''),
                 failed ? 'Not sent' : '',
                 total ? `${total} reaction${total > 1 ? 's' : ''}` : '',
               ]
@@ -214,7 +222,7 @@ export const MessageBubble = memo(function MessageBubble({
                 styles.bubble,
                 message.mine ? styles.bubbleMine : styles.bubbleOther,
                 corners(position, message.mine),
-                photo && !message.text ? styles.bubblePhoto : null,
+                (photo || message.quote) && !message.text ? styles.bubblePhoto : null,
                 message.sendState === 'sending' && styles.sending,
               ]}
             >
@@ -244,6 +252,8 @@ export const MessageBubble = memo(function MessageBubble({
                   )}
                 </View>
               ) : null}
+
+              {message.quote ? <QuoteBubble quote={message.quote} now={now} onAction={(action) => onQuote(message, action)} /> : null}
 
               {message.text ? <PostText text={message.text} style={styles.text} linkStyle={message.mine ? styles.linkMine : undefined} /> : null}
               {pending ? <Text style={[styles.meta, failed && styles.failed]}>{failed ? 'Not sent · tap to retry' : 'Sending…'}</Text> : null}

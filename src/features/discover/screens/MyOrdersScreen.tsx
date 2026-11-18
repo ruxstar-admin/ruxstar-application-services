@@ -7,6 +7,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Brand, Spacing } from '@/constants/theme';
+import { MyGigOrders } from '@/features/gigs/components/MyGigOrders';
 import { OrderRow } from '@/features/pod/components/OrderRow';
 import { STATUS_LABEL } from '@/features/pod/lib/order';
 import { StoreOrderRow } from '@/features/store/components/StoreOrderRow';
@@ -16,11 +17,13 @@ import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
 import { OrderService } from '@/services/order-service';
 import { StoreService } from '@/services/store-service';
 
-type Tab = 'print' | 'shops';
+type Tab = 'print' | 'shops' | 'freelance';
 const TABS: { key: Tab; label: string }[] = [
   { key: 'print', label: 'Print' },
   { key: 'shops', label: 'Local shops' },
+  { key: 'freelance', label: 'Freelance' },
 ];
+const tabOf = (tab: string | undefined): Tab => TABS.find((t) => t.key === tab)?.key ?? 'print';
 
 function Skeletons() {
   return (
@@ -109,11 +112,11 @@ function ShopOrders() {
   );
 }
 
-/** Your print and local shop orders, newest first. Tickets, classes, slots and stays have their own lists. */
+/** Your print, local shop and freelance orders, newest first. Tickets, classes, slots and stays have their own lists. */
 export function MyOrdersScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<Tab>(params.tab === 'shops' ? 'shops' : 'print');
+  const [tab, setTab] = useState<Tab>(() => tabOf(params.tab));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -121,7 +124,7 @@ export function MyOrdersScreen() {
         <ScreenHeader title="Your orders" onBack={() => router.back()} />
         <SegmentedTabs options={TABS} value={tab} onChange={setTab} />
       </View>
-      {tab === 'print' ? <PrintOrders /> : <ShopOrders />}
+      {tab === 'print' ? <PrintOrders /> : tab === 'shops' ? <ShopOrders /> : <MyGigOrders />}
     </SafeAreaView>
   );
 }

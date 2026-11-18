@@ -18,7 +18,7 @@ import { InvoiceService } from '@/services/invoice-service';
 import type { InvoiceFilter, InvoiceKind } from '@/types/invoice';
 import { InvoiceRow } from '../components/InvoiceRow';
 import { csvName, financialYearToDate, KIND_FILTERS, monthPeriod, pageInPeriod, recentMonths, type Period } from '../lib/invoices';
-import { INVOICE_PATH } from '../lib/routes';
+import { useInvoicePath } from '../lib/routes';
 
 type Audience = 'customer' | 'vendor';
 const MONTHS_SHOWN = 12;
@@ -26,6 +26,7 @@ const MONTHS_SHOWN = 12;
 function Results({ audience, filter, period }: { audience: Audience; filter: InvoiceFilter; period: Period | null }) {
   const router = useRouter();
   const token = useAuthToken();
+  const path = useInvoicePath(audience);
   const list = usePaginated((cursor) => {
     const fetchPage = (c?: string) => InvoiceService.list(token, audience, { ...filter, limit: period ? 50 : undefined }, c);
     return period ? pageInPeriod(fetchPage, period, cursor) : fetchPage(cursor);
@@ -56,7 +57,7 @@ function Results({ audience, filter, period }: { audience: Audience; filter: Inv
         <InvoiceRow
           doc={{ ...item, total: item.totals.total }}
           detail={audience === 'customer' ? (item.issuer === 'ruxstar' ? 'Ruxstar' : item.business.name) : `#${item.order.orderNo} · ${item.buyer.name}`}
-          onPress={() => router.push({ pathname: INVOICE_PATH[audience], params: { id: item.id } })}
+          onPress={() => router.push({ pathname: path, params: { id: item.id } })}
         />
       )}
       ListEmptyComponent={

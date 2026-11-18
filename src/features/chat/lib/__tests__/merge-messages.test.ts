@@ -11,6 +11,7 @@ const make = (id: string, extra: Partial<PendingMessage> = {}): PendingMessage =
   post: null,
   photo: null,
   voice: null,
+  quote: null,
   replyTo: null,
   reactions: [],
   createdAt: '2026-10-22T10:00:00Z',

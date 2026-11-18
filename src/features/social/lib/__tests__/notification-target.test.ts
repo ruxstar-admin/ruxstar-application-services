@@ -108,8 +108,23 @@ describe('notificationHref', () => {
       'store_product',
       'store_order',
       'vendor_store_order',
+      'gig',
+      'gig_order',
+      'vendor_gig_order',
+      'freelance',
+      'freelance_payments',
     ];
     for (const screen of screens) expect(notificationHref(notificationLink(screen, 'x1'))).toBeDefined();
+  });
+
+  it('opens Payments in Freelancing for a freelancer’s withdrawal, and the vendor portal’s Payments for a vendor’s', () => {
+    expect(notificationHref(notificationLink('freelance_payments', 'p1'))).toBe('/(customer)/freelance/payments');
+    expect(notificationHref(notificationLink('payments', 'p2'))).toBe('/(vendor)/(tabs)/payments');
+  });
+
+  it('opens the Freelancing home when your freelancing is held or back, and the business for any other hold', () => {
+    expect(notificationHref(notificationLink('freelance', 'b1'))).toBe('/(customer)/freelance');
+    expect(notificationHref(notificationLink('business', 'b2'))).toEqual({ pathname: '/(vendor)/businesses/[id]', params: { id: 'b2' } });
   });
 
   it('opens the local shop, its product, your order, or the order on the shop desk', () => {

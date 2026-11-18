@@ -69,7 +69,8 @@ function Cards({ query, filtered }: { query: StoresQuery; filtered: boolean }) {
   );
 }
 
-function BarButton({ icon, label, spoken, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; spoken: string; onPress: () => void }) {
+/** A square button beside the city box on a Discover results list. */
+export function BarButton({ icon, label, spoken, onPress }: { icon: keyof typeof Ionicons.glyphMap; label: string; spoken: string; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"

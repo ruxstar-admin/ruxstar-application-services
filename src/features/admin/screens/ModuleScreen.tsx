@@ -11,6 +11,7 @@ import type { ModuleName, StatsModule } from '@/types/admin';
 import { useCan } from '../access';
 import { DeliveryRates, ModuleCore, Withdrawals } from '../components/ModuleForms';
 import { ModuleStats } from '../components/ModuleStats';
+import { GigCategoriesForm } from '../components/GigCategoriesForm';
 import { Card, Section, consoleStyles } from '../components/parts';
 import { RulesForm } from '../components/RulesForm';
 import { cellWidth, tileCardInner } from '../components/tiles';
@@ -67,13 +68,19 @@ function Settings({ module }: { module: ModuleName }) {
                 </Card>
               </>
             ) : null}
-            {m.eventRules || m.coachingRules || m.turfRules || m.staysRules || m.shopRules ? (
+            {m.eventRules || m.coachingRules || m.turfRules || m.staysRules || m.shopRules || m.gigsRules ? (
               <Card>
                 {m.eventRules ? <RulesForm m={m} kind="eventRules" onSaved={setData} /> : null}
                 {m.coachingRules ? <RulesForm m={m} kind="coachingRules" onSaved={setData} /> : null}
                 {m.turfRules ? <RulesForm m={m} kind="turfRules" onSaved={setData} /> : null}
                 {m.staysRules ? <RulesForm m={m} kind="staysRules" onSaved={setData} /> : null}
                 {m.shopRules ? <RulesForm m={m} kind="shopRules" onSaved={setData} /> : null}
+                {m.gigsRules ? <RulesForm m={m} kind="gigsRules" onSaved={setData} /> : null}
+              </Card>
+            ) : null}
+            {m.gigsRules ? (
+              <Card>
+                <GigCategoriesForm m={{ ...m, gigsRules: m.gigsRules }} onSaved={setData} />
               </Card>
             ) : null}
             {isGstModule(module) ? (

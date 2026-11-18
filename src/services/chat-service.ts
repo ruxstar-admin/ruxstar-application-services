@@ -11,6 +11,7 @@ import type {
   ChatUpdates,
   Contact,
 } from '@/types/chat';
+import type { QuoteInput } from '@/types/gigs';
 import type { Page } from '@/types/social';
 
 interface ApiChat extends Omit<Chat, 'peer'> {
@@ -26,11 +27,12 @@ interface ApiChatDetail extends ApiChat {
   seenAt: string | null;
   activeAt?: string | null;
 }
-interface ApiMessage extends Omit<ChatMessage, 'sender' | 'post' | 'voice' | 'replyTo' | 'reactions'> {
+interface ApiMessage extends Omit<ChatMessage, 'sender' | 'post' | 'voice' | 'quote' | 'replyTo' | 'reactions'> {
   sender: ApiAuthor | null;
   post: (Omit<NonNullable<ChatMessage['post']>, 'author'> & { author: ApiAuthor | null }) | null;
-  // Missing from an API older than voice messages, replies and reactions.
+  // Missing from an API older than voice messages, offers, replies and reactions.
   voice?: ChatMessage['voice'];
+  quote?: ChatMessage['quote'];
   replyTo?: ChatMessage['replyTo'];
   reactions?: ChatMessage['reactions'];
 }
@@ -50,11 +52,12 @@ const toDetail = ({ people, seenAt, activeAt, ...chat }: ApiChatDetail): ChatDet
   activeAt: activeAt ?? null,
   people: people.map(({ admin, state, me, ...author }) => ({ ...toAuthor(author), admin, state, me })),
 });
-const toMessage = ({ sender, post, voice, replyTo, reactions, ...rest }: ApiMessage): ChatMessage => ({
+const toMessage = ({ sender, post, voice, quote, replyTo, reactions, ...rest }: ApiMessage): ChatMessage => ({
   ...rest,
   sender: sender ? toAuthor(sender) : null,
   post: post ? { ...post, author: post.author ? toAuthor(post.author) : null } : null,
   voice: voice ?? null,
+  quote: quote ?? null,
   replyTo: replyTo ?? null,
   reactions: reactions ?? [],
 });
@@ -116,6 +119,9 @@ export const ChatService = {
         query: { durationMs: Math.round(voice.durationMs), levels: voice.levels.length ? voice.levels.join(',') : undefined, replyToId },
       }),
     ),
+  /** A freelancer's custom offer in a 1:1 chat; verified freelancers only. It can't be unsent, only withdrawn. */
+  sendQuote: async (token: string, id: string, body: QuoteInput, idempotencyKey: string) =>
+    toMessage(await apiPost<ApiMessage>(`${chat(id)}/quotes`, { ...body }, token, { idempotencyKey })),
   /** Gone for everyone. */
   unsend: (token: string, id: string, messageId: string) => apiDelete<Done>(message(id, messageId), token),
   /** One per person: reacting again swaps it. */
