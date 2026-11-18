@@ -28,7 +28,7 @@ const STATES = [
 
 const MODULES: readonly { key: BusinessModule | 'all'; label: string }[] = [
   { key: 'all', label: 'Every module' },
-  ...(['pod', 'events', 'coaching', 'stays', 'turf', 'shop'] as const).map((key) => ({ key, label: BUSINESS_MODULES[key].label })),
+  ...(Object.keys(BUSINESS_MODULES) as BusinessModule[]).map((key) => ({ key, label: BUSINESS_MODULES[key].label })),
 ];
 
 /** Waits this long after the last keystroke before searching. */
