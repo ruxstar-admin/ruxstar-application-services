@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
@@ -15,6 +15,7 @@ import { errorText } from '@/features/events/lib/messages';
 import { toUploadJpeg } from '@/features/profile/lib/profile-photo';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { Feedback } from '@/lib/haptics';
+import { openLink } from '@/lib/open-link';
 import { FreelanceService } from '@/services/gigs-service';
 import type { GigPhoto, GigsRules, MyFreelancer, PortfolioLink } from '@/types/gigs';
 import { PhotoGrid } from '../components/PhotoGrid';
@@ -87,7 +88,7 @@ function Portfolio({ me, setMe }: { me: MyFreelancer; setMe: (m: MyFreelancer) =
       <PhotoGrid photos={me.portfolio.photos} name={me.name} room={room} busy={busy === 'photo'} onAdd={() => void addPhoto()} onRemove={(item) => setDropping({ kind: 'photo', item })} />
       {me.portfolio.links.map((l) => (
         <View key={l.id} style={styles.link}>
-          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(l.url)} style={styles.flex}>
+          <Pressable accessibilityRole="link" onPress={() => void openLink(l.url)} style={styles.flex}>
             <Text style={styles.strong} numberOfLines={1}>
               {l.title}
             </Text>

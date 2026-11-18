@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Badge } from '@/components/ui/Badge';
@@ -18,6 +18,7 @@ import { useAuthToken } from '@/hooks/use-auth-token';
 import { IdempotentAttempt } from '@/lib/api-client';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
+import { openLink } from '@/lib/open-link';
 import { ConsoleGigsService } from '@/services/gigs-service';
 import type { DecideInput } from '@/types/gigs';
 import { useCan } from '../access';
@@ -125,7 +126,7 @@ export function GigOrderCaseScreen({ id }: { id: string }) {
                   {d.message}
                 </Text>
                 {d.links.map((l) => (
-                  <TextLink key={l} label={`${l.replace(/^https?:\/\//, '')} ›`} onPress={() => void Linking.openURL(l)} />
+                  <TextLink key={l} label={`${l.replace(/^https?:\/\//, '')} ›`} onPress={() => void openLink(l)} />
                 ))}
                 {d.files.length ? <FileList files={d.files} opening={files.opening} onOpen={files.open} /> : null}
                 {d.answer ? <Text style={consoleStyles.muted}>{`Customer: ${d.answer.kind}${d.answer.note ? ` · ${d.answer.note}` : ''} · ${formatDateTime(d.answer.at)}`}</Text> : null}

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Avatar } from '@/components/ui/Avatar';
@@ -14,6 +14,7 @@ import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
+import { openLink } from '@/lib/open-link';
 import { ConsoleGigsService } from '@/services/gigs-service';
 import type { ConsoleFreelancer } from '@/types/gigs';
 import { useCan } from '../access';
@@ -126,7 +127,7 @@ export function GigFreelancerCaseScreen({ id }: { id: string }) {
                 <Card>
                   <Text style={consoleStyles.muted}>{`${f.portfolio.photos.length} photo${f.portfolio.photos.length === 1 ? '' : 's'}`}</Text>
                   {f.portfolio.links.map((l) => (
-                    <TextLink key={l.id} label={`${l.title} ›`} onPress={() => void Linking.openURL(l.url)} />
+                    <TextLink key={l.id} label={`${l.title} ›`} onPress={() => void openLink(l.url)} />
                   ))}
                 </Card>
               </>

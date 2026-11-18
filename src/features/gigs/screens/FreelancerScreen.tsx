@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AsyncBoundary } from '@/components/ui/AsyncBoundary';
 import { Avatar } from '@/components/ui/Avatar';
@@ -13,6 +13,7 @@ import { PhotoStrip } from '@/features/turf/components/PhotoStrip';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
+import { openLink } from '@/lib/open-link';
 import { GigsService } from '@/services/gigs-service';
 import { useAuthStore } from '@/stores/auth-store';
 import type { FreelancerPage } from '@/types/gigs';
@@ -68,7 +69,7 @@ function PageView({ page }: { page: FreelancerPage }) {
       {page.portfolio.photos.length || page.portfolio.links.length ? <Section title="Portfolio" /> : null}
       {page.portfolio.photos.length ? <PhotoStrip photos={page.portfolio.photos} name={page.name} /> : null}
       {page.portfolio.links.map((l) => (
-        <TextLink key={l.id} label={`${l.title} ›`} onPress={() => void Linking.openURL(l.url)} />
+        <TextLink key={l.id} label={`${l.title} ›`} onPress={() => void openLink(l.url)} />
       ))}
 
       <Section title="Gigs" />

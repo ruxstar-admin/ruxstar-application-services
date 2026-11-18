@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TextLink } from '@/components/ui/TextLink';
 import { Brand, Radius, Spacing, Typography } from '@/constants/theme';
@@ -8,6 +8,7 @@ import { fileSize } from '@/features/coaching/lib/materials';
 import { errorText } from '@/features/events/lib/messages';
 import { formatDateTime } from '@/lib/dates';
 import { Feedback } from '@/lib/haptics';
+import { openLink } from '@/lib/open-link';
 import type { GigDelivery, GigFile, GigOrder } from '@/types/gigs';
 import { openGigFile } from '../lib/open-file';
 
@@ -107,7 +108,7 @@ export function DeliveryCard({ delivery, number, opening, onOpen }: { delivery: 
       <Text style={styles.small}>{formatDateTime(delivery.at)}</Text>
       <Text style={styles.text}>{delivery.message}</Text>
       {delivery.links.map((l) => (
-        <TextLink key={l} label={`${l.replace(/^https?:\/\//, '')} ›`} onPress={() => void Linking.openURL(l)} />
+        <TextLink key={l} label={`${l.replace(/^https?:\/\//, '')} ›`} onPress={() => void openLink(l)} />
       ))}
       {delivery.files.length ? <FileList files={delivery.files} opening={opening} onOpen={onOpen} /> : null}
       {delivery.answer ? (

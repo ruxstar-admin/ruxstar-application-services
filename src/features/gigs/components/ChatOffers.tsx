@@ -15,7 +15,7 @@ import { errorText } from '@/features/events/lib/messages';
 import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
-import { IdempotentAttempt } from '@/lib/api-client';
+import { IdempotentAttempt, newIdempotencyKey } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { Feedback } from '@/lib/haptics';
 import { GigDeskService, GigsService } from '@/services/gigs-service';
@@ -138,7 +138,7 @@ export function ChatOffers({
     setBusy(true);
     setFailure(null);
     try {
-      onChanged(ask.message.id, await GigDeskService.withdrawQuote(token, quote.id));
+      onChanged(ask.message.id, await GigDeskService.withdrawQuote(token, quote.id, { idempotencyKey: newIdempotencyKey() }));
       Feedback.success();
       onClose();
     } catch (err) {

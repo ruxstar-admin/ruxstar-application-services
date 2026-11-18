@@ -101,8 +101,8 @@ export const FreelanceService = {
     apiPostBytes<MyGig>(`/v1/gigs/me/gigs/${id(gigId)}/photos`, { data: jpeg, type: 'image/jpeg' }, token, { timeoutMs: PHOTO_TIMEOUT_MS }),
   removePhoto: (token: string, gigId: string, photoId: string) => apiDelete<MyGig>(`/v1/gigs/me/gigs/${id(gigId)}/photos/${id(photoId)}`, token),
   /** Needs verification and everything in `missing`. */
-  publish: (token: string, gigId: string) => apiPost<MyGig>(`/v1/gigs/me/gigs/${id(gigId)}/publish`, undefined, token),
-  pause: (token: string, gigId: string) => apiPost<MyGig>(`/v1/gigs/me/gigs/${id(gigId)}/pause`, undefined, token),
+  publish: (token: string, gigId: string, options: WriteOptions) => apiPost<MyGig>(`/v1/gigs/me/gigs/${id(gigId)}/publish`, undefined, token, options),
+  pause: (token: string, gigId: string, options: WriteOptions) => apiPost<MyGig>(`/v1/gigs/me/gigs/${id(gigId)}/pause`, undefined, token, options),
 };
 
 /** `/v1/gigs/desk`: the freelancer's orders: accepting, declining, delivering, cancelling, and withdrawing offers. */
@@ -118,7 +118,8 @@ export const GigDeskService = {
   /** A full refund; the customer is told the reason. */
   cancel: (token: string, orderId: string, reason: string, options: WriteOptions) =>
     apiPost<GigOrder>(`/v1/gigs/desk/orders/${id(orderId)}/cancel`, { reason }, token, options),
-  withdrawQuote: (token: string, quoteId: string) => apiPost<QuoteState>(`/v1/gigs/desk/quotes/${id(quoteId)}/withdraw`, undefined, token),
+  withdrawQuote: (token: string, quoteId: string, options: WriteOptions) =>
+    apiPost<QuoteState>(`/v1/gigs/desk/quotes/${id(quoteId)}/withdraw`, undefined, token, options),
 };
 
 /** `/v1/ruxstar/gigs`: every freelancer, gig and order, taking gigs down and deciding reported problems. */

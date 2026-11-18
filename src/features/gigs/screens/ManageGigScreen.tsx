@@ -18,6 +18,7 @@ import { money } from '@/features/vendor/lib/pod';
 import { useAsyncResource } from '@/hooks/use-async-resource';
 import { useAuthToken } from '@/hooks/use-auth-token';
 import { useRefetchOnFocus } from '@/hooks/use-refetch-on-focus';
+import { newIdempotencyKey } from '@/lib/api-client';
 import { Feedback } from '@/lib/haptics';
 import { FreelanceService } from '@/services/gigs-service';
 import type { GigPhoto, MyGig } from '@/types/gigs';
@@ -85,9 +86,10 @@ function Dashboard({ gig, setGig, reload, fresh }: { gig: MyGig; setGig: (g: MyG
     }
   };
 
-  const publish = () => run('publish', () => FreelanceService.publish(token, gig.id));
+  const publish = () => run('publish', () => FreelanceService.publish(token, gig.id, { idempotencyKey: newIdempotencyKey() }));
+  const pause = () => run('pause', () => FreelanceService.pause(token, gig.id, { idempotencyKey: newIdempotencyKey() }));
   const footer = removed ? null : gig.status === 'live' ? (
-    <PrimaryButton label="Pause this gig" variant="outline" loading={busy === 'pause'} onPress={() => run('pause', () => FreelanceService.pause(token, gig.id))} />
+    <PrimaryButton label="Pause this gig" variant="outline" loading={busy === 'pause'} onPress={pause} />
   ) : needsKyc ? (
     <PrimaryButton label="Verify to publish" onPress={() => router.push('/(customer)/settings/verification')} />
   ) : (
